@@ -4,6 +4,9 @@ import { ExpensePieChart } from "@/components/ExpensePieChart";
 import { TrendLineChart } from "@/components/TrendLineChart";
 import { BudgetComparisonChart } from "@/components/BudgetComparisonChart";
 import { TransactionForm } from "@/components/TransactionForm";
+import { TransactionsList } from "@/components/TransactionsList";
+import { CategoryManager } from "@/components/CategoryManager";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Mock data
 const expenseData = [
@@ -73,20 +76,40 @@ const Index = () => {
           />
         </div>
 
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <ExpensePieChart data={expenseData} />
-          <TrendLineChart data={trendData} />
-        </div>
+        {/* Main Content with Tabs */}
+        <Tabs defaultValue="dashboard" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="transactions">Transactions</TabsTrigger>
+            <TabsTrigger value="categories">Categories</TabsTrigger>
+          </TabsList>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <BudgetComparisonChart data={budgetData} />
-          </div>
-          <div>
-            <TransactionForm />
-          </div>
-        </div>
+          {/* Dashboard Tab */}
+          <TabsContent value="dashboard" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ExpensePieChart data={expenseData} />
+              <TrendLineChart data={trendData} />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <BudgetComparisonChart data={budgetData} />
+              </div>
+              <div>
+                <TransactionForm />
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Transactions Tab */}
+          <TabsContent value="transactions">
+            <TransactionsList />
+          </TabsContent>
+
+          {/* Categories Tab */}
+          <TabsContent value="categories">
+            <CategoryManager />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
