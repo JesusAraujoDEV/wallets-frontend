@@ -8,89 +8,89 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Pastel color system for financial dashboard */
+    --background: 154 30% 97%;
+    --foreground: 154 15% 25%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 154 15% 25%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 154 15% 25%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Mint green - primary */
+    --primary: 154 60% 65%;
+    --primary-foreground: 154 15% 15%;
+    --primary-light: 154 60% 85%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Lavender - secondary */
+    --secondary: 228 40% 70%;
+    --secondary-foreground: 228 15% 20%;
+    --secondary-light: 228 40% 88%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Peach - accent */
+    --accent: 4 100% 75%;
+    --accent-foreground: 4 20% 20%;
+    --accent-light: 4 100% 88%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --muted: 154 20% 92%;
+    --muted-foreground: 154 10% 45%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 65%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 154 20% 88%;
+    --input: 154 20% 92%;
+    --ring: 154 60% 65%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Chart colors - pastel palette */
+    --chart-1: 154 60% 65%; /* Mint */
+    --chart-2: 228 40% 70%; /* Lavender */
+    --chart-3: 4 100% 75%;  /* Peach */
+    --chart-4: 45 95% 75%;  /* Pastel Yellow */
+    --chart-5: 280 50% 75%; /* Pastel Purple */
+    --chart-6: 195 70% 75%; /* Pastel Blue */
+    --chart-7: 340 80% 75%; /* Pastel Pink */
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Shadows and effects */
+    --shadow-sm: 0 2px 8px hsla(154, 20%, 50%, 0.08);
+    --shadow-md: 0 4px 16px hsla(154, 20%, 50%, 0.12);
+    --shadow-lg: 0 8px 24px hsla(154, 20%, 50%, 0.16);
+    
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 154 15% 12%;
+    --foreground: 154 10% 90%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 154 15% 15%;
+    --card-foreground: 154 10% 90%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 154 15% 15%;
+    --popover-foreground: 154 10% 90%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 154 50% 55%;
+    --primary-foreground: 154 10% 95%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 228 30% 50%;
+    --secondary-foreground: 228 10% 95%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 4 80% 60%;
+    --accent-foreground: 4 10% 95%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --muted: 154 15% 20%;
+    --muted-foreground: 154 10% 65%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 60% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 154 15% 25%;
+    --input: 154 15% 25%;
+    --ring: 154 50% 55%;
   }
 }
 
