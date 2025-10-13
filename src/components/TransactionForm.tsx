@@ -18,7 +18,14 @@ const categories = [
   "Other"
 ];
 
+const mockAccounts = [
+  { id: "1", name: "Checking Account", currency: "USD" },
+  { id: "2", name: "Savings Account", currency: "USD" },
+  { id: "3", name: "Cash Wallet", currency: "EUR" },
+];
+
 export const TransactionForm = () => {
+  const [account, setAccount] = useState("");
   const [type, setType] = useState<"income" | "expense">("expense");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
@@ -27,21 +34,23 @@ export const TransactionForm = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!amount || !category) {
+    if (!account || !amount || !category) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields.",
+        description: "Please fill in all required fields, including the account.",
         variant: "destructive",
       });
       return;
     }
 
+    const selectedAccount = mockAccounts.find(acc => acc.id === account);
     toast({
       title: "Transaction Added",
-      description: `${type === "income" ? "Income" : "Expense"} of $${amount} recorded successfully.`,
+      description: `${type === "income" ? "Income" : "Expense"} of $${amount} recorded to ${selectedAccount?.name}.`,
     });
 
     // Reset form
+    setAccount("");
     setAmount("");
     setCategory("");
     setDescription("");
@@ -51,6 +60,21 @@ export const TransactionForm = () => {
     <Card className="p-6 shadow-md border-0">
       <h3 className="text-xl font-semibold text-foreground mb-6">Add Transaction</h3>
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="account">Account</Label>
+          <Select value={account} onValueChange={setAccount}>
+            <SelectTrigger id="account">
+              <SelectValue placeholder="Select account" />
+            </SelectTrigger>
+            <SelectContent>
+              {mockAccounts.map((acc) => (
+                <SelectItem key={acc.id} value={acc.id}>
+                  {acc.name} ({acc.currency})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="type">Type</Label>

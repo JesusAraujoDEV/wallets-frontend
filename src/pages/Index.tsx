@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import { KPICard } from "@/components/KPICard";
 import { ExpensePieChart } from "@/components/ExpensePieChart";
@@ -6,6 +7,8 @@ import { BudgetComparisonChart } from "@/components/BudgetComparisonChart";
 import { TransactionForm } from "@/components/TransactionForm";
 import { TransactionsList } from "@/components/TransactionsList";
 import { CategoryManager } from "@/components/CategoryManager";
+import { AccountManager } from "@/components/AccountManager";
+import { AccountSelector } from "@/components/AccountSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Mock data
@@ -36,6 +39,8 @@ const budgetData = [
 ];
 
 const Index = () => {
+  const [selectedAccount, setSelectedAccount] = useState("all");
+  
   const totalBalance = 8450.00;
   const totalIncome = 5600.00;
   const totalExpenses = 4100.00;
@@ -78,14 +83,36 @@ const Index = () => {
 
         {/* Main Content with Tabs */}
         <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
             <TabsTrigger value="categories">Categories</TabsTrigger>
+            <TabsTrigger value="accounts">Accounts</TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6">
+            <AccountSelector 
+              selectedAccount={selectedAccount}
+              onAccountChange={setSelectedAccount}
+            />
+            
+            {selectedAccount === "all" ? (
+              <div className="mb-4 p-4 bg-primary-light/30 rounded-lg border border-primary/20">
+                <p className="text-sm text-foreground flex items-center gap-2">
+                  <span className="font-semibold">Global Dashboard View:</span>
+                  Showing aggregated data across all accounts
+                </p>
+              </div>
+            ) : (
+              <div className="mb-4 p-4 bg-secondary-light/30 rounded-lg border border-secondary/20">
+                <p className="text-sm text-foreground flex items-center gap-2">
+                  <span className="font-semibold">Account Dashboard View:</span>
+                  Showing data for selected account only
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ExpensePieChart data={expenseData} />
               <TrendLineChart data={trendData} />
@@ -108,6 +135,11 @@ const Index = () => {
           {/* Categories Tab */}
           <TabsContent value="categories">
             <CategoryManager />
+          </TabsContent>
+
+          {/* Accounts Tab */}
+          <TabsContent value="accounts">
+            <AccountManager />
           </TabsContent>
         </Tabs>
       </main>
