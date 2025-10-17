@@ -173,50 +173,7 @@ export const AccountManager = () => {
         </Dialog>
       </div>
 
-      {/* Import/Export actions */}
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          onClick={() => {
-            try {
-              const dataStr = JSON.stringify(AccountsStore.all(), null, 2);
-              const blob = new Blob([dataStr], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "account_data.json";
-              a.click();
-              URL.revokeObjectURL(url);
-            } catch (e) {}
-          }}
-        >
-          Export Accounts
-        </Button>
-        <Button
-          variant="outline"
-          onClick={async () => {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = "application/json";
-            input.onchange = async () => {
-              const file = input.files?.[0];
-              if (!file) return;
-              const text = await file.text();
-              try {
-                const parsed = JSON.parse(text) as Account[];
-                localStorage.setItem("pwi_accounts", JSON.stringify(parsed));
-                toast({ title: "Accounts Imported", description: `${parsed.length} accounts loaded.` });
-                setAccounts(AccountsStore.all());
-              } catch {
-                toast({ title: "Invalid File", description: "Could not parse JSON.", variant: "destructive" });
-              }
-            };
-            input.click();
-          }}
-        >
-          Import Accounts
-        </Button>
-      </div>
+      {/* No import/export UI; persistence handled via functions (localStorage) */}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {accounts.map((account) => (

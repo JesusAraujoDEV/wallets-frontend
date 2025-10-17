@@ -193,48 +193,7 @@ export const CategoryManager = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Import/Export actions */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              const dataStr = JSON.stringify(CategoriesStore.all(), null, 2);
-              const blob = new Blob([dataStr], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "category_data.json";
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-          >
-            Export Categories
-          </Button>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              const input = document.createElement("input");
-              input.type = "file";
-              input.accept = "application/json";
-              input.onchange = async () => {
-                const file = input.files?.[0];
-                if (!file) return;
-                const text = await file.text();
-                try {
-                  const parsed = JSON.parse(text) as Category[];
-                  localStorage.setItem("pwi_categories", JSON.stringify(parsed));
-                  toast({ title: "Categories Imported", description: `${parsed.length} categories loaded.` });
-                  setCategories(CategoriesStore.all());
-                } catch {
-                  toast({ title: "Invalid File", description: "Could not parse JSON.", variant: "destructive" });
-                }
-              };
-              input.click();
-            }}
-          >
-            Import Categories
-          </Button>
-        </div>
+        {/* No import/export UI; persistence handled via functions (localStorage) */}
         {/* Expense Categories */}
         <div>
           <h3 className="text-sm font-semibold text-muted-foreground mb-3">EXPENSE CATEGORIES</h3>

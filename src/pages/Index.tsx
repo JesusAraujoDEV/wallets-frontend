@@ -10,8 +10,7 @@ import { CategoryManager } from "@/components/CategoryManager";
 import { AccountManager } from "@/components/AccountManager";
 import { AccountSelector } from "@/components/AccountSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { exportAll, importAll } from "@/lib/storage";
+// No import/export UI; data persistence handled via storage functions
 import { useSearchParams } from "react-router-dom";
 
 // Mock data
@@ -76,44 +75,7 @@ const Index = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {/* Data Import/Export */}
-        <div className="mb-6 flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              const data = exportAll();
-              const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "pastel_wallet_insights_data.json";
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-          >
-            Export All Data
-          </Button>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              const input = document.createElement("input");
-              input.type = "file";
-              input.accept = "application/json";
-              input.onchange = async () => {
-                const file = input.files?.[0];
-                if (!file) return;
-                try {
-                  const text = await file.text();
-                  const bundle = JSON.parse(text);
-                  importAll(bundle);
-                } catch {}
-              };
-              input.click();
-            }}
-          >
-            Import All Data
-          </Button>
-        </div>
+        {/* Persistence uses localStorage via helper functions; no import/export UI */}
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <KPICard

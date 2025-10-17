@@ -1,4 +1,4 @@
-import { Account, Category, DataBundle, Transaction } from "./types";
+import { Account, Category, Transaction } from "./types";
 
 const STORAGE_KEYS = {
   accounts: "pwi_accounts",
@@ -79,21 +79,6 @@ export const TransactionsStore = {
     writeJSON(STORAGE_KEYS.transactions, items);
   },
 };
-
-// Import/Export helpers
-export function exportAll(): DataBundle {
-  return {
-    accounts: AccountsStore.all(),
-    categories: CategoriesStore.all(),
-    transactions: TransactionsStore.all(),
-  };
-}
-
-export function importAll(data: DataBundle) {
-  writeJSON(STORAGE_KEYS.accounts, data.accounts ?? []);
-  writeJSON(STORAGE_KEYS.categories, data.categories ?? []);
-  writeJSON(STORAGE_KEYS.transactions, data.transactions ?? []);
-}
 
 // Utility for generating IDs
 export function newId() {
