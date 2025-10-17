@@ -17,6 +17,7 @@ export const TransactionForm = () => {
   const [description, setDescription] = useState("");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const filteredCategories = categories.filter((c) => c.type === type);
 
   useEffect(() => {
     const load = () => {
@@ -27,6 +28,14 @@ export const TransactionForm = () => {
     const off = onDataChange(load);
     return off;
   }, []);
+
+  // Ensure selected category matches the chosen type
+  useEffect(() => {
+    if (category && !filteredCategories.some((c) => c.id === category)) {
+      setCategory("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, categories]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,10 +134,10 @@ export const TransactionForm = () => {
           <Label htmlFor="category">Category</Label>
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger id="category">
-              <SelectValue placeholder="Select category" />
+              <SelectValue placeholder={`Select ${type} category`} />
             </SelectTrigger>
             <SelectContent>
-              {categories.map((cat) => (
+              {filteredCategories.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
                   {cat.name}
                 </SelectItem>
