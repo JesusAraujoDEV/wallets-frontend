@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PlusCircle } from "lucide-react";
+import { Calendar as CalendarIcon, PlusCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AccountsStore, CategoriesStore, TransactionsStore, newId, onDataChange } from "@/lib/storage";
 import type { Account, Category } from "@/lib/types";
 import { useVESExchangeRate } from "@/lib/rates";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 export const TransactionForm = () => {
   const [account, setAccount] = useState("");
@@ -16,6 +19,7 @@ export const TransactionForm = () => {
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
+  const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const { rate } = useVESExchangeRate();
@@ -57,7 +61,7 @@ export const TransactionForm = () => {
     // Persist transaction
     TransactionsStore.add({
       id: newId(),
-      date: new Date().toISOString().slice(0, 10),
+      date: date || new Date().toISOString().slice(0, 10),
       description: description || (type === "income" ? "Income" : "Expense"),
       categoryId: selectedCategory?.id || "",
       accountId: selectedAccount?.id || "",
@@ -74,6 +78,7 @@ export const TransactionForm = () => {
     setAmount("");
     setCategory("");
     setDescription("");
+    setDate(new Date().toISOString().slice(0, 10));
   };
 
   return (
@@ -113,7 +118,7 @@ export const TransactionForm = () => {
             </SelectContent>
           </Select>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="type">Type</Label>
             <Select value={type} onValueChange={(value) => setType(value as "income" | "expense")}>
@@ -137,6 +142,36 @@ export const TransactionForm = () => {
               onChange={(e) => setAmount(e.target.value)}
               required
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                  )}
+                  type="button"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? new Date(date).toLocaleDateString() : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date ? new Date(date) : undefined}
+                  onSelect={(d) => {
+                    if (d) {
+                      const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0,10);
+                      setDate(iso);
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
         <div className="space-y-2">

@@ -27,6 +27,7 @@ export type ExchangeSnapshot = {
 
 const STORAGE_KEY = "pwi_exchange_rate";
 const API_URL = "https://api.dolarvzla.com/public/exchange-rate";
+const API_LIST_URL = "https://api.dolarvzla.com/public/exchange-rate/list";
 
 function readCache(): ExchangeSnapshot | null {
   try {
@@ -124,4 +125,63 @@ export function convertToUSD(amount: number, currency: "USD" | "EUR" | "VES", sn
     default:
       return null;
   }
+}
+
+// Historical rates cache (by YYYY-MM-DD)
+type HistoricalCache = Record<string, { vesPerUsd: number; vesPerEur: number; fetchedAt: string }>;
+const HIST_KEY = "pwi_exchange_rate_hist";
+
+function readHist(): HistoricalCache {
+  try {
+    const raw = localStorage.getItem(HIST_KEY);
+    return raw ? (JSON.parse(raw) as HistoricalCache) : {};
+  } catch {
+    return {};
+  }
+}
+function writeHist(map: HistoricalCache) {
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(map)); } catch {}
+}
+
+export async function getRateByDate(dateISO: string): Promise<ExchangeSnapshot | null> {
+  const date = dateISO.slice(0, 10);
+  const hist = readHist();
+  const cached = hist[date];
+  if (cached) {
+    return {
+      vesPerUsd: cached.vesPerUsd,
+      vesPerEur: cached.vesPerEur,
+      fetchedAt: cached.fetchedAt,
+      sourceDate: date,
+    };
+  }
+  try {
+    const url = `${API_LIST_URL}?from=${date}&to=${date}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = (await res.json()) as { rates: Array<{ date: string; usd: number; eur: number }> };
+    const item = json.rates?.[0];
+    if (!item) return null;
+    const snap: ExchangeSnapshot = {
+      vesPerUsd: Number(item.usd),
+      vesPerEur: Number(item.eur),
+      fetchedAt: new Date().toISOString(),
+      sourceDate: item.date,
+    };
+    hist[date] = { vesPerUsd: snap.vesPerUsd, vesPerEur: snap.vesPerEur, fetchedAt: snap.fetchedAt };
+    writeHist(hist);
+    return snap;
+  } catch {
+    return null;
+  }
+}
+
+// Convert with optional historical date: if date provided, attempt historical rate; else use current snapshot
+export async function convertToUSDByDate(amount: number, currency: "USD" | "EUR" | "VES", dateISO?: string): Promise<number | null> {
+  if (!isFinite(amount)) return null;
+  if (currency === "USD") return amount;
+  let snap: ExchangeSnapshot | null = null;
+  if (dateISO) snap = await getRateByDate(dateISO);
+  if (!snap) snap = await getVESPerUsd();
+  return convertToUSD(amount, currency, snap);
 }

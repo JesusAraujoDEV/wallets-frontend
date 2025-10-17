@@ -4,11 +4,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2 } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
+import { convertToUSDByDate } from "@/lib/rates";
 import type { Transaction, Category, Account } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 export const TransactionsList = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -26,6 +30,7 @@ export const TransactionsList = () => {
     amount: "",
     categoryId: "",
     description: "",
+    date: "",
   });
 
   useEffect(() => {
@@ -49,6 +54,7 @@ export const TransactionsList = () => {
       amount: tx.amount.toString(),
       categoryId: tx.categoryId,
       description: tx.description,
+      date: tx.date,
     });
     setIsDialogOpen(true);
   };
@@ -72,6 +78,7 @@ export const TransactionsList = () => {
       amount: parseFloat(formData.amount),
       categoryId: formData.categoryId,
       description: formData.description,
+      date: formData.date || editingTx.date,
     };
     TransactionsStore.update(next);
     setIsDialogOpen(false);
@@ -187,11 +194,10 @@ export const TransactionsList = () => {
                         })()}
                       </div>
                     </div>
-                    <div className={`text-lg font-semibold ${
-                      transaction.type === "income" ? "text-primary" : "text-foreground"
-                    }`}>
-                      {transaction.type === "income" ? "+" : "-"}${transaction.amount.toFixed(2)}
-                    </div>
+                    <TxAmount
+                      transaction={transaction}
+                      accounts={accounts}
+                    />
                     <div className="flex items-center gap-2">
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(transaction)}>
                         <Pencil className="h-4 w-4" />
@@ -218,6 +224,36 @@ export const TransactionsList = () => {
             <DialogTitle>Edit Transaction</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdate} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                    )}
+                    type="button"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.date ? new Date(formData.date).toLocaleDateString() : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={formData.date ? new Date(formData.date) : undefined}
+                    onSelect={(d) => {
+                      if (d) {
+                        const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0,10);
+                        setFormData({ ...formData, date: iso });
+                      }
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="account">Account</Label>
               <Select value={formData.accountId} onValueChange={(v) => setFormData({ ...formData, accountId: v })}>
@@ -286,5 +322,34 @@ export const TransactionsList = () => {
         </DialogContent>
       </Dialog>
     </Card>
+  );
+};
+
+// Inline component to render transaction amount in original currency and USD (by date)
+const TxAmount = ({ transaction, accounts }: { transaction: Transaction; accounts: Account[] }) => {
+  const acc = accounts.find(a => a.id === transaction.accountId);
+  const currency = acc?.currency ?? "USD";
+  const sign = transaction.type === "income" ? "+" : "-";
+  const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "Bs.";
+  const [usd, setUsd] = useState<number | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const converted = await convertToUSDByDate(transaction.amount, currency as any, transaction.date);
+      if (mounted) setUsd(converted);
+    })();
+    return () => { mounted = false; };
+  }, [transaction.amount, transaction.date, currency]);
+
+  return (
+    <div className={`text-right ${transaction.type === "income" ? "text-primary" : "text-foreground"}`}>
+      <div className="text-lg font-semibold">
+        {sign}{symbol}{transaction.amount.toFixed(2)}
+      </div>
+      {currency !== "USD" && usd != null ? (
+        <div className="text-xs text-muted-foreground">≈ {sign}${usd.toFixed(2)} USD</div>
+      ) : null}
+    </div>
   );
 };

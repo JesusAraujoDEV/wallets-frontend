@@ -5,16 +5,24 @@ import { DayPicker } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>;
+export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+  fromYear?: number;
+  toYear?: number;
+};
 
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+function Calendar({ className, classNames, showOutsideDays = true, fromYear, toYear, ...props }: CalendarProps) {
+  const currentYear = new Date().getFullYear();
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      fixedWeeks
+      captionLayout={props.captionLayout ?? "dropdown"}
+      fromYear={fromYear ?? 2000}
+      toYear={toYear ?? currentYear + 5}
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
+        month: "space-y-4 w-72",
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",
         nav: "space-x-1 flex items-center",
