@@ -12,36 +12,16 @@ import { AccountSelector } from "@/components/AccountSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // No import/export UI; data persistence handled via storage functions
 import { useSearchParams } from "react-router-dom";
+import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
+import type { Account, Category, Transaction } from "@/lib/types";
 
-// Mock data
-const expenseData = [
-  { category: "Food & Dining", amount: 1200, color: "hsl(var(--chart-1))" },
-  { category: "Transportation", amount: 450, color: "hsl(var(--chart-2))" },
-  { category: "Shopping", amount: 800, color: "hsl(var(--chart-3))" },
-  { category: "Entertainment", amount: 300, color: "hsl(var(--chart-4))" },
-  { category: "Bills", amount: 600, color: "hsl(var(--chart-5))" },
-  { category: "Healthcare", amount: 200, color: "hsl(var(--chart-6))" },
-];
-
-const trendData = [
-  { month: "Jan", income: 5000, expenses: 3500 },
-  { month: "Feb", income: 5200, expenses: 3800 },
-  { month: "Mar", income: 4800, expenses: 3600 },
-  { month: "Apr", income: 5500, expenses: 4200 },
-  { month: "May", income: 5300, expenses: 3900 },
-  { month: "Jun", income: 5600, expenses: 4100 },
-];
-
-const budgetData = [
-  { category: "Food", budget: 1500, actual: 1200 },
-  { category: "Transport", budget: 500, actual: 450 },
-  { category: "Shopping", budget: 700, actual: 800 },
-  { category: "Entertainment", budget: 400, actual: 300 },
-  { category: "Bills", budget: 600, actual: 600 },
-];
+// Dashboard data is derived from localStorage (JSON DB)
 
 const Index = () => {
   const [selectedAccount, setSelectedAccount] = useState("all");
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const allowedPages = useMemo(() => new Set(["dashboard", "transactions", "categories", "accounts"]), []);
@@ -60,9 +40,90 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
-  const totalBalance = 8450.00;
-  const totalIncome = 5600.00;
-  const totalExpenses = 4100.00;
+  // Load JSON DB contents and subscribe to changes
+  useEffect(() => {
+    const load = () => {
+      setAccounts(AccountsStore.all());
+      setCategories(CategoriesStore.all());
+      setTransactions(TransactionsStore.all());
+    };
+    load();
+    const off = onDataChange(load);
+    return off;
+  }, []);
+  
+  // KPIs derived from data
+  const totalBalance = useMemo(() => {
+    if (selectedAccount === "all") {
+      return accounts.reduce((sum, a) => sum + (a.balance || 0), 0);
+    }
+    const acc = accounts.find(a => a.id === selectedAccount);
+    return acc ? acc.balance : 0;
+  }, [accounts, selectedAccount]);
+
+  const now = new Date();
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const isCurrentMonth = (iso: string) => {
+    const d = new Date(iso);
+    return d >= firstOfMonth && d <= now;
+  };
+  const txByAccount = useMemo(() => (
+    transactions.filter(t => selectedAccount === "all" || t.accountId === selectedAccount)
+  ), [transactions, selectedAccount]);
+
+  const { totalIncome, totalExpenses } = useMemo(() => {
+    const monthTx = txByAccount.filter(t => isCurrentMonth(t.date));
+    let inc = 0, exp = 0;
+    for (const t of monthTx) {
+      if (t.type === "income") inc += t.amount; else exp += t.amount;
+    }
+    return { totalIncome: inc, totalExpenses: exp };
+  }, [txByAccount]);
+
+  // Charts
+  const expensePieData = useMemo(() => {
+    const expTx = txByAccount.filter(t => t.type === "expense" && isCurrentMonth(t.date));
+    const map = new Map<string, number>();
+    for (const t of expTx) map.set(t.categoryId, (map.get(t.categoryId) || 0) + t.amount);
+    return Array.from(map.entries()).map(([categoryId, amount]) => {
+      const cat = categories.find(c => c.id === categoryId);
+      return {
+        category: cat?.name || "Uncategorized",
+        amount,
+        color: cat?.color || "hsl(var(--chart-6))",
+      };
+    });
+  }, [txByAccount, categories]);
+
+  const trendData = useMemo(() => {
+    const labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const out: { month: string; income: number; expenses: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = new Date(d.getFullYear(), d.getMonth(), 1);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+      let inc = 0, exp = 0;
+      for (const t of txByAccount) {
+        const td = new Date(t.date);
+        if (td >= start && td <= end) {
+          if (t.type === "income") inc += t.amount; else exp += t.amount;
+        }
+      }
+      out.push({ month: labels[d.getMonth()], income: inc, expenses: exp });
+    }
+    return out;
+  }, [txByAccount]);
+
+  const budgetData = useMemo(() => {
+    // Placeholder budgets (0) with actual monthly expenses per category
+    const expTx = txByAccount.filter(t => t.type === "expense" && isCurrentMonth(t.date));
+    const map = new Map<string, number>();
+    for (const t of expTx) map.set(t.categoryId, (map.get(t.categoryId) || 0) + t.amount);
+    return Array.from(map.entries()).map(([categoryId, actual]) => {
+      const cat = categories.find(c => c.id === categoryId);
+      return { category: cat?.name || "Uncategorized", budget: 0, actual };
+    });
+  }, [txByAccount, categories]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -82,21 +143,21 @@ const Index = () => {
             title="Total Balance"
             value={`$${totalBalance.toFixed(2)}`}
             icon={Wallet}
-            trend={{ value: "12.5%", isPositive: true }}
+            trend={{ value: "", isPositive: true }}
             colorScheme="primary"
           />
           <KPICard
             title="Monthly Income"
             value={`$${totalIncome.toFixed(2)}`}
             icon={TrendingUp}
-            trend={{ value: "5.8%", isPositive: true }}
+            trend={{ value: "", isPositive: true }}
             colorScheme="secondary"
           />
           <KPICard
             title="Monthly Expenses"
             value={`$${totalExpenses.toFixed(2)}`}
             icon={TrendingDown}
-            trend={{ value: "2.3%", isPositive: false }}
+            trend={{ value: "", isPositive: false }}
             colorScheme="accent"
           />
         </div>
@@ -143,7 +204,7 @@ const Index = () => {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ExpensePieChart data={expenseData} />
+              <ExpensePieChart data={expensePieData} />
               <TrendLineChart data={trendData} />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
