@@ -64,6 +64,7 @@ export const CategoriesStore = {
   },
 };
 
+
 // Transactions
 export const TransactionsStore = {
   all(): Transaction[] {
