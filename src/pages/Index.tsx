@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import { KPICard } from "@/components/KPICard";
 import { ExpensePieChart } from "@/components/ExpensePieChart";
@@ -10,6 +10,7 @@ import { CategoryManager } from "@/components/CategoryManager";
 import { AccountManager } from "@/components/AccountManager";
 import { AccountSelector } from "@/components/AccountSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSearchParams } from "react-router-dom";
 
 // Mock data
 const expenseData = [
@@ -40,6 +41,22 @@ const budgetData = [
 
 const Index = () => {
   const [selectedAccount, setSelectedAccount] = useState("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const allowedPages = useMemo(() => new Set(["dashboard", "transactions", "categories", "accounts"]), []);
+  const pageFromUrl = searchParams.get("page") || "";
+  const currentPage = allowedPages.has(pageFromUrl) ? pageFromUrl : "dashboard";
+
+  // Ensure the URL always contains a valid ?page=<value>
+  useEffect(() => {
+    if (!allowedPages.has(pageFromUrl)) {
+      const next = new URLSearchParams(searchParams);
+      next.set("page", "dashboard");
+      // Replace to avoid adding an extra history entry on first load
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   const totalBalance = 8450.00;
   const totalIncome = 5600.00;
@@ -82,7 +99,16 @@ const Index = () => {
         </div>
 
         {/* Main Content with Tabs */}
-        <Tabs defaultValue="dashboard" className="space-y-6">
+        <Tabs
+          value={currentPage}
+          onValueChange={(val) => {
+            const next = new URLSearchParams(searchParams);
+            next.set("page", val);
+            // Push a new history entry so Back works between tabs
+            setSearchParams(next, { replace: false });
+          }}
+          className="space-y-6"
+        >
           <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
