@@ -2,46 +2,36 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowUpCircle, ArrowDownCircle, Search } from "lucide-react";
-import { useState } from "react";
-
-interface Transaction {
-  id: string;
-  date: string;
-  description: string;
-  category: string;
-  amount: number;
-  type: "income" | "expense";
-  color: string;
-}
-
-// Mock transaction data
-const mockTransactions: Transaction[] = [
-  { id: "1", date: "2025-10-13", description: "Salary", category: "Income", amount: 5600, type: "income", color: "hsl(var(--chart-1))" },
-  { id: "2", date: "2025-10-13", description: "Grocery Shopping", category: "Food & Dining", amount: 120, type: "expense", color: "hsl(var(--chart-1))" },
-  { id: "3", date: "2025-10-12", description: "Gas Station", category: "Transportation", amount: 45, type: "expense", color: "hsl(var(--chart-2))" },
-  { id: "4", date: "2025-10-12", description: "Netflix Subscription", category: "Entertainment", amount: 15, type: "expense", color: "hsl(var(--chart-4))" },
-  { id: "5", date: "2025-10-11", description: "Freelance Project", category: "Income", amount: 800, type: "income", color: "hsl(var(--chart-1))" },
-  { id: "6", date: "2025-10-11", description: "Restaurant Dinner", category: "Food & Dining", amount: 85, type: "expense", color: "hsl(var(--chart-1))" },
-  { id: "7", date: "2025-10-10", description: "Online Shopping", category: "Shopping", amount: 150, type: "expense", color: "hsl(var(--chart-3))" },
-  { id: "8", date: "2025-10-10", description: "Electricity Bill", category: "Bills", amount: 95, type: "expense", color: "hsl(var(--chart-5))" },
-  { id: "9", date: "2025-10-09", description: "Coffee Shop", category: "Food & Dining", amount: 12, type: "expense", color: "hsl(var(--chart-1))" },
-  { id: "10", date: "2025-10-09", description: "Uber Ride", category: "Transportation", amount: 28, type: "expense", color: "hsl(var(--chart-2))" },
-];
+import { useEffect, useMemo, useState } from "react";
+import { CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
+import type { Transaction, Category } from "@/lib/types";
 
 export const TransactionsList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
-  // Get unique categories
-  const categories = Array.from(new Set(mockTransactions.map(t => t.category)));
+  useEffect(() => {
+    const load = () => {
+      setTransactions(TransactionsStore.all());
+      setCategories(CategoriesStore.all());
+    };
+    load();
+    const off = onDataChange(load);
+    return off;
+  }, []);
+  const categoriesOptions = useMemo(() => categories, [categories]);
 
   // Filter transactions
-  const filteredTransactions = mockTransactions.filter(transaction => {
+  const filteredTransactions = transactions.filter(transaction => {
+    const cat = categories.find(c => c.id === transaction.categoryId);
+    const catName = cat?.name ?? "";
     const matchesSearch = transaction.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          transaction.category.toLowerCase().includes(searchQuery.toLowerCase());
+                          catName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === "all" || transaction.type === filterType;
-    const matchesCategory = filterCategory === "all" || transaction.category === filterCategory;
+    const matchesCategory = filterCategory === "all" || transaction.categoryId === filterCategory;
     return matchesSearch && matchesType && matchesCategory;
   });
 
@@ -89,8 +79,8 @@ export const TransactionsList = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {categories.map(category => (
-                <SelectItem key={category} value={category}>{category}</SelectItem>
+              {categoriesOptions.map(category => (
+                <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -128,11 +118,18 @@ export const TransactionsList = () => {
                         {transaction.description}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span
-                          className="inline-block w-3 h-3 rounded-full"
-                          style={{ backgroundColor: transaction.color }}
-                        />
-                        <p className="text-sm text-muted-foreground">{transaction.category}</p>
+                        {(() => {
+                          const cat = categories.find(c => c.id === transaction.categoryId);
+                          return (
+                            <>
+                              <span
+                                className="inline-block w-3 h-3 rounded-full"
+                                style={{ backgroundColor: cat?.color || "hsl(var(--muted))" }}
+                              />
+                              <p className="text-sm text-muted-foreground">{cat?.name || "Uncategorized"}</p>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className={`text-lg font-semibold ${

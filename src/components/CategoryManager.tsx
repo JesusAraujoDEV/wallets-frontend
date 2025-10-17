@@ -5,16 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
+import { CategoriesStore, newId, onDataChange } from "@/lib/storage";
+import type { Category } from "@/lib/types";
 
-interface Category {
-  id: string;
-  name: string;
-  type: "income" | "expense";
-  color: string;
-  colorName: string;
-}
 
 // Available pastel colors from the design system
 const pastelColors = [
@@ -27,20 +22,8 @@ const pastelColors = [
   { name: "Pastel Pink", value: "hsl(var(--chart-7))", hsl: "340 80% 75%" },
 ];
 
-// Mock initial categories
-const initialCategories: Category[] = [
-  { id: "1", name: "Food & Dining", type: "expense", color: "hsl(var(--chart-1))", colorName: "Mint Green" },
-  { id: "2", name: "Transportation", type: "expense", color: "hsl(var(--chart-2))", colorName: "Lavender" },
-  { id: "3", name: "Shopping", type: "expense", color: "hsl(var(--chart-3))", colorName: "Peach" },
-  { id: "4", name: "Entertainment", type: "expense", color: "hsl(var(--chart-4))", colorName: "Pastel Yellow" },
-  { id: "5", name: "Bills", type: "expense", color: "hsl(var(--chart-5))", colorName: "Pastel Purple" },
-  { id: "6", name: "Healthcare", type: "expense", color: "hsl(var(--chart-6))", colorName: "Pastel Blue" },
-  { id: "7", name: "Salary", type: "income", color: "hsl(var(--chart-1))", colorName: "Mint Green" },
-  { id: "8", name: "Freelance", type: "income", color: "hsl(var(--chart-7))", colorName: "Pastel Pink" },
-];
-
 export const CategoryManager = () => {
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [categories, setCategories] = useState<Category[]>(CategoriesStore.all());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
@@ -64,11 +47,13 @@ export const CategoryManager = () => {
 
     if (editingCategory) {
       // Update existing category
-      setCategories(categories.map(cat => 
-        cat.id === editingCategory.id 
-          ? { ...cat, name: formData.name, type: formData.type, color: selectedColor.value, colorName: selectedColor.name }
-          : cat
-      ));
+      CategoriesStore.upsert({
+        ...editingCategory,
+        name: formData.name,
+        type: formData.type,
+        color: selectedColor.value,
+        colorName: selectedColor.name,
+      });
       toast({
         title: "Category Updated",
         description: `${formData.name} has been updated successfully.`,
@@ -76,13 +61,13 @@ export const CategoryManager = () => {
     } else {
       // Create new category
       const newCategory: Category = {
-        id: Date.now().toString(),
+        id: newId(),
         name: formData.name,
         type: formData.type,
         color: selectedColor.value,
         colorName: selectedColor.name,
       };
-      setCategories([...categories, newCategory]);
+      CategoriesStore.upsert(newCategory);
       toast({
         title: "Category Created",
         description: `${formData.name} has been added successfully.`,
@@ -104,7 +89,7 @@ export const CategoryManager = () => {
 
   const handleDelete = (categoryId: string) => {
     const category = categories.find(c => c.id === categoryId);
-    setCategories(categories.filter(cat => cat.id !== categoryId));
+    CategoriesStore.remove(categoryId);
     toast({
       title: "Category Deleted",
       description: `${category?.name} has been removed.`,
@@ -116,6 +101,12 @@ export const CategoryManager = () => {
     setEditingCategory(null);
     setFormData({ name: "", type: "expense", colorName: "Mint Green" });
   };
+
+  useEffect(() => {
+    setCategories(CategoriesStore.all());
+    const off = onDataChange(() => setCategories(CategoriesStore.all()));
+    return off;
+  }, []);
 
   const expenseCategories = categories.filter(c => c.type === "expense");
   const incomeCategories = categories.filter(c => c.type === "income");
@@ -202,6 +193,48 @@ export const CategoryManager = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Import/Export actions */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              const dataStr = JSON.stringify(CategoriesStore.all(), null, 2);
+              const blob = new Blob([dataStr], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "category_data.json";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Export Categories
+          </Button>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = "application/json";
+              input.onchange = async () => {
+                const file = input.files?.[0];
+                if (!file) return;
+                const text = await file.text();
+                try {
+                  const parsed = JSON.parse(text) as Category[];
+                  localStorage.setItem("pwi_categories", JSON.stringify(parsed));
+                  toast({ title: "Categories Imported", description: `${parsed.length} categories loaded.` });
+                  setCategories(CategoriesStore.all());
+                } catch {
+                  toast({ title: "Invalid File", description: "Could not parse JSON.", variant: "destructive" });
+                }
+              };
+              input.click();
+            }}
+          >
+            Import Categories
+          </Button>
+        </div>
         {/* Expense Categories */}
         <div>
           <h3 className="text-sm font-semibold text-muted-foreground mb-3">EXPENSE CATEGORIES</h3>

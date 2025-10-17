@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,23 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PlusCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-
-const categories = [
-  "Food & Dining",
-  "Transportation",
-  "Shopping",
-  "Entertainment",
-  "Bills & Utilities",
-  "Healthcare",
-  "Education",
-  "Other"
-];
-
-const mockAccounts = [
-  { id: "1", name: "Checking Account", currency: "USD" },
-  { id: "2", name: "Savings Account", currency: "USD" },
-  { id: "3", name: "Cash Wallet", currency: "EUR" },
-];
+import { AccountsStore, CategoriesStore, TransactionsStore, newId, onDataChange } from "@/lib/storage";
+import type { Account, Category } from "@/lib/types";
 
 export const TransactionForm = () => {
   const [account, setAccount] = useState("");
@@ -30,6 +15,18 @@ export const TransactionForm = () => {
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    const load = () => {
+      setAccounts(AccountsStore.all());
+      setCategories(CategoriesStore.all());
+    };
+    load();
+    const off = onDataChange(load);
+    return off;
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +40,19 @@ export const TransactionForm = () => {
       return;
     }
 
-    const selectedAccount = mockAccounts.find(acc => acc.id === account);
+    const selectedAccount = accounts.find(acc => acc.id === account);
+    const selectedCategory = categories.find(cat => cat.id === category);
+
+    // Persist transaction
+    TransactionsStore.add({
+      id: newId(),
+      date: new Date().toISOString().slice(0, 10),
+      description: description || (type === "income" ? "Income" : "Expense"),
+      categoryId: selectedCategory?.id || "",
+      accountId: selectedAccount?.id || "",
+      amount: parseFloat(amount),
+      type,
+    });
     toast({
       title: "Transaction Added",
       description: `${type === "income" ? "Income" : "Expense"} of $${amount} recorded to ${selectedAccount?.name}.`,
@@ -67,7 +76,7 @@ export const TransactionForm = () => {
               <SelectValue placeholder="Select account" />
             </SelectTrigger>
             <SelectContent>
-              {mockAccounts.map((acc) => (
+              {accounts.map((acc) => (
                 <SelectItem key={acc.id} value={acc.id}>
                   {acc.name} ({acc.currency})
                 </SelectItem>
@@ -109,8 +118,8 @@ export const TransactionForm = () => {
             </SelectTrigger>
             <SelectContent>
               {categories.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
+                <SelectItem key={cat.id} value={cat.id}>
+                  {cat.name}
                 </SelectItem>
               ))}
             </SelectContent>

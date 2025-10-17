@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,19 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PlusCircle, Pencil, Trash2, Wallet } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { AccountsStore, newId, onDataChange } from "@/lib/storage";
+import type { Account } from "@/lib/types";
 
-interface Account {
-  id: string;
-  name: string;
-  currency: "USD" | "EUR" | "VES";
-  balance: number;
-}
-
-const mockAccounts: Account[] = [
-  { id: "1", name: "Checking Account", currency: "USD", balance: 5420.50 },
-  { id: "2", name: "Savings Account", currency: "USD", balance: 12500.00 },
-  { id: "3", name: "Cash Wallet", currency: "EUR", balance: 450.75 },
-];
+// All accounts are now loaded from localStorage via AccountsStore
 
 const currencySymbols = {
   USD: "$",
@@ -28,7 +19,7 @@ const currencySymbols = {
 };
 
 export const AccountManager = () => {
-  const [accounts, setAccounts] = useState<Account[]>(mockAccounts);
+  const [accounts, setAccounts] = useState<Account[]>(AccountsStore.all());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   
@@ -70,23 +61,25 @@ export const AccountManager = () => {
     }
 
     if (editingAccount) {
-      setAccounts(accounts.map(acc => 
-        acc.id === editingAccount.id 
-          ? { ...acc, name: formData.name, currency: formData.currency, balance: parseFloat(formData.balance) }
-          : acc
-      ));
+      const updated: Account = {
+        ...editingAccount,
+        name: formData.name,
+        currency: formData.currency,
+        balance: parseFloat(formData.balance),
+      };
+      AccountsStore.upsert(updated);
       toast({
         title: "Account Updated",
         description: `${formData.name} has been updated successfully.`,
       });
     } else {
       const newAccount: Account = {
-        id: Date.now().toString(),
+        id: newId(),
         name: formData.name,
         currency: formData.currency,
         balance: parseFloat(formData.balance),
       };
-      setAccounts([...accounts, newAccount]);
+      AccountsStore.upsert(newAccount);
       toast({
         title: "Account Created",
         description: `${formData.name} has been created successfully.`,
@@ -98,14 +91,19 @@ export const AccountManager = () => {
   };
 
   const handleDelete = (accountId: string) => {
-    setAccounts(accounts.filter(acc => acc.id !== accountId));
+    AccountsStore.remove(accountId);
     toast({
       title: "Account Deleted",
       description: "The account has been removed.",
     });
   };
 
-  // Note: URL "page" query param is managed centrally in Index.tsx via Tabs
+  // Sync local state with storage changes (in case other components modify data)
+  useEffect(() => {
+    setAccounts(AccountsStore.all());
+    const off = onDataChange(() => setAccounts(AccountsStore.all()));
+    return off;
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -173,6 +171,51 @@ export const AccountManager = () => {
             </form>
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* Import/Export actions */}
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          onClick={() => {
+            try {
+              const dataStr = JSON.stringify(AccountsStore.all(), null, 2);
+              const blob = new Blob([dataStr], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "account_data.json";
+              a.click();
+              URL.revokeObjectURL(url);
+            } catch (e) {}
+          }}
+        >
+          Export Accounts
+        </Button>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "application/json";
+            input.onchange = async () => {
+              const file = input.files?.[0];
+              if (!file) return;
+              const text = await file.text();
+              try {
+                const parsed = JSON.parse(text) as Account[];
+                localStorage.setItem("pwi_accounts", JSON.stringify(parsed));
+                toast({ title: "Accounts Imported", description: `${parsed.length} accounts loaded.` });
+                setAccounts(AccountsStore.all());
+              } catch {
+                toast({ title: "Invalid File", description: "Could not parse JSON.", variant: "destructive" });
+              }
+            };
+            input.click();
+          }}
+        >
+          Import Accounts
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
