@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // No import/export UI; data persistence handled via storage functions
 import { useSearchParams } from "react-router-dom";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
+import { useVESExchangeRate, convertToUSD } from "@/lib/rates";
 import type { Account, Category, Transaction } from "@/lib/types";
 
 // Dashboard data is derived from localStorage (JSON DB)
@@ -22,6 +23,7 @@ const Index = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const { rate } = useVESExchangeRate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const allowedPages = useMemo(() => new Set(["dashboard", "transactions", "categories", "accounts"]), []);
@@ -55,11 +57,17 @@ const Index = () => {
   // KPIs derived from data
   const totalBalance = useMemo(() => {
     if (selectedAccount === "all") {
-      return accounts.reduce((sum, a) => sum + (a.balance || 0), 0);
+      // Sum all accounts in USD
+      return accounts.reduce((sum, a) => {
+        const usd = convertToUSD(a.balance || 0, a.currency, rate || null);
+        return sum + (usd ?? 0);
+      }, 0);
     }
     const acc = accounts.find(a => a.id === selectedAccount);
-    return acc ? acc.balance : 0;
-  }, [accounts, selectedAccount]);
+    if (!acc) return 0;
+    const usd = convertToUSD(acc.balance || 0, acc.currency, rate || null);
+    return usd ?? 0;
+  }, [accounts, selectedAccount, rate]);
 
   const now = new Date();
   const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -75,16 +83,24 @@ const Index = () => {
     const monthTx = txByAccount.filter(t => isCurrentMonth(t.date));
     let inc = 0, exp = 0;
     for (const t of monthTx) {
-      if (t.type === "income") inc += t.amount; else exp += t.amount;
+      const acc = accounts.find(a => a.id === t.accountId);
+      const cur = acc?.currency ?? "USD";
+      const usdAmount = convertToUSD(t.amount, cur as any, rate || null) ?? 0;
+      if (t.type === "income") inc += usdAmount; else exp += usdAmount;
     }
     return { totalIncome: inc, totalExpenses: exp };
-  }, [txByAccount]);
+  }, [txByAccount, accounts, rate]);
 
   // Charts
   const expensePieData = useMemo(() => {
     const expTx = txByAccount.filter(t => t.type === "expense" && isCurrentMonth(t.date));
     const map = new Map<string, number>();
-    for (const t of expTx) map.set(t.categoryId, (map.get(t.categoryId) || 0) + t.amount);
+    for (const t of expTx) {
+      const acc = accounts.find(a => a.id === t.accountId);
+      const cur = acc?.currency ?? "USD";
+      const usd = convertToUSD(t.amount, cur as any, rate || null) ?? 0;
+      map.set(t.categoryId, (map.get(t.categoryId) || 0) + usd);
+    }
     return Array.from(map.entries()).map(([categoryId, amount]) => {
       const cat = categories.find(c => c.id === categoryId);
       return {
@@ -93,7 +109,7 @@ const Index = () => {
         color: cat?.color || "hsl(var(--chart-6))",
       };
     });
-  }, [txByAccount, categories]);
+  }, [txByAccount, categories, accounts, rate]);
 
   const trendData = useMemo(() => {
     const labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -106,24 +122,32 @@ const Index = () => {
       for (const t of txByAccount) {
         const td = new Date(t.date);
         if (td >= start && td <= end) {
-          if (t.type === "income") inc += t.amount; else exp += t.amount;
+          const acc = accounts.find(a => a.id === t.accountId);
+          const cur = acc?.currency ?? "USD";
+          const usd = convertToUSD(t.amount, cur as any, rate || null) ?? 0;
+          if (t.type === "income") inc += usd; else exp += usd;
         }
       }
       out.push({ month: labels[d.getMonth()], income: inc, expenses: exp });
     }
     return out;
-  }, [txByAccount]);
+  }, [txByAccount, accounts, rate]);
 
   const budgetData = useMemo(() => {
     // Placeholder budgets (0) with actual monthly expenses per category
     const expTx = txByAccount.filter(t => t.type === "expense" && isCurrentMonth(t.date));
     const map = new Map<string, number>();
-    for (const t of expTx) map.set(t.categoryId, (map.get(t.categoryId) || 0) + t.amount);
+    for (const t of expTx) {
+      const acc = accounts.find(a => a.id === t.accountId);
+      const cur = acc?.currency ?? "USD";
+      const usd = convertToUSD(t.amount, cur as any, rate || null) ?? 0;
+      map.set(t.categoryId, (map.get(t.categoryId) || 0) + usd);
+    }
     return Array.from(map.entries()).map(([categoryId, actual]) => {
       const cat = categories.find(c => c.id === categoryId);
       return { category: cat?.name || "Uncategorized", budget: 0, actual };
     });
-  }, [txByAccount, categories]);
+  }, [txByAccount, categories, accounts, rate]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -140,21 +164,21 @@ const Index = () => {
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <KPICard
-            title="Total Balance"
+            title="Total Balance (USD)"
             value={`$${totalBalance.toFixed(2)}`}
             icon={Wallet}
             trend={{ value: "", isPositive: true }}
             colorScheme="primary"
           />
           <KPICard
-            title="Monthly Income"
+            title="Monthly Income (USD)"
             value={`$${totalIncome.toFixed(2)}`}
             icon={TrendingUp}
             trend={{ value: "", isPositive: true }}
             colorScheme="secondary"
           />
           <KPICard
-            title="Monthly Expenses"
+            title="Monthly Expenses (USD)"
             value={`$${totalExpenses.toFixed(2)}`}
             icon={TrendingDown}
             trend={{ value: "", isPositive: false }}

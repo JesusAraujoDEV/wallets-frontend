@@ -2,7 +2,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Building2, Globe } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AccountsStore, onDataChange } from "@/lib/storage";
-import { useVESExchangeRate } from "@/lib/rates";
+import { useVESExchangeRate, convertToUSD } from "@/lib/rates";
 import type { Account } from "@/lib/types";
 
 
@@ -19,13 +19,19 @@ export const AccountSelector = ({ selectedAccount, onAccountChange }: AccountSel
   useEffect(() => {
     const load = () => {
       const userAccounts = AccountsStore.all();
-      const total = userAccounts.reduce((sum, a) => sum + (a.balance || 0), 0);
-      setAccounts([{ ...ALL_ACCOUNT, balance: Number(total.toFixed(2)) }, ...userAccounts]);
+      setAccounts((prev) => {
+        // Compute USD total using rate if available
+        const usdTotal = userAccounts.reduce((sum, a) => {
+          const usd = convertToUSD(a.balance || 0, a.currency, rate || null);
+          return sum + (usd ?? 0);
+        }, 0);
+        return [{ ...ALL_ACCOUNT, balance: Number(usdTotal.toFixed(2)) }, ...userAccounts];
+      });
     };
     load();
     const off = onDataChange(load);
     return off;
-  }, []);
+  }, [rate]);
 
   const options = useMemo(() => accounts, [accounts]);
 
@@ -49,7 +55,7 @@ export const AccountSelector = ({ selectedAccount, onAccountChange }: AccountSel
               <div className="flex items-center justify-between gap-3 w-full">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{account.name}</span>
-                  <span className="text-xs text-muted-foreground">({account.id === "all" ? "Global" : account.currency})</span>
+                  <span className="text-xs text-muted-foreground">({account.id === "all" ? "Global (USD)" : account.currency})</span>
                 </div>
                 <div className="text-right">
                   <div className="text-xs text-foreground/80">

@@ -19,7 +19,8 @@ type ApiResponse = {
 };
 
 export type ExchangeSnapshot = {
-  vesPerUsd: number; // how many VES for 1 USD
+  vesPerUsd: number; // VES per 1 USD
+  vesPerEur: number; // VES per 1 EUR
   fetchedAt: string; // ISO timestamp
   sourceDate: string; // date provided by API
 };
@@ -56,6 +57,7 @@ export async function getVESPerUsd(forceRefresh = false): Promise<ExchangeSnapsh
     const json = (await res.json()) as ApiResponse;
     const snapshot: ExchangeSnapshot = {
       vesPerUsd: Number(json.current.usd),
+      vesPerEur: Number(json.current.eur),
       fetchedAt: new Date().toISOString(),
       sourceDate: json.current.date,
     };
@@ -102,4 +104,24 @@ export function useVESExchangeRate() {
   }, []);
 
   return { rate, loading, error } as const;
+}
+
+// Convert a value in a given currency to USD using the snapshot
+export function convertToUSD(amount: number, currency: "USD" | "EUR" | "VES", snap: ExchangeSnapshot | null): number | null {
+  if (!isFinite(amount)) return null;
+  if (!snap) return null;
+  switch (currency) {
+    case "USD":
+      return amount;
+    case "VES":
+      return amount / (snap.vesPerUsd || NaN);
+    case "EUR": {
+      // EUR -> USD: (VES/EUR) / (VES/USD) = USD per EUR
+      if (!snap.vesPerUsd || !snap.vesPerEur) return null;
+      const usdPerEur = snap.vesPerEur / snap.vesPerUsd;
+      return amount * usdPerEur;
+    }
+    default:
+      return null;
+  }
 }
