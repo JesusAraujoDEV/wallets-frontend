@@ -78,7 +78,18 @@ export const TransactionForm = () => {
             <SelectContent>
               {accounts.map((acc) => (
                 <SelectItem key={acc.id} value={acc.id}>
-                  {acc.name} ({acc.currency})
+                  <div className="flex items-center justify-between gap-3 w-full">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{acc.name}</span>
+                      <span className="text-xs text-muted-foreground">({acc.currency})</span>
+                    </div>
+                    <span className="text-xs text-foreground/80">
+                      {acc.currency === "USD" && "$"}
+                      {acc.currency === "EUR" && "€"}
+                      {acc.currency === "VES" && "Bs."}
+                      {acc.balance.toFixed(2)}
+                    </span>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>

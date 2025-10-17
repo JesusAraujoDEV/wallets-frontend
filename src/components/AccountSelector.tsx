@@ -15,7 +15,11 @@ const ALL_ACCOUNT: Account = { id: "all", name: "All Accounts", currency: "USD",
 export const AccountSelector = ({ selectedAccount, onAccountChange }: AccountSelectorProps) => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   useEffect(() => {
-    const load = () => setAccounts([ALL_ACCOUNT, ...AccountsStore.all()]);
+    const load = () => {
+      const userAccounts = AccountsStore.all();
+      const total = userAccounts.reduce((sum, a) => sum + (a.balance || 0), 0);
+      setAccounts([{ ...ALL_ACCOUNT, balance: Number(total.toFixed(2)) }, ...userAccounts]);
+    };
     load();
     const off = onDataChange(load);
     return off;
@@ -40,9 +44,17 @@ export const AccountSelector = ({ selectedAccount, onAccountChange }: AccountSel
         <SelectContent>
           {options.map((account) => (
             <SelectItem key={account.id} value={account.id}>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{account.name}</span>
-                <span className="text-xs text-muted-foreground">({account.id === "all" ? "Global" : account.currency})</span>
+              <div className="flex items-center justify-between gap-3 w-full">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{account.name}</span>
+                  <span className="text-xs text-muted-foreground">({account.id === "all" ? "Global" : account.currency})</span>
+                </div>
+                <span className="text-xs text-foreground/80">
+                  {account.id === "all"
+                    ? "$"
+                    : account.currency === "USD" ? "$" : account.currency === "EUR" ? "€" : "Bs."}
+                  {account.balance.toFixed(2)}
+                </span>
               </div>
             </SelectItem>
           ))}
