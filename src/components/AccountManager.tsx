@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,6 +104,19 @@ export const AccountManager = () => {
       description: "The account has been removed.",
     });
   };
+
+  useEffect(() => {
+    // Update the URL to include ?page=accounts when this component is mounted
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set("page", "accounts");
+    window.history.replaceState({}, "", currentUrl);
+
+    // Optional cleanup if needed
+    return () => {
+      currentUrl.searchParams.delete("page");
+      window.history.replaceState({}, "", currentUrl);
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
