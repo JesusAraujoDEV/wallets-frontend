@@ -69,6 +69,9 @@ export const TransactionsStore = {
   all(): Transaction[] {
     return readJSON<Transaction[]>(STORAGE_KEYS.transactions, []);
   },
+  getById(id: string): Transaction | undefined {
+    return this.all().find(t => t.id === id);
+  },
   add(tx: Transaction) {
     // Append transaction
     const items = this.all();
@@ -90,8 +93,54 @@ export const TransactionsStore = {
     }
   },
   remove(id: string) {
-    const items = this.all().filter(t => t.id !== id);
+    const items = this.all();
+    const idx = items.findIndex(t => t.id === id);
+    if (idx === -1) return;
+    const old = items[idx];
+    items.splice(idx, 1);
     writeJSON(STORAGE_KEYS.transactions, items);
+
+    // Revert account balance impact of the old transaction
+    try {
+      const accounts = AccountsStore.all();
+      const accIdx = accounts.findIndex(a => a.id === old.accountId);
+      if (accIdx >= 0) {
+        const revert = old.type === "income" ? -old.amount : old.amount; // reverse effect
+        const current = Number(accounts[accIdx].balance) || 0;
+        accounts[accIdx].balance = Number((current + revert).toFixed(2));
+        writeJSON(STORAGE_KEYS.accounts, accounts);
+      }
+    } catch {}
+  },
+  update(next: Transaction) {
+    const items = this.all();
+    const idx = items.findIndex(t => t.id === next.id);
+    if (idx === -1) return;
+    const prev = items[idx];
+    items[idx] = next;
+    writeJSON(STORAGE_KEYS.transactions, items);
+
+    // Adjust accounts: revert prev, apply next
+    try {
+      const accounts = AccountsStore.all();
+      const prevAccIdx = accounts.findIndex(a => a.id === prev.accountId);
+      const nextAccIdx = accounts.findIndex(a => a.id === next.accountId);
+
+      const prevDelta = prev.type === "income" ? prev.amount : -prev.amount; // what was added before
+      const nextDelta = next.type === "income" ? next.amount : -next.amount; // what should be added now
+
+      if (prevAccIdx >= 0) {
+        const cur = Number(accounts[prevAccIdx].balance) || 0;
+        accounts[prevAccIdx].balance = Number((cur - prevDelta).toFixed(2)); // remove previous effect
+      }
+
+      if (nextAccIdx >= 0) {
+        const cur = Number(accounts[nextAccIdx].balance) || 0;
+        accounts[nextAccIdx].balance = Number((cur + nextDelta).toFixed(2)); // apply new effect
+      }
+
+      writeJSON(STORAGE_KEYS.accounts, accounts);
+    } catch {}
   },
 };
 

@@ -1,10 +1,14 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpCircle, ArrowDownCircle, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
-import type { Transaction, Category } from "@/lib/types";
+import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
+import type { Transaction, Category, Account } from "@/lib/types";
+import { toast } from "@/hooks/use-toast";
 
 export const TransactionsList = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -12,17 +16,68 @@ export const TransactionsList = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [formData, setFormData] = useState({
+    accountId: "",
+    type: "expense" as "income" | "expense",
+    amount: "",
+    categoryId: "",
+    description: "",
+  });
 
   useEffect(() => {
     const load = () => {
       setTransactions(TransactionsStore.all());
       setCategories(CategoriesStore.all());
+      setAccounts(AccountsStore.all());
     };
     load();
     const off = onDataChange(load);
     return off;
   }, []);
   const categoriesOptions = useMemo(() => categories, [categories]);
+  const accountsOptions = useMemo(() => accounts, [accounts]);
+
+  const handleEdit = (tx: Transaction) => {
+    setEditingTx(tx);
+    setFormData({
+      accountId: tx.accountId,
+      type: tx.type,
+      amount: tx.amount.toString(),
+      categoryId: tx.categoryId,
+      description: tx.description,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    TransactionsStore.remove(id);
+    toast({ title: "Transaction Deleted", description: "The transaction has been removed." });
+  };
+
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTx) return;
+    if (!formData.accountId || !formData.categoryId || !formData.amount) {
+      toast({ title: "Missing Information", description: "Please complete all required fields.", variant: "destructive" });
+      return;
+    }
+    const next: Transaction = {
+      ...editingTx,
+      accountId: formData.accountId,
+      type: formData.type,
+      amount: parseFloat(formData.amount),
+      categoryId: formData.categoryId,
+      description: formData.description,
+    };
+    TransactionsStore.update(next);
+    setIsDialogOpen(false);
+    setEditingTx(null);
+    toast({ title: "Transaction Updated", description: "Your changes have been saved." });
+  };
 
   // Filter transactions
   const filteredTransactions = transactions.filter(transaction => {
@@ -137,6 +192,14 @@ export const TransactionsList = () => {
                     }`}>
                       {transaction.type === "income" ? "+" : "-"}${transaction.amount.toFixed(2)}
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(transaction)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(transaction.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -149,6 +212,79 @@ export const TransactionsList = () => {
           )}
         </div>
       </CardContent>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Transaction</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdate} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="account">Account</Label>
+              <Select value={formData.accountId} onValueChange={(v) => setFormData({ ...formData, accountId: v })}>
+                <SelectTrigger id="account">
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accountsOptions.map(acc => (
+                    <SelectItem key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="type">Type</Label>
+                <Select value={formData.type} onValueChange={(v: any) => setFormData({ ...formData, type: v })}>
+                  <SelectTrigger id="type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="income">Income</SelectItem>
+                    <SelectItem value="expense">Expense</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <Select value={formData.categoryId} onValueChange={(v) => setFormData({ ...formData, categoryId: v })}>
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoriesOptions.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Input
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Add a note..."
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+              <Button type="submit" className="flex-1">Save</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
