@@ -70,9 +70,24 @@ export const TransactionsStore = {
     return readJSON<Transaction[]>(STORAGE_KEYS.transactions, []);
   },
   add(tx: Transaction) {
+    // Append transaction
     const items = this.all();
     items.push(tx);
     writeJSON(STORAGE_KEYS.transactions, items);
+
+    // Adjust account balance accordingly
+    try {
+      const accounts = AccountsStore.all();
+      const idx = accounts.findIndex(a => a.id === tx.accountId);
+      if (idx >= 0) {
+        const delta = tx.type === "income" ? tx.amount : -tx.amount;
+        const current = Number(accounts[idx].balance) || 0;
+        accounts[idx].balance = Number((current + delta).toFixed(2));
+        writeJSON(STORAGE_KEYS.accounts, accounts);
+      }
+    } catch {
+      // no-op if anything goes wrong adjusting balances
+    }
   },
   remove(id: string) {
     const items = this.all().filter(t => t.id !== id);
