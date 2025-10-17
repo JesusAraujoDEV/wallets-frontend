@@ -45,11 +45,12 @@ const Index = () => {
 
   const allowedPages = useMemo(() => new Set(["dashboard", "transactions", "categories", "accounts"]), []);
   const pageFromUrl = searchParams.get("page") || "";
-  const currentPage = allowedPages.has(pageFromUrl) ? pageFromUrl : "dashboard";
+  const normalizedPage = pageFromUrl.toLowerCase();
+  const currentPage = allowedPages.has(normalizedPage) ? normalizedPage : "dashboard";
 
   // Ensure the URL always contains a valid ?page=<value>
   useEffect(() => {
-    if (!allowedPages.has(pageFromUrl)) {
+    if (!allowedPages.has(normalizedPage)) {
       const next = new URLSearchParams(searchParams);
       next.set("page", "dashboard");
       // Replace to avoid adding an extra history entry on first load
