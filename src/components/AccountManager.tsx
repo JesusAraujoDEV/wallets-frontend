@@ -9,6 +9,7 @@ import { PlusCircle, Pencil, Trash2, Wallet } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AccountsStore, newId, onDataChange } from "@/lib/storage";
 import type { Account } from "@/lib/types";
+import { useVESExchangeRate } from "@/lib/rates";
 
 // All accounts are now loaded from localStorage via AccountsStore
 
@@ -20,6 +21,7 @@ const currencySymbols = {
 
 export const AccountManager = () => {
   const [accounts, setAccounts] = useState<Account[]>(AccountsStore.all());
+  const { rate } = useVESExchangeRate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   
@@ -193,6 +195,11 @@ export const AccountManager = () => {
               <p className="text-2xl font-bold text-foreground">
                 {currencySymbols[account.currency]}{account.balance.toFixed(2)}
               </p>
+              {account.currency === "VES" && rate?.vesPerUsd ? (
+                <p className="text-xs text-muted-foreground mt-1">≈ $
+                  {(account.balance / rate.vesPerUsd).toFixed(2)} USD
+                </p>
+              ) : null}
             </div>
             <div className="flex gap-2">
               <Button

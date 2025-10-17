@@ -8,6 +8,7 @@ import { PlusCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AccountsStore, CategoriesStore, TransactionsStore, newId, onDataChange } from "@/lib/storage";
 import type { Account, Category } from "@/lib/types";
+import { useVESExchangeRate } from "@/lib/rates";
 
 export const TransactionForm = () => {
   const [account, setAccount] = useState("");
@@ -17,6 +18,7 @@ export const TransactionForm = () => {
   const [description, setDescription] = useState("");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const { rate } = useVESExchangeRate();
   const filteredCategories = categories.filter((c) => c.type === type);
 
   useEffect(() => {
@@ -92,12 +94,19 @@ export const TransactionForm = () => {
                       <span className="font-medium">{acc.name}</span>
                       <span className="text-xs text-muted-foreground">({acc.currency})</span>
                     </div>
-                    <span className="text-xs text-foreground/80">
-                      {acc.currency === "USD" && "$"}
-                      {acc.currency === "EUR" && "€"}
-                      {acc.currency === "VES" && "Bs."}
-                      {acc.balance.toFixed(2)}
-                    </span>
+                    <div className="text-right">
+                      <div className="text-xs text-foreground/80">
+                        {acc.currency === "USD" && "$"}
+                        {acc.currency === "EUR" && "€"}
+                        {acc.currency === "VES" && "Bs."}
+                        {acc.balance.toFixed(2)}
+                      </div>
+                      {acc.currency === "VES" && rate?.vesPerUsd ? (
+                        <div className="text-[10px] text-muted-foreground">$
+                          {(acc.balance / rate.vesPerUsd).toFixed(2)} USD
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </SelectItem>
               ))}

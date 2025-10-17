@@ -2,6 +2,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Building2, Globe } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AccountsStore, onDataChange } from "@/lib/storage";
+import { useVESExchangeRate } from "@/lib/rates";
 import type { Account } from "@/lib/types";
 
 
@@ -14,6 +15,7 @@ const ALL_ACCOUNT: Account = { id: "all", name: "All Accounts", currency: "USD",
 
 export const AccountSelector = ({ selectedAccount, onAccountChange }: AccountSelectorProps) => {
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const { rate } = useVESExchangeRate();
   useEffect(() => {
     const load = () => {
       const userAccounts = AccountsStore.all();
@@ -49,12 +51,19 @@ export const AccountSelector = ({ selectedAccount, onAccountChange }: AccountSel
                   <span className="font-medium">{account.name}</span>
                   <span className="text-xs text-muted-foreground">({account.id === "all" ? "Global" : account.currency})</span>
                 </div>
-                <span className="text-xs text-foreground/80">
-                  {account.id === "all"
-                    ? "$"
-                    : account.currency === "USD" ? "$" : account.currency === "EUR" ? "€" : "Bs."}
-                  {account.balance.toFixed(2)}
-                </span>
+                <div className="text-right">
+                  <div className="text-xs text-foreground/80">
+                    {account.id === "all"
+                      ? "$"
+                      : account.currency === "USD" ? "$" : account.currency === "EUR" ? "€" : "Bs."}
+                    {account.balance.toFixed(2)}
+                  </div>
+                  {account.currency === "VES" && rate?.vesPerUsd ? (
+                    <div className="text-[10px] text-muted-foreground">$
+                      {(account.balance / rate.vesPerUsd).toFixed(2)} USD
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </SelectItem>
           ))}
