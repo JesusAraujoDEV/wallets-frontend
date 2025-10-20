@@ -5,12 +5,10 @@ if (!DATABASE_URL) {
   console.warn('DATABASE_URL is not set. API routes will fail until it is configured.');
 }
 
-export const sql = (query: string, params?: any[]) => {
+export function getSql() {
   if (!DATABASE_URL) throw new Error('DATABASE_URL not configured');
-  const run = neon(DATABASE_URL);
-  // @ts-ignore driver accepts (strings, params)
-  return params ? run(query, params) : run(query);
-};
+  return neon(DATABASE_URL);
+}
 
 export function json(data: unknown, init?: ResponseInit) {
   return new Response(JSON.stringify(data), {
@@ -24,3 +22,4 @@ export function errorJson(message: string, status = 500) {
 }
 
 export const config = { runtime: 'edge' } as const;
+export const runtime = 'edge' as const;

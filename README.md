@@ -71,3 +71,19 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Local serverless dev with Neon
+
+This project uses serverless API routes under `api/` and a Neon Postgres database.
+
+Setup:
+
+1. Copy `.env.local.example` to `.env.local` and set `DATABASE_URL` with your Neon connection string.
+2. Install dependencies: `npm install`.
+3. Start both Vite and the serverless API:
+	- `npm run dev:all` (runs Vite and `vercel dev` concurrently)
+
+Notes:
+
+- API endpoints are available at `/api/*` during `vercel dev` and in production.
+- If you only run `vite` without `vercel dev`, API calls will fail unless you proxy `/api` to a backend.
