@@ -1,23 +1,19 @@
 // api/transactions.ts
 
-// 1. Cambiamos 'getSql' por 'sql'
-import { errorJson, json, sql } from './_db.js';
+import { sql } from './_db.js';
 
 /** Helper para saber si sumar o restar del balance */
-function getDelta(type: 'ingreso' | 'gasto', amount: number | string): number { // Aceptamos string también
-  // Aseguramos que amount sea un número
+function getDelta(type: 'ingreso' | 'gasto', amount: number | string): number {
   const numAmount = Number(amount) || 0;
   return type === 'ingreso' ? numAmount : -numAmount;
 }
 
-export default async function handler(request: Request) {
-  console.log(`[API] Recibida petición: ${request.method} ${request.url}`);
-  
-  // 2. BORRAMOS la línea 'const sql = getSql();'
+export default async function handler(req, res) {
+  console.log(`[API] Recibida petición: ${req.method} ${req.url}`);
 
   try {
-    const method = request.method.toUpperCase();
-    
+    const method = (req.method || 'GET').toUpperCase();
+
     if (method === 'GET') {
       console.log('[API] Procesando GET /transactions...');
       const list = await sql`
@@ -34,49 +30,45 @@ export default async function handler(request: Request) {
         FROM public.transactions 
         ORDER BY date DESC, id DESC;
       `;
-      // 3. Usamos list.rows
       console.log(`[API] GET /transactions exitoso. Encontrados ${list.rows.length} registros.`);
-      
-      // 4. Convertimos los campos 'numeric' a Number para evitar problemas con JSON
-      const safeList = list.rows.map(tx => ({
+
+      const safeList = list.rows.map((tx) => ({
         ...tx,
         amount: Number(tx.amount),
         amountUsd: tx.amountUsd ? Number(tx.amountUsd) : null,
         exchangeRateUsed: tx.exchangeRateUsed ? Number(tx.exchangeRateUsed) : null,
       }));
 
-      return json(safeList);
+      res.status(200).json(safeList);
+      return;
     }
 
     if (method === 'POST') {
       console.log('[API] Procesando POST /transactions (Crear)...');
-      const body = await request.json();
-      
+      const body = req.body ?? {};
       const {
         date,
         description,
-        categoryId, // number
-        accountId,  // number
-        amount,     // number
-        currency,   // string
-        amountUsd,  // number (opcional)
-        exchangeRateUsed // number (opcional)
+        categoryId,
+        accountId,
+        amount,
+        currency,
+        amountUsd,
+        exchangeRateUsed,
       } = body;
 
       if (!date || !description || !categoryId || !accountId || amount === undefined || !currency) {
-        return errorJson('Campos requeridos: date, description, categoryId, accountId, amount, currency', 400);
+        res.status(400).json({ error: 'Campos requeridos: date, description, categoryId, accountId, amount, currency' });
+        return;
       }
 
-      // A. Obtener el tipo ('ingreso' o 'gasto') de la categoría
-      // 3. Usamos categoryResult.rows
       const categoryResult = await sql`SELECT "type" FROM public.categories WHERE id = ${Number(categoryId)};`;
-      if (categoryResult.rows.length === 0) { // <-- CAMBIO
-        throw new Error(`La categoría con id ${categoryId} no existe`);
+      if (categoryResult.rows.length === 0) {
+        res.status(400).json({ error: `La categoría con id ${categoryId} no existe` });
+        return;
       }
-      const type = categoryResult.rows[0].type as ('ingreso' | 'gasto'); // <-- CAMBIO
+      const type = categoryResult.rows[0].type as 'ingreso' | 'gasto';
 
-      // B. Insertar la nueva transacción
-      // 3. Usamos insertResult.rows
       const insertResult = await sql`
         INSERT INTO public.transactions 
           (date, description, category_id, account_id, amount, currency, amount_usd, exchange_rate_used)
@@ -84,9 +76,8 @@ export default async function handler(request: Request) {
           (${date}, ${description}, ${Number(categoryId)}, ${Number(accountId)}, ${Number(amount)}, ${currency}, ${amountUsd || null}, ${exchangeRateUsed || null})
         RETURNING id;
       `;
-      const newTransactionId = insertResult.rows[0].id; // <-- CAMBIO
+      const newTransactionId = insertResult.rows[0].id;
 
-      // C. Actualizar el balance de la cuenta
       const delta = getDelta(type, Number(amount));
       await sql`
         UPDATE public.accounts 
@@ -94,21 +85,26 @@ export default async function handler(request: Request) {
         WHERE id = ${Number(accountId)};
       `;
 
-      console.log(`[API] POST /transactions exitoso. Nuevo ID: ${newTransactionId!}`);
-      return json({ ok: true, newId: newTransactionId! });
+      console.log(`[API] POST /transactions exitoso. Nuevo ID: ${newTransactionId}`);
+      res.status(200).json({ ok: true, newId: newTransactionId });
+      return;
     }
 
     if (method === 'DELETE') {
       console.log('[API] Procesando DELETE /transactions...');
-      const { searchParams } = new URL(request.url);
+      const { searchParams } = new URL(req.url, 'http://localhost');
       const id = searchParams.get('id');
-      if (!id) return errorJson('Se requiere "id" en URL', 400);
-      
-      const numericId = Number(id);
-      if (isNaN(numericId)) return errorJson('"id" debe ser un número', 400);
+      if (!id) {
+        res.status(400).json({ error: 'Se requiere "id" en URL' });
+        return;
+      }
 
-      // A. Buscar la transacción y el TIPO de su categoría
-      // 3. Usamos oldTxResult.rows
+      const numericId = Number(id);
+      if (isNaN(numericId)) {
+        res.status(400).json({ error: '"id" debe ser un número' });
+        return;
+      }
+
       const oldTxResult = await sql`
         SELECT 
           t.account_id, 
@@ -118,21 +114,17 @@ export default async function handler(request: Request) {
         JOIN public.categories c ON t.category_id = c.id
         WHERE t.id = ${numericId};
       `;
-      
-      const old = oldTxResult.rows[0]; // <-- CAMBIO
 
-      // B. Si no existe 'old', no hay nada que borrar ni revertir.
+      const old = oldTxResult.rows[0];
       if (!old) {
         console.log(`[API] DELETE: No se encontró ID ${numericId}`);
-        return json({ ok: true, message: 'No se encontró la transacción' });
+        res.status(200).json({ ok: true, message: 'No se encontró la transacción' });
+        return;
       }
 
-      // C. Borrar la transacción
       await sql`DELETE FROM public.transactions WHERE id = ${numericId};`;
 
-      // D. Revertir el balance (sabemos que 'old' existe)
-      // 'old.amount' será un string, pero 'getDelta' lo maneja
-      const revertAmount = getDelta(old.type as 'ingreso' | 'gasto', old.amount) * -1; // Invertir el delta
+      const revertAmount = getDelta(old.type as 'ingreso' | 'gasto', old.amount) * -1;
       await sql`
         UPDATE public.accounts 
         SET balance = ROUND(COALESCE(balance,0) + ${revertAmount}, 2) 
@@ -140,13 +132,13 @@ export default async function handler(request: Request) {
       `;
 
       console.log(`[API] DELETE /transactions exitoso. Borrado ID: ${id}`);
-      return json({ ok: true });
+      res.status(200).json({ ok: true });
+      return;
     }
 
-    return errorJson('Método no permitido', 405);
-  } catch (e: any) {
-    // Si hay un error de SQL, lo veremos aquí
-    console.error(`[API] ¡Error en /transactions!`, e.message);
-    return errorJson(e.message);
+    res.status(405).json({ error: 'Método no permitido' });
+  } catch (e) {
+    console.error(`[API] ¡Error en /transactions!`, (e as any)?.message ?? e);
+    res.status(500).json({ error: (e as any)?.message ?? 'Error interno' });
   }
 }
