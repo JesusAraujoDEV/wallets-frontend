@@ -1,103 +1,107 @@
-import { errorJson, json, sql } from './_db.js';
+import { sql } from './_db.js';
 
-export default async function handler(request: Request) {
-  console.log(`[API] Recibida petición: ${request.method} ${request.url}`);
+export default async function handler(req, res) {
+  console.log(`[API] Recibida petición: ${req.method} ${req.url}`);
 
   try {
-    const method = request.method.toUpperCase();
+    const method = (req.method || 'GET').toUpperCase();
 
     if (method === 'GET') {
       console.log('[API] Procesando GET...');
-      
-      // La variable 'list' ahora es un objeto { rows: [...] }
+
       const list = await sql`
-        SELECT id, name, "type", currency, balance 
-        FROM public.accounts 
+        SELECT id, name, "type", currency, balance
+        FROM public.accounts
         ORDER BY name ASC;
       `;
-      
-      // ¡AQUÍ ESTÁ EL ARREGLO 2!
-      // Usamos 'list.rows.length'
-      console.log(`[API] GET exitoso. Encontrados ${list.rows.length} registros.`); // <-- CAMBIO
-      // Usamos 'list.rows'
-      console.log('Lista original:', list.rows); // <-- CAMBIO
 
-      // Usamos 'list.rows.map'
-      const safeList = list.rows.map(account => ({ // <-- CAMBIO
+      console.log(`[API] GET exitoso. Encontrados ${list.rows.length} registros.`);
+      console.log('Lista original:', list.rows);
+
+      const safeList = list.rows.map((account) => ({
         ...account,
-        balance: Number(account.balance)
+        balance: Number(account.balance),
       }));
-      
-      // Esto ya funcionará gracias al Arreglo 1
-      return json(safeList);
+
+      res.status(200).json(safeList);
+      return;
     }
 
     if (method === 'POST') {
       console.log('[API] Procesando POST (Crear)...');
-      const body = await request.json();
-      
+      const body = req.body ?? {};
       const { name, type, currency, balance } = body;
 
       if (!name || !type || !currency) {
-        return errorJson('Faltan campos obligatorios: name, type, currency', 400);
+        res.status(400).json({ error: 'Faltan campos obligatorios: name, type, currency' });
+        return;
       }
 
       const finalBalance = balance !== undefined ? balance : 0;
 
-      // Usamos 'list.rows[0].id'
       const result = await sql`
-        INSERT INTO public.accounts (name, "type", currency, balance) 
+        INSERT INTO public.accounts (name, "type", currency, balance)
         VALUES (${name}, ${type}, ${currency}, ${finalBalance})
         RETURNING id;
       `;
 
-      console.log(`[API] POST exitoso. Nuevo ID: ${result.rows[0].id}`); // <-- CAMBIO
-      return json({ ok: true, newId: result.rows[0].id });
+      console.log(`[API] POST exitoso. Nuevo ID: ${result.rows[0].id}`);
+      res.status(200).json({ ok: true, newId: result.rows[0].id });
+      return;
     }
 
     if (method === 'PUT') {
       console.log('[API] Procesando PUT (Actualizar)...');
-      const { searchParams } = new URL(request.url);
+      const { searchParams } = new URL(req.url, 'http://localhost');
       const id = searchParams.get('id');
-      if (!id) return errorJson('Se requiere el "id" en la URL (query param) para actualizar', 400);
+      if (!id) {
+        res.status(400).json({ error: 'Se requiere el "id" en la URL (query param) para actualizar' });
+        return;
+      }
 
-      const body = await request.json();
+      const body = req.body ?? {};
       const { name, type, currency, balance } = body;
 
       if (!name || !type || !currency || balance === undefined) {
-        return errorJson('Se requieren todos los campos (name, type, currency, balance) para actualizar', 400);
+        res.status(400).json({ error: 'Se requieren todos los campos (name, type, currency, balance) para actualizar' });
+        return;
       }
 
       await sql`
-        UPDATE public.accounts 
-        SET 
-          name = ${name}, 
-          "type" = ${type}, 
-          currency = ${currency}, 
-          balance = ${balance}, 
+        UPDATE public.accounts
+        SET
+          name = ${name},
+          "type" = ${type},
+          currency = ${currency},
+          balance = ${balance},
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ${Number(id)};
       `;
-      
+
       console.log(`[API] PUT exitoso. Actualizado ID: ${id}`);
-      return json({ ok: true, message: 'Cuenta actualizada' });
+      res.status(200).json({ ok: true, message: 'Cuenta actualizada' });
+      return;
     }
 
     if (method === 'DELETE') {
       console.log('[API] Procesando DELETE...');
-      const { searchParams } = new URL(request.url);
+      const { searchParams } = new URL(req.url, 'http://localhost');
       const id = searchParams.get('id');
-      if (!id) return errorJson('Se requiere el "id" en la URL (query param)', 400);
-  
+      if (!id) {
+        res.status(400).json({ error: 'Se requiere el "id" en la URL (query param)' });
+        return;
+      }
+
       await sql`DELETE FROM public.accounts WHERE id = ${Number(id)};`;
-      
+
       console.log(`[API] DELETE exitoso. Borrado ID: ${id}`);
-      return json({ ok: true });
+      res.status(200).json({ ok: true });
+      return;
     }
 
-    return errorJson('Método no permitido', 405);
-  } catch (e: any) {
-    console.error('[API] ¡Error en la base de datos!', e);
-    return errorJson(e.message);
+    res.status(405).json({ error: 'Método no permitido' });
+  } catch (e) {
+    console.error('[API] ¡Error en /accounts!', e);
+    res.status(500).json({ error: (e as any)?.message ?? 'Error interno' });
   }
 }
