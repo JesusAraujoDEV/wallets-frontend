@@ -2,14 +2,10 @@
   "files": [],
   "references": [
     { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+    { "path": "./tsconfig.node.json" },
+    { "path": "./tsconfig.api.json" }
   ],
   "compilerOptions": {
-    // --- AÑADE ESTAS DOS LÍNEAS ---
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    // ----------------------------------
-
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
@@ -20,10 +16,5 @@
     "allowJs": true,
     "noUnusedLocals": false,
     "strictNullChecks": false
-  },
-  // --- AÑADE ESTE "include" ---
-  "include": [
-    "api"
-  ]
-  // ------------------------------
+  }
 }

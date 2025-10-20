@@ -1,33 +1,12 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    // --- Opciones para Vercel API (las que añadimos) ---
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-
-    // --- Opciones de tu tsconfig.app.json (para Vite/React) ---
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
     "isolatedModules": true,
-
-    // --- Opciones de tu tsconfig.json raíz original (para el editor) ---
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    },
-    "skipLibCheck": true,
-    "allowJs": true,
-
-    // --- Opciones de Linting (puedes ajustarlas) ---
-    "strict": false,
-    "noImplicitAny": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "strictNullChecks": false
+    "moduleResolution": "Bundler"
   },
-  "include": [
-    "src", // Incluye tu código de la app Vite
-    "api"  // Incluye tus funciones serverless
-  ]
+  "include": ["src"]
 }
