@@ -20,6 +20,3 @@ export function json(data: unknown, init?: ResponseInit) {
 export function errorJson(message: string, status = 500) {
   return json({ error: message }, { status });
 }
-
-export const config = { runtime: 'edge' } as const;
-export const runtime = 'edge' as const;

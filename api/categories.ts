@@ -1,8 +1,6 @@
 // api/categories.ts
 
-import { config, runtime, errorJson, json, getSql } from './_db.js';
-
-export { config, runtime };
+import { errorJson, json, getSql } from './_db.js';
 
 export default async function handler(request: Request) {
   console.log(`[API] Recibida petición: ${request.method} ${request.url}`);

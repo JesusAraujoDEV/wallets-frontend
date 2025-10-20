@@ -1,6 +1,4 @@
-import { config, runtime, errorJson, json, getSql } from './_db.js';
-
-export { config, runtime };
+import { errorJson, json, getSql } from './_db.js';
 
 export default async function handler(request: Request) {
   // Agregamos logs para ver qué pasa en la terminal de 'vercel dev'
@@ -18,15 +16,25 @@ export default async function handler(request: Request) {
 
     if (method === 'GET') {
       console.log('[API] Procesando GET...');
-      // 2. Corregimos el SELECT para que coincida con tu tabla real
-      //    (OJO: "type" va entre comillas dobles porque es una palabra reservada)
+      
       const list = await sql`
         SELECT id, name, "type", currency, balance 
         FROM public.accounts 
         ORDER BY name ASC;
       `;
       console.log(`[API] GET exitoso. Encontrados ${list.length} registros.`);
-      return json(list);
+      console.log('Lista original:', list); // Perfecto para debug
+
+      // 1. Esta línea CONVIERTE el balance de string a número
+      const safeList = list.map(account => ({
+        ...account,
+        balance: Number(account.balance) // '51.00' -> 51
+      }));
+      
+      // 2. ¡ESTE ES EL ARREGLO!
+      // Debes devolver la 'safeList' (la convertida)
+      // Y DEBES envolverla en la función 'json()' para crear una respuesta HTTP.
+      return json(safeList);
     }
 
     if (method === 'POST') {

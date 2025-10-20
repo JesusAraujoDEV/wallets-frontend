@@ -1,8 +1,6 @@
 // api/transactions.ts
 
-import { config, runtime, errorJson, json, getSql } from './_db.js';
-
-export { config, runtime };
+import { errorJson, json, getSql } from './_db.js';
 
 /** Helper para saber si sumar o restar del balance */
 function getDelta(type: 'ingreso' | 'gasto', amount: number): number {
