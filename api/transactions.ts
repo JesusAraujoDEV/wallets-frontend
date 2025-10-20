@@ -1,9 +1,10 @@
 // api/transactions.ts
 
-import { errorJson, json, getSql } from './_db.js';
+// 1. Cambiamos 'getSql' por 'sql'
+import { errorJson, json, sql } from './_db.js';
 
 /** Helper para saber si sumar o restar del balance */
-function getDelta(type: 'ingreso' | 'gasto', amount: number): number {
+function getDelta(type: 'ingreso' | 'gasto', amount: number | string): number { // Aceptamos string también
   // Aseguramos que amount sea un número
   const numAmount = Number(amount) || 0;
   return type === 'ingreso' ? numAmount : -numAmount;
@@ -11,7 +12,8 @@ function getDelta(type: 'ingreso' | 'gasto', amount: number): number {
 
 export default async function handler(request: Request) {
   console.log(`[API] Recibida petición: ${request.method} ${request.url}`);
-  const sql = getSql();
+  
+  // 2. BORRAMOS la línea 'const sql = getSql();'
 
   try {
     const method = request.method.toUpperCase();
@@ -32,8 +34,18 @@ export default async function handler(request: Request) {
         FROM public.transactions 
         ORDER BY date DESC, id DESC;
       `;
-      console.log(`[API] GET /transactions exitoso. Encontrados ${list.length} registros.`);
-      return json(list);
+      // 3. Usamos list.rows
+      console.log(`[API] GET /transactions exitoso. Encontrados ${list.rows.length} registros.`);
+      
+      // 4. Convertimos los campos 'numeric' a Number para evitar problemas con JSON
+      const safeList = list.rows.map(tx => ({
+        ...tx,
+        amount: Number(tx.amount),
+        amountUsd: tx.amountUsd ? Number(tx.amountUsd) : null,
+        exchangeRateUsed: tx.exchangeRateUsed ? Number(tx.exchangeRateUsed) : null,
+      }));
+
+      return json(safeList);
     }
 
     if (method === 'POST') {
@@ -56,13 +68,15 @@ export default async function handler(request: Request) {
       }
 
       // A. Obtener el tipo ('ingreso' o 'gasto') de la categoría
+      // 3. Usamos categoryResult.rows
       const categoryResult = await sql`SELECT "type" FROM public.categories WHERE id = ${Number(categoryId)};`;
-      if (categoryResult.length === 0) {
+      if (categoryResult.rows.length === 0) { // <-- CAMBIO
         throw new Error(`La categoría con id ${categoryId} no existe`);
       }
-      const type = categoryResult[0].type as ('ingreso' | 'gasto');
+      const type = categoryResult.rows[0].type as ('ingreso' | 'gasto'); // <-- CAMBIO
 
       // B. Insertar la nueva transacción
+      // 3. Usamos insertResult.rows
       const insertResult = await sql`
         INSERT INTO public.transactions 
           (date, description, category_id, account_id, amount, currency, amount_usd, exchange_rate_used)
@@ -70,7 +84,7 @@ export default async function handler(request: Request) {
           (${date}, ${description}, ${Number(categoryId)}, ${Number(accountId)}, ${Number(amount)}, ${currency}, ${amountUsd || null}, ${exchangeRateUsed || null})
         RETURNING id;
       `;
-      const newTransactionId = insertResult[0].id;
+      const newTransactionId = insertResult.rows[0].id; // <-- CAMBIO
 
       // C. Actualizar el balance de la cuenta
       const delta = getDelta(type, Number(amount));
@@ -94,6 +108,7 @@ export default async function handler(request: Request) {
       if (isNaN(numericId)) return errorJson('"id" debe ser un número', 400);
 
       // A. Buscar la transacción y el TIPO de su categoría
+      // 3. Usamos oldTxResult.rows
       const oldTxResult = await sql`
         SELECT 
           t.account_id, 
@@ -104,20 +119,19 @@ export default async function handler(request: Request) {
         WHERE t.id = ${numericId};
       `;
       
-      const old = oldTxResult[0];
+      const old = oldTxResult.rows[0]; // <-- CAMBIO
 
-      // B. *** AQUÍ ESTÁ EL CAMBIO ***
-      // Si no existe 'old', no hay nada que borrar ni revertir.
+      // B. Si no existe 'old', no hay nada que borrar ni revertir.
       if (!old) {
         console.log(`[API] DELETE: No se encontró ID ${numericId}`);
         return json({ ok: true, message: 'No se encontró la transacción' });
       }
 
       // C. Borrar la transacción
-      // (Quitamos la variable 'deleteResult' que no usábamos)
       await sql`DELETE FROM public.transactions WHERE id = ${numericId};`;
 
       // D. Revertir el balance (sabemos que 'old' existe)
+      // 'old.amount' será un string, pero 'getDelta' lo maneja
       const revertAmount = getDelta(old.type as 'ingreso' | 'gasto', old.amount) * -1; // Invertir el delta
       await sql`
         UPDATE public.accounts 

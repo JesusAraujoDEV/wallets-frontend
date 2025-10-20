@@ -1,12 +1,15 @@
 // api/categories.ts
 
-import { errorJson, json, getSql } from './_db.js';
+// 1. La importación ya está correcta (trae 'sql' y usa '.js')
+import { errorJson, json, sql } from './_db.js';
 
 export default async function handler(request: Request) {
   console.log(`[API] Recibida petición: ${request.method} ${request.url}`);
   try {
     const method = request.method.toUpperCase();
-    const sql = getSql();
+
+    // 2. BORRAMOS esta línea
+    // const sql = getSql(); 
 
     // 1. ELIMINADO EL 'CREATE TABLE'
     // Tu tabla ya existe y esto causaba el cuelgue.
@@ -19,8 +22,9 @@ export default async function handler(request: Request) {
         FROM public.categories 
         ORDER BY name ASC;
       `;
-      console.log(`[API] GET /categories exitoso. Encontrados ${list.length} registros.`);
-      return json(list);
+      // 3. Usamos list.rows
+      console.log(`[API] GET /categories exitoso. Encontrados ${list.rows.length} registros.`);
+      return json(list.rows); // <-- CAMBIO
     }
 
     if (method === 'POST') {
@@ -42,8 +46,9 @@ export default async function handler(request: Request) {
         VALUES (${name}, ${type})
         RETURNING id;
       `;
-      console.log(`[API] POST /categories exitoso. Nuevo ID: ${result[0].id}`);
-      return json({ ok: true, newId: result[0].id });
+      // 3. Usamos result.rows
+      console.log(`[API] POST /categories exitoso. Nuevo ID: ${result.rows[0].id}`); // <-- CAMBIO
+      return json({ ok: true, newId: result.rows[0].id }); // <-- CAMBIO
     }
 
     if (method === 'PUT') {

@@ -1,39 +1,34 @@
-import { errorJson, json, getSql } from './_db.js';
+import { errorJson, json, sql } from './_db.js';
 
 export default async function handler(request: Request) {
-  // Agregamos logs para ver qué pasa en la terminal de 'vercel dev'
   console.log(`[API] Recibida petición: ${request.method} ${request.url}`);
 
   try {
     const method = request.method.toUpperCase();
-    const sql = getSql();
-
-    // ---------------------------------------------------------------
-    // 1. ¡QUITAMOS EL CREATE TABLE DE AQUÍ!
-    // Tu tabla ya existe. Esto no debe estar en un handler de API,
-    // sino en un script de migración. Este era el culpable del "cuelgue".
-    // ---------------------------------------------------------------
 
     if (method === 'GET') {
       console.log('[API] Procesando GET...');
       
+      // La variable 'list' ahora es un objeto { rows: [...] }
       const list = await sql`
         SELECT id, name, "type", currency, balance 
         FROM public.accounts 
         ORDER BY name ASC;
       `;
-      console.log(`[API] GET exitoso. Encontrados ${list.length} registros.`);
-      console.log('Lista original:', list); // Perfecto para debug
+      
+      // ¡AQUÍ ESTÁ EL ARREGLO 2!
+      // Usamos 'list.rows.length'
+      console.log(`[API] GET exitoso. Encontrados ${list.rows.length} registros.`); // <-- CAMBIO
+      // Usamos 'list.rows'
+      console.log('Lista original:', list.rows); // <-- CAMBIO
 
-      // 1. Esta línea CONVIERTE el balance de string a número
-      const safeList = list.map(account => ({
+      // Usamos 'list.rows.map'
+      const safeList = list.rows.map(account => ({ // <-- CAMBIO
         ...account,
-        balance: Number(account.balance) // '51.00' -> 51
+        balance: Number(account.balance)
       }));
       
-      // 2. ¡ESTE ES EL ARREGLO!
-      // Debes devolver la 'safeList' (la convertida)
-      // Y DEBES envolverla en la función 'json()' para crear una respuesta HTTP.
+      // Esto ya funcionará gracias al Arreglo 1
       return json(safeList);
     }
 
@@ -41,26 +36,23 @@ export default async function handler(request: Request) {
       console.log('[API] Procesando POST (Crear)...');
       const body = await request.json();
       
-      // 3. Ajustamos al schema real:
-      //    - El 'id' no se pasa, es SERIAL (autoincremental).
-      //    - 'type' es obligatorio y debe venir en el body.
       const { name, type, currency, balance } = body;
 
       if (!name || !type || !currency) {
         return errorJson('Faltan campos obligatorios: name, type, currency', 400);
       }
 
-      // Usamos el balance del body, o 0 si no se proporciona
       const finalBalance = balance !== undefined ? balance : 0;
 
+      // Usamos 'list.rows[0].id'
       const result = await sql`
         INSERT INTO public.accounts (name, "type", currency, balance) 
         VALUES (${name}, ${type}, ${currency}, ${finalBalance})
         RETURNING id;
       `;
 
-      console.log(`[API] POST exitoso. Nuevo ID: ${result[0].id}`);
-      return json({ ok: true, newId: result[0].id });
+      console.log(`[API] POST exitoso. Nuevo ID: ${result.rows[0].id}`); // <-- CAMBIO
+      return json({ ok: true, newId: result.rows[0].id });
     }
 
     if (method === 'PUT') {
@@ -105,7 +97,6 @@ export default async function handler(request: Request) {
 
     return errorJson('Método no permitido', 405);
   } catch (e: any) {
-    // Si hay un error de SQL, lo veremos aquí
     console.error('[API] ¡Error en la base de datos!', e);
     return errorJson(e.message);
   }

@@ -1,15 +1,12 @@
-import { neon } from '@neondatabase/serverless';
+// api/_db.ts
 
-const DATABASE_URL = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL;
-if (!DATABASE_URL) {
-  console.warn('DATABASE_URL is not set. API routes will fail until it is configured.');
-}
+import { sql } from '@vercel/postgres';
 
-export function getSql() {
-  if (!DATABASE_URL) throw new Error('DATABASE_URL not configured');
-  return neon(DATABASE_URL);
-}
+// Exportamos el 'sql' que importamos.
+export { sql };
 
+// ¡AQUÍ ESTÁ EL ARREGLO 1!
+// Hacemos que 'init' sea opcional con '?'
 export function json(data: unknown, init?: ResponseInit) {
   return new Response(JSON.stringify(data), {
     headers: { 'content-type': 'application/json' },
@@ -18,5 +15,6 @@ export function json(data: unknown, init?: ResponseInit) {
 }
 
 export function errorJson(message: string, status = 500) {
+  // Esta función ya estaba bien, porque sí pasaba el 'init'
   return json({ error: message }, { status });
 }
