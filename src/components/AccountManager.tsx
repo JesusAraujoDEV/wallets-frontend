@@ -50,7 +50,7 @@ export const AccountManager = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name || !formData.balance) {
@@ -69,7 +69,7 @@ export const AccountManager = () => {
         currency: formData.currency,
         balance: parseFloat(formData.balance),
       };
-      AccountsStore.upsert(updated);
+      await AccountsStore.upsert(updated);
       toast({
         title: "Account Updated",
         description: `${formData.name} has been updated successfully.`,
@@ -81,7 +81,7 @@ export const AccountManager = () => {
         currency: formData.currency,
         balance: parseFloat(formData.balance),
       };
-      AccountsStore.upsert(newAccount);
+      await AccountsStore.upsert(newAccount);
       toast({
         title: "Account Created",
         description: `${formData.name} has been created successfully.`,
@@ -93,7 +93,7 @@ export const AccountManager = () => {
   };
 
   const handleDelete = (accountId: string) => {
-    AccountsStore.remove(accountId);
+  AccountsStore.remove(accountId);
     toast({
       title: "Account Deleted",
       description: "The account has been removed.",
@@ -102,8 +102,9 @@ export const AccountManager = () => {
 
   // Sync local state with storage changes (in case other components modify data)
   useEffect(() => {
-    setAccounts(AccountsStore.all());
-    const off = onDataChange(() => setAccounts(AccountsStore.all()));
+  setAccounts(AccountsStore.all());
+  AccountsStore.refresh().catch(() => {});
+  const off = onDataChange(() => setAccounts(AccountsStore.all()));
     return off;
   }, []);
 

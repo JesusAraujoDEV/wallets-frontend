@@ -40,6 +40,9 @@ export const TransactionsList = () => {
       setAccounts(AccountsStore.all());
     };
     load();
+    AccountsStore.refresh().catch(() => {});
+    CategoriesStore.refresh().catch(() => {});
+    TransactionsStore.refresh().catch(() => {});
     const off = onDataChange(load);
     return off;
   }, []);
@@ -59,12 +62,12 @@ export const TransactionsList = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    TransactionsStore.remove(id);
+  const handleDelete = async (id: string) => {
+    await TransactionsStore.remove(id);
     toast({ title: "Transaction Deleted", description: "The transaction has been removed." });
   };
 
-  const handleUpdate = (e: React.FormEvent) => {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTx) return;
     if (!formData.accountId || !formData.categoryId || !formData.amount) {
@@ -80,7 +83,7 @@ export const TransactionsList = () => {
       description: formData.description,
       date: formData.date || editingTx.date,
     };
-    TransactionsStore.update(next);
+    await TransactionsStore.update(next);
     setIsDialogOpen(false);
     setEditingTx(null);
     toast({ title: "Transaction Updated", description: "Your changes have been saved." });

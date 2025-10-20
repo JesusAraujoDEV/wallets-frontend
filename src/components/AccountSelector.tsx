@@ -29,6 +29,7 @@ export const AccountSelector = ({ selectedAccount, onAccountChange }: AccountSel
       });
     };
     load();
+    AccountsStore.refresh().catch(() => {});
     const off = onDataChange(load);
     return off;
   }, [rate]);

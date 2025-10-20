@@ -32,7 +32,7 @@ export const CategoryManager = () => {
     colorName: "Mint Green",
   });
 
-  const handleCreateOrUpdate = () => {
+  const handleCreateOrUpdate = async () => {
     if (!formData.name.trim()) {
       toast({
         title: "Error",
@@ -47,7 +47,7 @@ export const CategoryManager = () => {
 
     if (editingCategory) {
       // Update existing category
-      CategoriesStore.upsert({
+      await CategoriesStore.upsert({
         ...editingCategory,
         name: formData.name,
         type: formData.type,
@@ -67,7 +67,7 @@ export const CategoryManager = () => {
         color: selectedColor.value,
         colorName: selectedColor.name,
       };
-      CategoriesStore.upsert(newCategory);
+  await CategoriesStore.upsert(newCategory);
       toast({
         title: "Category Created",
         description: `${formData.name} has been added successfully.`,
@@ -87,9 +87,9 @@ export const CategoryManager = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (categoryId: string) => {
+  const handleDelete = async (categoryId: string) => {
     const category = categories.find(c => c.id === categoryId);
-    CategoriesStore.remove(categoryId);
+    await CategoriesStore.remove(categoryId);
     toast({
       title: "Category Deleted",
       description: `${category?.name} has been removed.`,
@@ -104,6 +104,7 @@ export const CategoryManager = () => {
 
   useEffect(() => {
     setCategories(CategoriesStore.all());
+    CategoriesStore.refresh().catch(() => {});
     const off = onDataChange(() => setCategories(CategoriesStore.all()));
     return off;
   }, []);

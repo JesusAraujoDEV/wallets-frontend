@@ -31,6 +31,8 @@ export const TransactionForm = () => {
       setCategories(CategoriesStore.all());
     };
     load();
+    AccountsStore.refresh().catch(() => {});
+    CategoriesStore.refresh().catch(() => {});
     const off = onDataChange(load);
     return off;
   }, []);
@@ -43,7 +45,7 @@ export const TransactionForm = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, categories]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!account || !amount || !category) {
@@ -59,7 +61,7 @@ export const TransactionForm = () => {
     const selectedCategory = categories.find(cat => cat.id === category);
 
     // Persist transaction
-    TransactionsStore.add({
+    await TransactionsStore.add({
       id: newId(),
       date: date || new Date().toISOString().slice(0, 10),
       description: description || (type === "income" ? "Income" : "Expense"),

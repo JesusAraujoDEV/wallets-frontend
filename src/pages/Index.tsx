@@ -49,7 +49,12 @@ const Index = () => {
       setCategories(CategoriesStore.all());
       setTransactions(TransactionsStore.all());
     };
+    // initial
     load();
+    // background refresh
+    AccountsStore.refresh().catch(() => {});
+    CategoriesStore.refresh().catch(() => {});
+    TransactionsStore.refresh().catch(() => {});
     const off = onDataChange(load);
     return off;
   }, []);
