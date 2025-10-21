@@ -2,6 +2,23 @@
 
 import { sql } from './_db.js';
 
+async function readJsonBody(req): Promise<any> {
+  try {
+    if (req.body && typeof req.body === 'object') return req.body;
+    const chunks: Buffer[] = [];
+    await new Promise<void>((resolve, reject) => {
+      req.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
+      req.on('end', () => resolve());
+      req.on('error', reject);
+    });
+    const raw = Buffer.concat(chunks).toString('utf8');
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
 export default async function handler(req, res) {
   console.log(`[API] Recibida petición: ${req.method} ${req.url}`);
   try {
@@ -15,31 +32,42 @@ export default async function handler(req, res) {
         ORDER BY name ASC;
       `;
       console.log(`[API] GET /categories exitoso. Encontrados ${list.rows.length} registros.`);
-      res.status(200).json(list.rows);
+      const safeList = list.rows.map((c: any) => ({
+        id: String(c.id),
+        name: c.name,
+        type: c.type === 'ingreso' ? 'income' : 'expense',
+        // UI expects color fields; provide defaults if DB doesn't have them
+        color: 'hsl(var(--chart-6))',
+        colorName: 'Pastel Blue',
+      }));
+      res.status(200).json(safeList);
       return;
     }
 
     if (method === 'POST') {
       console.log('[API] Procesando POST /categories (Crear)...');
-      const body = req.body ?? {};
-      const { name, type } = body; // 'type' debe ser 'ingreso' o 'gasto'
+      const body = await readJsonBody(req);
+      // Frontend uses 'income' | 'expense'. Map to DB values 'ingreso' | 'gasto'
+      const { name, type } = body || {};
+      const dbType = type === 'income' ? 'ingreso' : type === 'expense' ? 'gasto' : type;
 
-      if (!name || !type) {
+      if (!name || !dbType) {
         res.status(400).json({ error: 'Faltan campos: name, type' });
         return;
       }
-      if (type !== 'ingreso' && type !== 'gasto') {
+      if (dbType !== 'ingreso' && dbType !== 'gasto') {
         res.status(400).json({ error: "El tipo debe ser 'ingreso' o 'gasto'" });
         return;
       }
 
       const result = await sql`
         INSERT INTO public.categories (name, "type") 
-        VALUES (${name}, ${type})
+        VALUES (${name}, ${dbType})
         RETURNING id;
       `;
-      console.log(`[API] POST /categories exitoso. Nuevo ID: ${result.rows[0].id}`);
-      res.status(200).json({ ok: true, newId: result.rows[0].id });
+      const newId = String(result.rows[0].id);
+      console.log(`[API] POST /categories exitoso. Nuevo ID: ${newId}`);
+      res.status(200).json({ ok: true, newId });
       return;
     }
 
@@ -52,14 +80,15 @@ export default async function handler(req, res) {
         return;
       }
 
-      const body = req.body ?? {};
-      const { name, type } = body;
+      const body = await readJsonBody(req);
+      const { name, type } = body || {};
+      const dbType = type === 'income' ? 'ingreso' : type === 'expense' ? 'gasto' : type;
 
-      if (!name || !type) {
+      if (!name || !dbType) {
         res.status(400).json({ error: 'Faltan campos: name, type' });
         return;
       }
-      if (type !== 'ingreso' && type !== 'gasto') {
+      if (dbType !== 'ingreso' && dbType !== 'gasto') {
         res.status(400).json({ error: "El tipo debe ser 'ingreso' o 'gasto'" });
         return;
       }
@@ -68,7 +97,7 @@ export default async function handler(req, res) {
         UPDATE public.categories 
         SET 
           name = ${name}, 
-          "type" = ${type},
+          "type" = ${dbType},
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ${Number(id)};
       `;

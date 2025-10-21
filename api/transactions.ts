@@ -2,6 +2,23 @@
 
 import { sql } from './_db.js';
 
+async function readJsonBody(req): Promise<any> {
+  try {
+    if (req.body && typeof req.body === 'object') return req.body;
+    const chunks: Buffer[] = [];
+    await new Promise<void>((resolve, reject) => {
+      req.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
+      req.on('end', () => resolve());
+      req.on('error', reject);
+    });
+    const raw = Buffer.concat(chunks).toString('utf8');
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
 /** Helper para saber si sumar o restar del balance */
 function getDelta(type: 'ingreso' | 'gasto', amount: number | string): number {
   const numAmount = Number(amount) || 0;
@@ -33,8 +50,13 @@ export default async function handler(req, res) {
       console.log(`[API] GET /transactions exitoso. Encontrados ${list.rows.length} registros.`);
 
       const safeList = list.rows.map((tx) => ({
-        ...tx,
+        id: String(tx.id),
+        date: tx.date,
+        description: tx.description,
+        categoryId: String(tx.categoryId),
+        accountId: String(tx.accountId),
         amount: Number(tx.amount),
+        currency: tx.currency,
         amountUsd: tx.amountUsd ? Number(tx.amountUsd) : null,
         exchangeRateUsed: tx.exchangeRateUsed ? Number(tx.exchangeRateUsed) : null,
       }));
@@ -45,7 +67,7 @@ export default async function handler(req, res) {
 
     if (method === 'POST') {
       console.log('[API] Procesando POST /transactions (Crear)...');
-      const body = req.body ?? {};
+      const body = await readJsonBody(req);
       const {
         date,
         description,
@@ -86,7 +108,7 @@ export default async function handler(req, res) {
       `;
 
       console.log(`[API] POST /transactions exitoso. Nuevo ID: ${newTransactionId}`);
-      res.status(200).json({ ok: true, newId: newTransactionId });
+  res.status(200).json({ ok: true, newId: String(newTransactionId) });
       return;
     }
 
