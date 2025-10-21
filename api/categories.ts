@@ -1,6 +1,7 @@
 // api/categories.ts
 
 import { sql } from './_db.js';
+import { requireUserId } from './_auth.js';
 
 async function readJsonBody(req): Promise<any> {
   try {
@@ -23,12 +24,15 @@ export default async function handler(req, res) {
   console.log(`[API] Recibida petición: ${req.method} ${req.url}`);
   try {
     const method = (req.method || 'GET').toUpperCase();
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
 
     if (method === 'GET') {
       console.log('[API] Procesando GET /categories...');
       const list = await sql`
         SELECT id, name, "type" 
         FROM public.categories 
+        WHERE user_id = ${userId}
         ORDER BY name ASC;
       `;
       console.log(`[API] GET /categories exitoso. Encontrados ${list.rows.length} registros.`);
@@ -61,8 +65,8 @@ export default async function handler(req, res) {
       }
 
       const result = await sql`
-        INSERT INTO public.categories (name, "type") 
-        VALUES (${name}, ${dbType})
+        INSERT INTO public.categories (name, "type", user_id) 
+        VALUES (${name}, ${dbType}, ${userId})
         RETURNING id;
       `;
       const newId = String(result.rows[0].id);
@@ -99,7 +103,7 @@ export default async function handler(req, res) {
           name = ${name}, 
           "type" = ${dbType},
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${Number(id)};
+        WHERE id = ${Number(id)} AND user_id = ${userId};
       `;
       console.log(`[API] PUT /categories exitoso. Actualizado ID: ${id}`);
       res.status(200).json({ ok: true, message: 'Categoría actualizada' });
@@ -115,7 +119,7 @@ export default async function handler(req, res) {
            return;
       }
   
-      await sql`DELETE FROM public.categories WHERE id = ${Number(id)};`;
+  await sql`DELETE FROM public.categories WHERE id = ${Number(id)} AND user_id = ${userId};`;
       console.log(`[API] DELETE /categories exitoso. Borrado ID: ${id}`);
       res.status(200).json({ ok: true });
       return;

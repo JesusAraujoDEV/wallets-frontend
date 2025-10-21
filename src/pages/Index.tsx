@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // No import/export UI; data persistence handled via storage functions
 import { useSearchParams } from "react-router-dom";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
+import { AuthApi, type AuthUser } from "@/lib/auth";
+import { useNavigate } from "react-router-dom";
 import { useVESExchangeRate, convertToUSD } from "@/lib/rates";
 import type { Account, Category, Transaction } from "@/lib/types";
 
@@ -22,8 +24,10 @@ const Index = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const { rate } = useVESExchangeRate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const allowedPages = useMemo(() => new Set(["dashboard", "transactions", "categories", "accounts"]), []);
   const pageFromUrl = searchParams.get("page") || "";
@@ -56,6 +60,20 @@ const Index = () => {
     TransactionsStore.refresh().catch(() => {});
     const off = onDataChange(load);
     return off;
+  }, []);
+
+  // Fetch current user for header title
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const u = await AuthApi.me();
+        if (alive) setAuthUser(u);
+      } catch {
+        // ignore; RequireAuth handles redirect when not authenticated
+      }
+    })();
+    return () => { alive = false; };
   }, []);
   
   // KPIs derived from data
@@ -157,9 +175,18 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Financial Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Track your finances with clarity</p>
+        <div className="container mx-auto px-4 py-6 flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">{authUser?.username ? `${authUser.username}'s Financial Dashboard` : 'Financial Dashboard'}</h1>
+            <p className="text-muted-foreground mt-1">Track your finances with clarity</p>
+          </div>
+          <button
+            className="h-9 rounded-md border px-3 text-sm hover:bg-accent"
+            onClick={async () => { await AuthApi.logout(); navigate('/login', { replace: true }); }}
+            title="Cerrar sesión"
+          >
+            Logout
+          </button>
         </div>
       </header>
 

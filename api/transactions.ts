@@ -1,6 +1,7 @@
 // api/transactions.ts
 
 import { sql } from './_db.js';
+import { requireUserId } from './_auth.js';
 
 async function readJsonBody(req): Promise<any> {
   try {
@@ -48,6 +49,8 @@ export default async function handler(req, res) {
 
   try {
     const method = (req.method || 'GET').toUpperCase();
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
 
     if (method === 'GET') {
       console.log('[API] Procesando GET /transactions...');
@@ -63,6 +66,7 @@ export default async function handler(req, res) {
           amount_usd AS "amountUsd",
           exchange_rate_used AS "exchangeRateUsed"
         FROM public.transactions 
+        WHERE user_id = ${userId}
         ORDER BY date DESC, id DESC;
       `;
       console.log(`[API] GET /transactions exitoso. Encontrados ${list.rows.length} registros.`);
@@ -102,12 +106,18 @@ export default async function handler(req, res) {
         return;
       }
 
-      const categoryResult = await sql`SELECT "type" FROM public.categories WHERE id = ${Number(categoryId)};`;
+      // Validate ownership of category and account
+      const categoryResult = await sql`SELECT "type" FROM public.categories WHERE id = ${Number(categoryId)} AND user_id = ${userId};`;
       if (categoryResult.rows.length === 0) {
         res.status(400).json({ error: `La categoría con id ${categoryId} no existe` });
         return;
       }
       const type = categoryResult.rows[0].type as 'ingreso' | 'gasto';
+      const accountCheck = await sql`SELECT id FROM public.accounts WHERE id = ${Number(accountId)} AND user_id = ${userId};`;
+      if (accountCheck.rows.length === 0) {
+        res.status(400).json({ error: `La cuenta con id ${accountId} no existe` });
+        return;
+      }
 
       // Calcular equivalencia a USD si la moneda es VES (Bs.)
       let finalAmountUsd: number | null = null;
@@ -133,9 +143,9 @@ export default async function handler(req, res) {
 
       const insertResult = await sql`
         INSERT INTO public.transactions 
-          (date, description, category_id, account_id, amount, currency, amount_usd, exchange_rate_used)
+          (date, description, category_id, account_id, amount, currency, amount_usd, exchange_rate_used, user_id)
         VALUES 
-          (${date}, ${description}, ${Number(categoryId)}, ${Number(accountId)}, ${Number(amount)}, ${currency}, ${finalAmountUsd}, ${finalRateUsed})
+          (${date}, ${description}, ${Number(categoryId)}, ${Number(accountId)}, ${Number(amount)}, ${currency}, ${finalAmountUsd}, ${finalRateUsed}, ${userId})
         RETURNING id;
       `;
       const newTransactionId = insertResult.rows[0].id;
@@ -144,7 +154,7 @@ export default async function handler(req, res) {
       await sql`
         UPDATE public.accounts 
         SET balance = ROUND(COALESCE(balance,0) + ${delta}, 2) 
-        WHERE id = ${Number(accountId)};
+        WHERE id = ${Number(accountId)} AND user_id = ${userId};
       `;
 
       console.log(`[API] POST /transactions exitoso. Nuevo ID: ${newTransactionId}`);
@@ -173,8 +183,8 @@ export default async function handler(req, res) {
           t.amount, 
           c."type"
         FROM public.transactions t
-        JOIN public.categories c ON t.category_id = c.id
-        WHERE t.id = ${numericId};
+        JOIN public.categories c ON t.category_id = c.id AND c.user_id = ${userId}
+        WHERE t.id = ${numericId} AND t.user_id = ${userId};
       `;
 
       const old = oldTxResult.rows[0];
@@ -184,13 +194,13 @@ export default async function handler(req, res) {
         return;
       }
 
-      await sql`DELETE FROM public.transactions WHERE id = ${numericId};`;
+  await sql`DELETE FROM public.transactions WHERE id = ${numericId} AND user_id = ${userId};`;
 
       const revertAmount = getDelta(old.type as 'ingreso' | 'gasto', old.amount) * -1;
       await sql`
         UPDATE public.accounts 
         SET balance = ROUND(COALESCE(balance,0) + ${revertAmount}, 2) 
-        WHERE id = ${old.account_id};
+        WHERE id = ${old.account_id} AND user_id = ${userId};
       `;
 
       console.log(`[API] DELETE /transactions exitoso. Borrado ID: ${id}`);

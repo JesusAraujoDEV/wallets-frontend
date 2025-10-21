@@ -1,4 +1,5 @@
 import { sql } from './_db.js';
+import { requireUserId } from './_auth.js';
 
 async function readJsonBody(req): Promise<any> {
   try {
@@ -22,6 +23,8 @@ export default async function handler(req, res) {
 
   try {
     const method = (req.method || 'GET').toUpperCase();
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
 
   if (method === 'GET') {
       console.log('[API] Procesando GET...');
@@ -29,6 +32,7 @@ export default async function handler(req, res) {
       const list = await sql`
         SELECT id, name, "type", currency, balance
         FROM public.accounts
+        WHERE user_id = ${userId}
         ORDER BY name ASC;
       `;
 
@@ -61,8 +65,8 @@ export default async function handler(req, res) {
       const type = rawType || 'efectivo';
 
       const result = await sql`
-        INSERT INTO public.accounts (name, "type", currency, balance)
-        VALUES (${name}, ${type}, ${currency}, ${finalBalance})
+        INSERT INTO public.accounts (name, "type", currency, balance, user_id)
+        VALUES (${name}, ${type}, ${currency}, ${finalBalance}, ${userId})
         RETURNING id;
       `;
 
@@ -104,7 +108,7 @@ export default async function handler(req, res) {
           currency = ${currency},
           balance = ${Number(balance)},
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${Number(id)};
+        WHERE id = ${Number(id)} AND user_id = ${userId};
       `;
 
       console.log(`[API] PUT exitoso. Actualizado ID: ${id}`);
@@ -121,7 +125,7 @@ export default async function handler(req, res) {
         return;
       }
 
-      await sql`DELETE FROM public.accounts WHERE id = ${Number(id)};`;
+  await sql`DELETE FROM public.accounts WHERE id = ${Number(id)} AND user_id = ${userId};`;
 
       console.log(`[API] DELETE exitoso. Borrado ID: ${id}`);
       res.status(200).json({ ok: true });
