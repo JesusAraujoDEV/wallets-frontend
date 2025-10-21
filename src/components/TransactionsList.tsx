@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
 import { convertToUSDByDate } from "@/lib/rates";
@@ -13,6 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { TransactionForm } from "@/components/TransactionForm";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +35,7 @@ export const TransactionsList = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -135,8 +137,24 @@ export const TransactionsList = () => {
   return (
     <Card className="shadow-md">
       <CardHeader>
-        <CardTitle>Transaction Log</CardTitle>
-        <CardDescription>View and filter your daily transactions</CardDescription>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>Transaction Log</CardTitle>
+            <CardDescription>View and filter your daily transactions</CardDescription>
+          </div>
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <Button onClick={() => setIsAddOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Transaction
+            </Button>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Add Transaction</DialogTitle>
+              </DialogHeader>
+              <TransactionForm asModalContent onSubmitted={() => setIsAddOpen(false)} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Filters */}

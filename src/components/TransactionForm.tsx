@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
-export const TransactionForm = () => {
+export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asModalContent?: boolean; onSubmitted?: () => void }) => {
   const [account, setAccount] = useState("");
   const [type, setType] = useState<"income" | "expense">("expense");
   const [amount, setAmount] = useState("");
@@ -82,15 +82,14 @@ export const TransactionForm = () => {
       setCategory("");
       setDescription("");
       setDate(new Date().toISOString().slice(0, 10));
+      onSubmitted?.();
     } finally {
       setSubmitting(false);
     }
   };
 
-  return (
-    <Card className="p-6 shadow-md border-0">
-      <h3 className="text-xl font-semibold text-foreground mb-6">Add Transaction</h3>
-      <form onSubmit={handleSubmit} className="space-y-4">
+  const formEl = (
+    <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="account">Account</Label>
           <Select value={account} onValueChange={setAccount}>
@@ -219,6 +218,16 @@ export const TransactionForm = () => {
           )}
         </Button>
       </form>
+  );
+
+  if (asModalContent) {
+    return formEl;
+  }
+
+  return (
+    <Card className="p-6 shadow-md border-0">
+      <h3 className="text-xl font-semibold text-foreground mb-6">Add Transaction</h3>
+      {formEl}
     </Card>
   );
 };
