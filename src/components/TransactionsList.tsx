@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2, Plus } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2, Plus, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
 import { convertToUSDByDate } from "@/lib/rates";
@@ -39,6 +39,7 @@ export const TransactionsList = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -64,6 +65,16 @@ export const TransactionsList = () => {
   }, []);
   const categoriesOptions = useMemo(() => categories, [categories]);
   const accountsOptions = useMemo(() => accounts, [accounts]);
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await TransactionsStore.refresh();
+      toast({ title: "Transactions Refreshed", description: "Latest transactions loaded." });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleEdit = (tx: Transaction) => {
     setEditingTx(tx);
@@ -145,18 +156,24 @@ export const TransactionsList = () => {
             <CardTitle>Transaction Log</CardTitle>
             <CardDescription>View and filter your daily transactions</CardDescription>
           </div>
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <Button onClick={() => setIsAddOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              New Transaction
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-2">
+              {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Refresh
             </Button>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Add Transaction</DialogTitle>
-              </DialogHeader>
-              <TransactionForm asModalContent onSubmitted={() => setIsAddOpen(false)} />
-            </DialogContent>
-          </Dialog>
+            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+              <Button onClick={() => setIsAddOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                New Transaction
+              </Button>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Add Transaction</DialogTitle>
+                </DialogHeader>
+                <TransactionForm asModalContent onSubmitted={() => setIsAddOpen(false)} />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
