@@ -21,6 +21,10 @@ export interface Transaction {
   accountId: string;  // references Account.id
   amount: number;
   type: "income" | "expense";
+  // Optional server-enriched fields
+  currency?: "USD" | "EUR" | "VES";
+  amountUsd?: number | null;
+  exchangeRateUsed?: number | null;
 }
 
 export interface DataBundle {

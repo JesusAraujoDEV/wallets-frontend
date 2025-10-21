@@ -25,6 +25,24 @@ function getDelta(type: 'ingreso' | 'gasto', amount: number | string): number {
   return type === 'ingreso' ? numAmount : -numAmount;
 }
 
+// Obtener tasa VES por USD por fecha (YYYY-MM-DD) desde la API pública
+async function getVesPerUsdByDate(dateISO: string): Promise<number | null> {
+  try {
+    const d = (dateISO || '').slice(0, 10);
+    if (!d) return null;
+    const url = `https://api.dolarvzla.com/public/exchange-rate/list?from=${d}&to=${d}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const item = json?.rates?.[0];
+    const rate = item?.usd != null ? Number(item.usd) : null; // VES por 1 USD
+    if (!rate || !isFinite(rate)) return null;
+    return rate;
+  } catch {
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   console.log(`[API] Recibida petición: ${req.method} ${req.url}`);
 
@@ -91,11 +109,33 @@ export default async function handler(req, res) {
       }
       const type = categoryResult.rows[0].type as 'ingreso' | 'gasto';
 
+      // Calcular equivalencia a USD si la moneda es VES (Bs.)
+      let finalAmountUsd: number | null = null;
+      let finalRateUsed: number | null = null;
+      if (currency === 'VES') {
+        // Si viene en el payload, respétalo; si no, calculamos por fecha
+        if (amountUsd != null && exchangeRateUsed != null) {
+          finalAmountUsd = Number(amountUsd);
+          finalRateUsed = Number(exchangeRateUsed);
+        } else {
+          const rate = await getVesPerUsdByDate(String(date));
+          if (rate) {
+            finalRateUsed = rate; // VES por USD
+            const usd = Number(amount) / rate;
+            finalAmountUsd = Number(usd.toFixed(2));
+          }
+        }
+      } else if (currency === 'USD') {
+        // Para USD guardamos el monto tal cual en amount_usd
+        finalAmountUsd = Number(amount);
+        finalRateUsed = null;
+      }
+
       const insertResult = await sql`
         INSERT INTO public.transactions 
           (date, description, category_id, account_id, amount, currency, amount_usd, exchange_rate_used)
         VALUES 
-          (${date}, ${description}, ${Number(categoryId)}, ${Number(accountId)}, ${Number(amount)}, ${currency}, ${amountUsd || null}, ${exchangeRateUsed || null})
+          (${date}, ${description}, ${Number(categoryId)}, ${Number(accountId)}, ${Number(amount)}, ${currency}, ${finalAmountUsd}, ${finalRateUsed})
         RETURNING id;
       `;
       const newTransactionId = insertResult.rows[0].id;

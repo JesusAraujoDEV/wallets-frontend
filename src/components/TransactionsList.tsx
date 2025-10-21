@@ -387,19 +387,28 @@ export const TransactionsList = () => {
 // Inline component to render transaction amount in original currency and USD (by date)
 const TxAmount = ({ transaction, accounts }: { transaction: Transaction; accounts: Account[] }) => {
   const acc = accounts.find(a => a.id === transaction.accountId);
-  const currency = acc?.currency ?? "USD";
+  const currency = transaction.currency ?? acc?.currency ?? "USD";
   const sign = transaction.type === "income" ? "+" : "-";
   const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "Bs.";
-  const [usd, setUsd] = useState<number | null>(null);
+  const [usd, setUsd] = useState<number | null>(transaction.amountUsd ?? null);
 
   useEffect(() => {
     let mounted = true;
+    // If server provided USD equivalence, prefer it; else compute client-side
+    if (transaction.amountUsd != null) {
+      setUsd(transaction.amountUsd);
+      return;
+    }
+    if (currency === 'USD') {
+      setUsd(transaction.amount);
+      return;
+    }
     (async () => {
       const converted = await convertToUSDByDate(transaction.amount, currency as any, transaction.date);
       if (mounted) setUsd(converted);
     })();
     return () => { mounted = false; };
-  }, [transaction.amount, transaction.date, currency]);
+  }, [transaction.amount, transaction.date, currency, transaction.amountUsd]);
 
   return (
     <div className={`text-right ${transaction.type === "income" ? "text-primary" : "text-foreground"}`}>

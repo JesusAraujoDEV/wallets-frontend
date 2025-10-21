@@ -11,7 +11,9 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:migrate:tx-usd": "node -e \"console.log('Apply SQL in db/migrations/20251021_add_tx_usd.sql via your DB console (Vercel Postgres).')\"",
+    "db:backfill:tx-usd": "node ./scripts/backfill_transactions_usd.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
