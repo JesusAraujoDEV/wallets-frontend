@@ -113,9 +113,8 @@ export const AccountManager = () => {
 
   // Sync local state with storage changes (in case other components modify data)
   useEffect(() => {
-  setAccounts(AccountsStore.all());
-  AccountsStore.refresh().catch(() => {});
-  const off = onDataChange(() => setAccounts(AccountsStore.all()));
+    setAccounts(AccountsStore.all());
+    const off = onDataChange(() => setAccounts(AccountsStore.all()));
     return off;
   }, []);
 

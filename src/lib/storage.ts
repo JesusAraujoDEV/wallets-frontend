@@ -158,9 +158,4 @@ export function newId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// Kick off initial loads (best-effort). In local Vite dev, these routes require a Vercel dev server or proxy.
-(async () => {
-  try { await AccountsStore.refresh(); } catch {}
-  try { await CategoriesStore.refresh(); } catch {}
-  try { await TransactionsStore.refresh(); } catch {}
-})();
+// Initial loads will be triggered from a top-level place (e.g., Index.tsx) to avoid duplicate GETs.

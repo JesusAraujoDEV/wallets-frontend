@@ -32,8 +32,6 @@ export const TransactionForm = () => {
       setCategories(CategoriesStore.all());
     };
     load();
-    AccountsStore.refresh().catch(() => {});
-    CategoriesStore.refresh().catch(() => {});
     const off = onDataChange(load);
     return off;
   }, []);

@@ -104,7 +104,6 @@ export const CategoryManager = () => {
 
   useEffect(() => {
     setCategories(CategoriesStore.all());
-    CategoriesStore.refresh().catch(() => {});
     const off = onDataChange(() => setCategories(CategoriesStore.all()));
     return off;
   }, []);

@@ -42,9 +42,6 @@ export const TransactionsList = () => {
       setAccounts(AccountsStore.all());
     };
     load();
-    AccountsStore.refresh().catch(() => {});
-    CategoriesStore.refresh().catch(() => {});
-    TransactionsStore.refresh().catch(() => {});
     const off = onDataChange(load);
     return off;
   }, []);
