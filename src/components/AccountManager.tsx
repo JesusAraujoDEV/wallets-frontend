@@ -17,8 +17,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PlusCircle, Pencil, Trash2, Wallet, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { AccountsStore, newId, onDataChange } from "@/lib/storage";
-import type { Account } from "@/lib/types";
+import { AccountsStore, CategoriesStore, TransactionsStore, newId, onDataChange } from "@/lib/storage";
+import type { Account, Category } from "@/lib/types";
 import { useVESExchangeRate } from "@/lib/rates";
 
 // All accounts are now loaded from localStorage via AccountsStore
@@ -78,17 +78,80 @@ export const AccountManager = () => {
     try {
       setIsSubmitting(true);
       if (editingAccount) {
-        const updated: Account = {
-          ...editingAccount,
-          name: formData.name,
-          currency: formData.currency,
-          balance: parseFloat(formData.balance),
-        };
-        await AccountsStore.upsert(updated);
-        toast({
-          title: "Account Updated",
-          description: `${formData.name} has been updated successfully.`,
-        });
+        const prevBalance = editingAccount.balance;
+        const nextBalance = parseFloat(formData.balance);
+        const changedBalance = isFinite(nextBalance) && nextBalance !== prevBalance;
+
+        if (changedBalance) {
+          // 1) Update account details (name/currency) but keep balance unchanged here
+          const updatedMeta: Account = {
+            ...editingAccount,
+            name: formData.name,
+            currency: formData.currency,
+            balance: prevBalance, // keep; balance will be adjusted via transaction
+          };
+          await AccountsStore.upsert(updatedMeta);
+
+          // 2) Ensure adjustment category exists
+          const delta = Number((nextBalance - prevBalance).toFixed(2));
+          const adjType: "income" | "expense" = delta > 0 ? "income" : "expense";
+          const ensureAdjustmentCategory = async (kind: "income" | "expense"): Promise<Category> => {
+            const name = kind === "income" ? "Ajuste de Balance (+)" : "Ajuste de Balance (-)";
+            // 1) Try from cache first
+            let cat = CategoriesStore.all().find(c => c.name === name);
+            if (cat) return cat;
+            // 2) Try create; if duplicate error occurs (race), refresh and read again
+            try {
+              const newCat: Category = {
+                id: newId(),
+                name,
+                type: kind,
+                color: kind === "income" ? "hsl(var(--chart-2))" : "hsl(var(--chart-3))",
+                colorName: kind === "income" ? "Lavender" : "Peach",
+              };
+              await CategoriesStore.upsert(newCat);
+              cat = CategoriesStore.all().find(c => c.name === name) || newCat;
+              return cat;
+            } catch (e) {
+              // Fallback: refresh and find by name (handles server-side unique constraint)
+              await CategoriesStore.refresh().catch(() => {});
+              cat = CategoriesStore.all().find(c => c.name === name);
+              if (cat) return cat;
+              throw e;
+            }
+          };
+          const adjCat = await ensureAdjustmentCategory(adjType);
+
+          // 3) Create adjustment transaction to reach new balance
+          const todayISO = new Date().toISOString().slice(0, 10);
+          await TransactionsStore.add({
+            id: newId(),
+            date: todayISO,
+            description: `Ajuste de balance: ${prevBalance.toFixed(2)} → ${nextBalance.toFixed(2)}`,
+            categoryId: adjCat.id,
+            accountId: editingAccount.id,
+            amount: Math.abs(delta),
+            type: adjType,
+          });
+
+          toast({
+            title: "Account Adjusted",
+            description: `Se registró un ajuste de ${Math.abs(delta).toFixed(2)} (${adjType === 'income' ? 'ingreso' : 'gasto'}).`,
+          });
+        } else {
+          // No balance change: simple metadata update
+          const updated: Account = {
+            ...editingAccount,
+            name: formData.name,
+            currency: formData.currency,
+            balance: prevBalance,
+          };
+          await AccountsStore.upsert(updated);
+          toast({
+            title: "Account Updated",
+            description: `${formData.name} has been updated successfully.`,
+          });
+        }
       } else {
         const newAccount: Account = {
           id: newId(),

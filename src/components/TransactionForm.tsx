@@ -10,7 +10,10 @@ import { AccountsStore, CategoriesStore, TransactionsStore, newId, onDataChange 
 import type { Account, Category } from "@/lib/types";
 import { useVESExchangeRate } from "@/lib/rates";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
+import dayjs from 'dayjs';
 import { cn } from "@/lib/utils";
 
 export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asModalContent?: boolean; onSubmitted?: () => void }) => {
@@ -163,18 +166,18 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                   {date ? new Date(date).toLocaleDateString() : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date ? new Date(date) : undefined}
-                  onSelect={(d) => {
-                    if (d) {
-                      const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0,10);
-                      setDate(iso);
-                    }
-                  }}
-                  initialFocus
-                />
+              <PopoverContent className="w-auto p-2" align="start">
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                  <DateCalendar
+                    value={date ? dayjs(date) : null}
+                    onChange={(d:any) => {
+                      if (d) {
+                        const iso = d.format('YYYY-MM-DD');
+                        setDate(iso);
+                      }
+                    }}
+                  />
+                </LocalizationProvider>
               </PopoverContent>
             </Popover>
           </div>

@@ -11,7 +11,10 @@ import { convertToUSDByDate } from "@/lib/rates";
 import type { Transaction, Category, Account } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
+import dayjs from 'dayjs';
 import { cn } from "@/lib/utils";
 import { TransactionForm } from "@/components/TransactionForm";
 import {
@@ -297,18 +300,18 @@ export const TransactionsList = () => {
                     {formData.date ? new Date(formData.date).toLocaleDateString() : <span>Pick a date</span>}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.date ? new Date(formData.date) : undefined}
-                    onSelect={(d) => {
-                      if (d) {
-                        const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0,10);
-                        setFormData({ ...formData, date: iso });
-                      }
-                    }}
-                    initialFocus
-                  />
+                <PopoverContent className="w-auto p-2" align="start">
+                  <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <DateCalendar
+                      value={formData.date ? dayjs(formData.date) : null}
+                      onChange={(d:any) => {
+                        if (d) {
+                          const iso = d.format('YYYY-MM-DD');
+                          setFormData({ ...formData, date: iso });
+                        }
+                      }}
+                    />
+                  </LocalizationProvider>
                 </PopoverContent>
               </Popover>
             </div>
