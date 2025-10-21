@@ -48,9 +48,29 @@ export const AccountsStore = {
     emit();
   },
   async upsert(account: Account): Promise<void> {
-    await fetchJSON(`${API_BASE}/accounts`, { method: "POST", body: JSON.stringify(account) });
     const idx = accountsCache.findIndex(a => a.id === account.id);
-    if (idx >= 0) accountsCache[idx] = account; else accountsCache.push(account);
+    const exists = idx >= 0;
+    const isNumericId = /^\d+$/.test(account.id);
+    if (exists && isNumericId) {
+      await fetchJSON(`${API_BASE}/accounts?id=${encodeURIComponent(account.id)}`, { method: "PUT", body: JSON.stringify(account) });
+      accountsCache[idx] = account;
+      emit();
+      return;
+    }
+    // Create (or fallback for non-numeric legacy ids)
+    const created = await fetchJSON<{ ok: boolean; newId: string }>(`${API_BASE}/accounts`, { method: "POST", body: JSON.stringify(account) });
+    if (created?.newId) {
+      const newId = String(created.newId);
+      if (exists) {
+        // Replace existing entry id with server id
+        accountsCache[idx] = { ...account, id: newId } as Account;
+      } else {
+        accountsCache.push({ ...account, id: newId } as Account);
+      }
+    } else {
+      // Fallback push/update without id swap
+      if (exists) accountsCache[idx] = account; else accountsCache.push(account);
+    }
     emit();
   },
   async remove(id: string): Promise<void> {
@@ -70,9 +90,26 @@ export const CategoriesStore = {
     emit();
   },
   async upsert(category: Category): Promise<void> {
-    await fetchJSON(`${API_BASE}/categories`, { method: "POST", body: JSON.stringify(category) });
     const idx = categoriesCache.findIndex(c => c.id === category.id);
-    if (idx >= 0) categoriesCache[idx] = category; else categoriesCache.push(category);
+    const exists = idx >= 0;
+    const isNumericId = /^\d+$/.test(category.id);
+    if (exists && isNumericId) {
+      await fetchJSON(`${API_BASE}/categories?id=${encodeURIComponent(category.id)}`, { method: "PUT", body: JSON.stringify(category) });
+      categoriesCache[idx] = category;
+      emit();
+      return;
+    }
+    const created = await fetchJSON<{ ok: boolean; newId: string }>(`${API_BASE}/categories`, { method: "POST", body: JSON.stringify(category) });
+    if (created?.newId) {
+      const newId = String(created.newId);
+      if (exists) {
+        categoriesCache[idx] = { ...category, id: newId } as Category;
+      } else {
+        categoriesCache.push({ ...category, id: newId } as Category);
+      }
+    } else {
+      if (exists) categoriesCache[idx] = category; else categoriesCache.push(category);
+    }
     emit();
   },
   async remove(id: string): Promise<void> {
@@ -97,15 +134,12 @@ export const TransactionsStore = {
   async add(tx: Transaction): Promise<void> {
     await fetchJSON(`${API_BASE}/transactions`, { method: "POST", body: JSON.stringify(tx) });
     transactionsCache.push(tx);
-    // Adjust account balance client-side (simple approach)
-    try {
-      const acc = accountsCache.find(a => a.id === tx.accountId);
-      if (acc) {
-        const delta = tx.type === "income" ? tx.amount : -tx.amount;
-        acc.balance = Number(((acc.balance || 0) + delta).toFixed(2));
-        await AccountsStore.upsert(acc);
-      }
-    } catch {}
+    // Adjust account balance client-side only (server already updated it)
+    const acc = accountsCache.find(a => a.id === tx.accountId);
+    if (acc) {
+      const delta = tx.type === "income" ? tx.amount : -tx.amount;
+      acc.balance = Number(((acc.balance || 0) + delta).toFixed(2));
+    }
     emit();
   },
   async remove(id: string): Promise<void> {
@@ -114,14 +148,11 @@ export const TransactionsStore = {
     await fetchJSON(`${API_BASE}/transactions?id=${encodeURIComponent(id)}`, { method: "DELETE" });
     transactionsCache = transactionsCache.filter(t => t.id !== id);
     if (existing) {
-      try {
-        const acc = accountsCache.find(a => a.id === existing.accountId);
-        if (acc) {
-          const revert = existing.type === "income" ? -existing.amount : existing.amount;
-          acc.balance = Number(((acc.balance || 0) + revert).toFixed(2));
-          await AccountsStore.upsert(acc);
-        }
-      } catch {}
+      const acc = accountsCache.find(a => a.id === existing.accountId);
+      if (acc) {
+        const revert = existing.type === "income" ? -existing.amount : existing.amount;
+        acc.balance = Number(((acc.balance || 0) + revert).toFixed(2));
+      }
     }
     emit();
   },
@@ -131,24 +162,20 @@ export const TransactionsStore = {
     const idx = transactionsCache.findIndex(t => t.id === next.id);
     if (idx >= 0) transactionsCache[idx] = next; else transactionsCache.push(next);
     // Reconcile account balances
-    try {
-      if (prev) {
-        // Revert prev
-        const prevAcc = accountsCache.find(a => a.id === prev.accountId);
-        if (prevAcc) {
-          const prevDelta = prev.type === "income" ? prev.amount : -prev.amount;
-          prevAcc.balance = Number(((prevAcc.balance || 0) - prevDelta).toFixed(2));
-          await AccountsStore.upsert(prevAcc);
-        }
-        // Apply next
-        const nextAcc = accountsCache.find(a => a.id === next.accountId);
-        if (nextAcc) {
-          const nextDelta = next.type === "income" ? next.amount : -next.amount;
-          nextAcc.balance = Number(((nextAcc.balance || 0) + nextDelta).toFixed(2));
-          await AccountsStore.upsert(nextAcc);
-        }
+    if (prev) {
+      // Revert prev
+      const prevAcc = accountsCache.find(a => a.id === prev.accountId);
+      if (prevAcc) {
+        const prevDelta = prev.type === "income" ? prev.amount : -prev.amount;
+        prevAcc.balance = Number(((prevAcc.balance || 0) - prevDelta).toFixed(2));
       }
-    } catch {}
+      // Apply next
+      const nextAcc = accountsCache.find(a => a.id === next.accountId);
+      if (nextAcc) {
+        const nextDelta = next.type === "income" ? next.amount : -next.amount;
+        nextAcc.balance = Number(((nextAcc.balance || 0) + nextDelta).toFixed(2));
+      }
+    }
     emit();
   },
 };

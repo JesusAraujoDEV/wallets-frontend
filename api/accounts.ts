@@ -82,20 +82,27 @@ export default async function handler(req, res) {
       }
 
   const body = await readJsonBody(req);
-      const { name, type, currency, balance } = body;
+      const { name, type, currency, balance } = body || {};
 
-      if (!name || !type || !currency || balance === undefined) {
-        res.status(400).json({ error: 'Se requieren todos los campos (name, type, currency, balance) para actualizar' });
+      if (!name || !currency || balance === undefined) {
+        res.status(400).json({ error: 'Se requieren campos: name, currency, balance' });
         return;
+      }
+
+      // Keep existing type if none provided
+      let finalType = type;
+      if (finalType == null) {
+        const cur = await sql`SELECT "type" FROM public.accounts WHERE id = ${Number(id)};`;
+        finalType = cur.rows[0]?.type || 'efectivo';
       }
 
       await sql`
         UPDATE public.accounts
         SET
           name = ${name},
-          "type" = ${type},
+          "type" = ${finalType},
           currency = ${currency},
-          balance = ${balance},
+          balance = ${Number(balance)},
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ${Number(id)};
       `;
