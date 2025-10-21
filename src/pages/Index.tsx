@@ -4,7 +4,6 @@ import { KPICard } from "@/components/KPICard";
 import { ExpensePieChart } from "@/components/ExpensePieChart";
 import { TrendLineChart } from "@/components/TrendLineChart";
 import { BudgetComparisonChart } from "@/components/BudgetComparisonChart";
-import { TransactionForm } from "@/components/TransactionForm";
 import { TransactionsList } from "@/components/TransactionsList";
 import { CategoryManager } from "@/components/CategoryManager";
 import { AccountManager } from "@/components/AccountManager";
@@ -236,13 +235,8 @@ const Index = () => {
               <ExpensePieChart data={expensePieData} />
               <TrendLineChart data={trendData} />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <BudgetComparisonChart data={budgetData} />
-              </div>
-              <div>
-                <TransactionForm />
-              </div>
+            <div>
+              <BudgetComparisonChart data={budgetData} />
             </div>
           </TabsContent>
 
