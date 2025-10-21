@@ -132,10 +132,19 @@ export const TransactionsStore = {
     emit();
   },
   async add(tx: Transaction): Promise<void> {
-    await fetchJSON(`${API_BASE}/transactions`, { method: "POST", body: JSON.stringify(tx) });
-    transactionsCache.push(tx);
-    // Adjust account balance client-side only (server already updated it)
+    // Backend requires currency; derive it from the selected account
     const acc = accountsCache.find(a => a.id === tx.accountId);
+    const currency = acc?.currency;
+    if (!currency) {
+      throw new Error("Missing account currency for transaction POST");
+    }
+    const created = await fetchJSON<{ ok: boolean; newId: string }>(
+      `${API_BASE}/transactions`,
+      { method: "POST", body: JSON.stringify({ ...tx, currency }) }
+    );
+    const serverId = created?.newId ? String(created.newId) : tx.id;
+    transactionsCache.push({ ...tx, id: serverId });
+    // Adjust account balance client-side only (server already updated it)
     if (acc) {
       const delta = tx.type === "income" ? tx.amount : -tx.amount;
       acc.balance = Number(((acc.balance || 0) + delta).toFixed(2));

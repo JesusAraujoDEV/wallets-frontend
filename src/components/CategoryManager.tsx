@@ -4,6 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
@@ -28,6 +38,7 @@ export const CategoryManager = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     type: "expense" as "income" | "expense",
@@ -231,7 +242,7 @@ export const CategoryManager = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDelete(category.id)}
+                    onClick={() => setConfirmDeleteId(category.id)}
                     className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                     disabled={deletingId === category.id}
                   >
@@ -276,10 +287,15 @@ export const CategoryManager = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDelete(category.id)}
+                    onClick={() => setConfirmDeleteId(category.id)}
                     className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    disabled={deletingId === category.id}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {deletingId === category.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -287,6 +303,32 @@ export const CategoryManager = () => {
           </div>
         </div>
       </CardContent>
+      {/* Confirm delete dialog */}
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => setConfirmDeleteId(open ? confirmDeleteId : null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete category?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the category and remove it from your transactions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!deletingId}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!!deletingId}
+              onClick={async () => {
+                if (!confirmDeleteId) return;
+                await handleDelete(confirmDeleteId);
+                setConfirmDeleteId(null);
+              }}
+            >
+              {deletingId ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

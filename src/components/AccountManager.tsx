@@ -5,6 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PlusCircle, Pencil, Trash2, Wallet, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AccountsStore, newId, onDataChange } from "@/lib/storage";
@@ -26,6 +36,7 @@ export const AccountManager = () => {
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -233,7 +244,7 @@ export const AccountManager = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleDelete(account.id)}
+                onClick={() => setConfirmDeleteId(account.id)}
                 className="flex-1 text-destructive hover:bg-destructive/10"
                 disabled={deletingId === account.id}
               >
@@ -253,6 +264,33 @@ export const AccountManager = () => {
           </Card>
         ))}
       </div>
+
+      {/* Confirm delete dialog */}
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => setConfirmDeleteId(open ? confirmDeleteId : null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the account and remove its data from the app.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!deletingId}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!!deletingId}
+              onClick={async () => {
+                if (!confirmDeleteId) return;
+                await handleDelete(confirmDeleteId);
+                setConfirmDeleteId(null);
+              }}
+            >
+              {deletingId ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

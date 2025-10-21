@@ -13,6 +13,16 @@ import { toast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const TransactionsList = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -27,6 +37,7 @@ export const TransactionsList = () => {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     accountId: "",
     type: "expense" as "income" | "expense",
@@ -227,7 +238,7 @@ export const TransactionsList = () => {
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(transaction)} disabled={deletingId === transaction.id}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(transaction.id)} disabled={deletingId === transaction.id}>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => setConfirmDeleteId(transaction.id)} disabled={deletingId === transaction.id}>
                         {deletingId === transaction.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
@@ -359,6 +370,16 @@ export const TransactionsList = () => {
           </form>
         </DialogContent>
       </Dialog>
+      <TransactionsDeleteConfirm
+        open={!!confirmDeleteId}
+        onOpenChange={(open) => setConfirmDeleteId(open ? confirmDeleteId : null)}
+        busy={!!deletingId}
+        onConfirm={async () => {
+          if (!confirmDeleteId) return;
+          await handleDelete(confirmDeleteId);
+          setConfirmDeleteId(null);
+        }}
+      />
     </Card>
   );
 };
@@ -391,3 +412,39 @@ const TxAmount = ({ transaction, accounts }: { transaction: Transaction; account
     </div>
   );
 };
+
+// Confirm delete dialog (mounted once at bottom of list card)
+// Note: Placing here to keep file self-contained; dialog is rendered at same level as the list Card.
+export const TransactionsDeleteConfirm = ({
+  open,
+  onOpenChange,
+  onConfirm,
+  busy,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => Promise<void> | void;
+  busy: boolean;
+}) => (
+  <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
+        <AlertDialogDescription>
+          This action cannot be undone. This will permanently delete the transaction from your history.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+        <AlertDialogAction
+          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          disabled={busy}
+          onClick={onConfirm}
+        >
+          {busy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+          Delete
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+);
