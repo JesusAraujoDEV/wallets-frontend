@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, Pencil, Trash2, Wallet } from "lucide-react";
+import { PlusCircle, Pencil, Trash2, Wallet, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AccountsStore, newId, onDataChange } from "@/lib/storage";
 import type { Account } from "@/lib/types";
@@ -24,6 +24,8 @@ export const AccountManager = () => {
   const { rate } = useVESExchangeRate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -62,42 +64,51 @@ export const AccountManager = () => {
       return;
     }
 
-    if (editingAccount) {
-      const updated: Account = {
-        ...editingAccount,
-        name: formData.name,
-        currency: formData.currency,
-        balance: parseFloat(formData.balance),
-      };
-      await AccountsStore.upsert(updated);
-      toast({
-        title: "Account Updated",
-        description: `${formData.name} has been updated successfully.`,
-      });
-    } else {
-      const newAccount: Account = {
-        id: newId(),
-        name: formData.name,
-        currency: formData.currency,
-        balance: parseFloat(formData.balance),
-      };
-      await AccountsStore.upsert(newAccount);
-      toast({
-        title: "Account Created",
-        description: `${formData.name} has been created successfully.`,
-      });
+    try {
+      setIsSubmitting(true);
+      if (editingAccount) {
+        const updated: Account = {
+          ...editingAccount,
+          name: formData.name,
+          currency: formData.currency,
+          balance: parseFloat(formData.balance),
+        };
+        await AccountsStore.upsert(updated);
+        toast({
+          title: "Account Updated",
+          description: `${formData.name} has been updated successfully.`,
+        });
+      } else {
+        const newAccount: Account = {
+          id: newId(),
+          name: formData.name,
+          currency: formData.currency,
+          balance: parseFloat(formData.balance),
+        };
+        await AccountsStore.upsert(newAccount);
+        toast({
+          title: "Account Created",
+          description: `${formData.name} has been created successfully.`,
+        });
+      }
+      setIsDialogOpen(false);
+      resetForm();
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsDialogOpen(false);
-    resetForm();
   };
 
-  const handleDelete = (accountId: string) => {
-  AccountsStore.remove(accountId);
-    toast({
-      title: "Account Deleted",
-      description: "The account has been removed.",
-    });
+  const handleDelete = async (accountId: string) => {
+    try {
+      setDeletingId(accountId);
+      await AccountsStore.remove(accountId);
+      toast({
+        title: "Account Deleted",
+        description: "The account has been removed.",
+      });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   // Sync local state with storage changes (in case other components modify data)
@@ -164,11 +175,18 @@ export const AccountManager = () => {
                 />
               </div>
               <div className="flex gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1" disabled={isSubmitting}>
                   Cancel
                 </Button>
-                <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90">
-                  {editingAccount ? "Update" : "Create"}
+                <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90" disabled={isSubmitting} aria-busy={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {editingAccount ? "Saving..." : "Creating..."}
+                    </>
+                  ) : (
+                    editingAccount ? "Update" : "Create"
+                  )}
                 </Button>
               </div>
             </form>
@@ -208,6 +226,7 @@ export const AccountManager = () => {
                 size="sm"
                 onClick={() => handleOpenDialog(account)}
                 className="flex-1"
+                disabled={deletingId === account.id}
               >
                 <Pencil className="w-3 h-3 mr-1" />
                 Edit
@@ -217,9 +236,19 @@ export const AccountManager = () => {
                 size="sm"
                 onClick={() => handleDelete(account.id)}
                 className="flex-1 text-destructive hover:bg-destructive/10"
+                disabled={deletingId === account.id}
               >
-                <Trash2 className="w-3 h-3 mr-1" />
-                Delete
+                {deletingId === account.id ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    Delete
+                  </>
+                )}
               </Button>
             </div>
           </Card>

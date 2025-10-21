@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar as CalendarIcon, PlusCircle } from "lucide-react";
+import { Calendar as CalendarIcon, PlusCircle, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AccountsStore, CategoriesStore, TransactionsStore, newId, onDataChange } from "@/lib/storage";
 import type { Account, Category } from "@/lib/types";
@@ -23,6 +23,7 @@ export const TransactionForm = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const { rate } = useVESExchangeRate();
+  const [submitting, setSubmitting] = useState(false);
   const filteredCategories = categories.filter((c) => c.type === type);
 
   useEffect(() => {
@@ -60,27 +61,32 @@ export const TransactionForm = () => {
     const selectedAccount = accounts.find(acc => acc.id === account);
     const selectedCategory = categories.find(cat => cat.id === category);
 
-    // Persist transaction
-    await TransactionsStore.add({
-      id: newId(),
-      date: date || new Date().toISOString().slice(0, 10),
-      description: description || (type === "income" ? "Income" : "Expense"),
-      categoryId: selectedCategory?.id || "",
-      accountId: selectedAccount?.id || "",
-      amount: parseFloat(amount),
-      type,
-    });
-    toast({
-      title: "Transaction Added",
-      description: `${type === "income" ? "Income" : "Expense"} of $${amount} recorded to ${selectedAccount?.name}.`,
-    });
+    try {
+      setSubmitting(true);
+      // Persist transaction
+      await TransactionsStore.add({
+        id: newId(),
+        date: date || new Date().toISOString().slice(0, 10),
+        description: description || (type === "income" ? "Income" : "Expense"),
+        categoryId: selectedCategory?.id || "",
+        accountId: selectedAccount?.id || "",
+        amount: parseFloat(amount),
+        type,
+      });
+      toast({
+        title: "Transaction Added",
+        description: `${type === "income" ? "Income" : "Expense"} of $${amount} recorded to ${selectedAccount?.name}.`,
+      });
 
-    // Reset form
-    setAccount("");
-    setAmount("");
-    setCategory("");
-    setDescription("");
-    setDate(new Date().toISOString().slice(0, 10));
+      // Reset form
+      setAccount("");
+      setAmount("");
+      setCategory("");
+      setDescription("");
+      setDate(new Date().toISOString().slice(0, 10));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -201,9 +207,18 @@ export const TransactionForm = () => {
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
-        <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
-          <PlusCircle className="w-4 h-4 mr-2" />
-          Add Transaction
+        <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={submitting} aria-busy={submitting}>
+          {submitting ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Adding...
+            </>
+          ) : (
+            <>
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Add Transaction
+            </>
+          )}
         </Button>
       </form>
     </Card>

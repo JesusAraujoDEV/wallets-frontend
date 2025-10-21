@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
 import { convertToUSDByDate } from "@/lib/rates";
@@ -24,6 +24,8 @@ export const TransactionsList = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     accountId: "",
     type: "expense" as "income" | "expense",
@@ -63,8 +65,13 @@ export const TransactionsList = () => {
   };
 
   const handleDelete = async (id: string) => {
-    await TransactionsStore.remove(id);
-    toast({ title: "Transaction Deleted", description: "The transaction has been removed." });
+    try {
+      setDeletingId(id);
+      await TransactionsStore.remove(id);
+      toast({ title: "Transaction Deleted", description: "The transaction has been removed." });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -83,10 +90,15 @@ export const TransactionsList = () => {
       description: formData.description,
       date: formData.date || editingTx.date,
     };
-    await TransactionsStore.update(next);
-    setIsDialogOpen(false);
-    setEditingTx(null);
-    toast({ title: "Transaction Updated", description: "Your changes have been saved." });
+    try {
+      setSaving(true);
+      await TransactionsStore.update(next);
+      setIsDialogOpen(false);
+      setEditingTx(null);
+      toast({ title: "Transaction Updated", description: "Your changes have been saved." });
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Filter transactions
@@ -202,11 +214,15 @@ export const TransactionsList = () => {
                       accounts={accounts}
                     />
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(transaction)}>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(transaction)} disabled={deletingId === transaction.id}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(transaction.id)}>
-                        <Trash2 className="h-4 w-4" />
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(transaction.id)} disabled={deletingId === transaction.id}>
+                        {deletingId === transaction.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -318,8 +334,17 @@ export const TransactionsList = () => {
               />
             </div>
             <div className="flex gap-2 pt-2">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-              <Button type="submit" className="flex-1">Save</Button>
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)} disabled={saving}>Cancel</Button>
+              <Button type="submit" className="flex-1" disabled={saving} aria-busy={saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </Button>
             </div>
           </form>
         </DialogContent>

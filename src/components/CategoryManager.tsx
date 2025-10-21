@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { CategoriesStore, newId, onDataChange } from "@/lib/storage";
@@ -26,6 +26,8 @@ export const CategoryManager = () => {
   const [categories, setCategories] = useState<Category[]>(CategoriesStore.all());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     type: "expense" as "income" | "expense",
@@ -45,36 +47,32 @@ export const CategoryManager = () => {
     const selectedColor = pastelColors.find(c => c.name === formData.colorName);
     if (!selectedColor) return;
 
-    if (editingCategory) {
-      // Update existing category
-      await CategoriesStore.upsert({
-        ...editingCategory,
-        name: formData.name,
-        type: formData.type,
-        color: selectedColor.value,
-        colorName: selectedColor.name,
-      });
-      toast({
-        title: "Category Updated",
-        description: `${formData.name} has been updated successfully.`,
-      });
-    } else {
-      // Create new category
-      const newCategory: Category = {
-        id: newId(),
-        name: formData.name,
-        type: formData.type,
-        color: selectedColor.value,
-        colorName: selectedColor.name,
-      };
-  await CategoriesStore.upsert(newCategory);
-      toast({
-        title: "Category Created",
-        description: `${formData.name} has been added successfully.`,
-      });
+    try {
+      setIsSubmitting(true);
+      if (editingCategory) {
+        await CategoriesStore.upsert({
+          ...editingCategory,
+          name: formData.name,
+          type: formData.type,
+          color: selectedColor.value,
+          colorName: selectedColor.name,
+        });
+        toast({ title: "Category Updated", description: `${formData.name} has been updated successfully.` });
+      } else {
+        const newCategory: Category = {
+          id: newId(),
+          name: formData.name,
+          type: formData.type,
+          color: selectedColor.value,
+          colorName: selectedColor.name,
+        };
+        await CategoriesStore.upsert(newCategory);
+        toast({ title: "Category Created", description: `${formData.name} has been added successfully.` });
+      }
+      handleCloseDialog();
+    } finally {
+      setIsSubmitting(false);
     }
-
-    handleCloseDialog();
   };
 
   const handleEdit = (category: Category) => {
@@ -89,11 +87,13 @@ export const CategoryManager = () => {
 
   const handleDelete = async (categoryId: string) => {
     const category = categories.find(c => c.id === categoryId);
-    await CategoriesStore.remove(categoryId);
-    toast({
-      title: "Category Deleted",
-      description: `${category?.name} has been removed.`,
-    });
+    try {
+      setDeletingId(categoryId);
+      await CategoriesStore.remove(categoryId);
+      toast({ title: "Category Deleted", description: `${category?.name} has been removed.` });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleCloseDialog = () => {
@@ -184,9 +184,16 @@ export const CategoryManager = () => {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>
-                <Button onClick={handleCreateOrUpdate}>
-                  {editingCategory ? "Update" : "Create"}
+                <Button variant="outline" onClick={handleCloseDialog} disabled={isSubmitting}>Cancel</Button>
+                <Button onClick={handleCreateOrUpdate} disabled={isSubmitting} aria-busy={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {editingCategory ? "Saving..." : "Creating..."}
+                    </>
+                  ) : (
+                    editingCategory ? "Update" : "Create"
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -218,6 +225,7 @@ export const CategoryManager = () => {
                     size="sm"
                     onClick={() => handleEdit(category)}
                     className="h-8 w-8 p-0"
+                    disabled={deletingId === category.id}
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>
@@ -226,8 +234,13 @@ export const CategoryManager = () => {
                     size="sm"
                     onClick={() => handleDelete(category.id)}
                     className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    disabled={deletingId === category.id}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {deletingId === category.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>

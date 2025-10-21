@@ -9,12 +9,28 @@ export const onDataChange = (handler: () => void) => {
 };
 const emit = () => bus.dispatchEvent(new Event("data"));
 
+// Global network activity tracker
+let inFlight = 0;
+export const onNetworkActivity = (handler: (count: number) => void) => {
+  const fn = () => handler(inFlight);
+  bus.addEventListener("net", fn);
+  return () => bus.removeEventListener("net", fn);
+};
+const emitNet = () => bus.dispatchEvent(new Event("net"));
+
 const API_BASE = "/api"; // Works on Vercel serverless functions
 
 async function fetchJSON<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const res = await fetch(input as any, { headers: { "content-type": "application/json" }, ...init });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json() as Promise<T>;
+  try {
+    inFlight++;
+    emitNet();
+    const res = await fetch(input as any, { headers: { "content-type": "application/json" }, ...init });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<T>;
+  } finally {
+    inFlight = Math.max(0, inFlight - 1);
+    emitNet();
+  }
 }
 
 // In-memory caches to keep sync API surface for components
