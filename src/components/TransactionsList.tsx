@@ -18,6 +18,7 @@ export const TransactionsList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [filterAccount, setFilterAccount] = useState("all");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -106,7 +107,8 @@ export const TransactionsList = () => {
                           catName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === "all" || transaction.type === filterType;
     const matchesCategory = filterCategory === "all" || transaction.categoryId === filterCategory;
-    return matchesSearch && matchesType && matchesCategory;
+    const matchesAccount = filterAccount === "all" || transaction.accountId === filterAccount;
+    return matchesSearch && matchesType && matchesCategory && matchesAccount;
   });
 
   // Group by date
@@ -127,7 +129,7 @@ export const TransactionsList = () => {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -155,6 +157,17 @@ export const TransactionsList = () => {
               <SelectItem value="all">All Categories</SelectItem>
               {categoriesOptions.map(category => (
                 <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterAccount} onValueChange={setFilterAccount}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by account" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Accounts</SelectItem>
+              {accountsOptions.map(acc => (
+                <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
