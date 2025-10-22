@@ -147,7 +147,16 @@ export const TransactionsStore = {
     // Adjust account balance client-side only (server already updated it)
     if (acc) {
       const delta = tx.type === "income" ? tx.amount : -tx.amount;
-      acc.balance = Number(((acc.balance || 0) + delta).toFixed(2));
+      const newBalance = Number(((acc.balance || 0) + delta).toFixed(2));
+      // Replace account object and array reference to trigger React updates
+      const idx = accountsCache.findIndex(a => a.id === acc.id);
+      if (idx >= 0) {
+        accountsCache = [
+          ...accountsCache.slice(0, idx),
+          { ...accountsCache[idx], balance: newBalance },
+          ...accountsCache.slice(idx + 1),
+        ];
+      }
     }
     emit();
   },
@@ -160,7 +169,15 @@ export const TransactionsStore = {
       const acc = accountsCache.find(a => a.id === existing.accountId);
       if (acc) {
         const revert = existing.type === "income" ? -existing.amount : existing.amount;
-        acc.balance = Number(((acc.balance || 0) + revert).toFixed(2));
+        const newBalance = Number(((acc.balance || 0) + revert).toFixed(2));
+        const idx = accountsCache.findIndex(a => a.id === acc.id);
+        if (idx >= 0) {
+          accountsCache = [
+            ...accountsCache.slice(0, idx),
+            { ...accountsCache[idx], balance: newBalance },
+            ...accountsCache.slice(idx + 1),
+          ];
+        }
       }
     }
     emit();
@@ -176,13 +193,29 @@ export const TransactionsStore = {
       const prevAcc = accountsCache.find(a => a.id === prev.accountId);
       if (prevAcc) {
         const prevDelta = prev.type === "income" ? prev.amount : -prev.amount;
-        prevAcc.balance = Number(((prevAcc.balance || 0) - prevDelta).toFixed(2));
+        const newBalance = Number(((prevAcc.balance || 0) - prevDelta).toFixed(2));
+        const idx = accountsCache.findIndex(a => a.id === prevAcc.id);
+        if (idx >= 0) {
+          accountsCache = [
+            ...accountsCache.slice(0, idx),
+            { ...accountsCache[idx], balance: newBalance },
+            ...accountsCache.slice(idx + 1),
+          ];
+        }
       }
       // Apply next
       const nextAcc = accountsCache.find(a => a.id === next.accountId);
       if (nextAcc) {
         const nextDelta = next.type === "income" ? next.amount : -next.amount;
-        nextAcc.balance = Number(((nextAcc.balance || 0) + nextDelta).toFixed(2));
+        const newBalance = Number(((nextAcc.balance || 0) + nextDelta).toFixed(2));
+        const idx = accountsCache.findIndex(a => a.id === nextAcc.id);
+        if (idx >= 0) {
+          accountsCache = [
+            ...accountsCache.slice(0, idx),
+            { ...accountsCache[idx], balance: newBalance },
+            ...accountsCache.slice(idx + 1),
+          ];
+        }
       }
     }
     emit();
