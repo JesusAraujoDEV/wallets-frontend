@@ -29,16 +29,24 @@ function getDelta(type: 'ingreso' | 'gasto', amount: number | string): number {
 // Obtener tasa VES por USD por fecha (YYYY-MM-DD) desde la API pública
 async function getVesPerUsdByDate(dateISO: string): Promise<number | null> {
   try {
-    const d = (dateISO || '').slice(0, 10);
-    if (!d) return null;
-    const url = `https://api.dolarvzla.com/public/exchange-rate/list?from=${d}&to=${d}`;
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) return null;
-    const json = await res.json();
-    const item = json?.rates?.[0];
-    const rate = item?.usd != null ? Number(item.usd) : null; // VES por 1 USD
-    if (!rate || !isFinite(rate)) return null;
-    return rate;
+    const target = (dateISO || '').slice(0, 10);
+    if (!target) return null;
+    // Fallback up to 7 days back (weekends/holidays)
+    let d = new Date(target + 'T00:00:00Z');
+    for (let i = 0; i <= 7; i++) {
+      const iso = d.toISOString().slice(0, 10);
+      const url = `https://api.dolarvzla.com/public/exchange-rate/list?from=${iso}&to=${iso}`;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (res.ok) {
+        const json = await res.json();
+        const item = json?.rates?.[0];
+        const rate = item?.usd != null ? Number(item.usd) : null;
+        if (rate && isFinite(rate)) return rate;
+      }
+      // step back one day
+      d = new Date(d.getTime() - 24 * 60 * 60 * 1000);
+    }
+    return null;
   } catch {
     return null;
   }

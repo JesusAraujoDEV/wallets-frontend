@@ -144,31 +144,64 @@ function writeHist(map: HistoricalCache) {
 }
 
 export async function getRateByDate(dateISO: string): Promise<ExchangeSnapshot | null> {
-  const date = dateISO.slice(0, 10);
+  const target = dateISO.slice(0, 10);
   const hist = readHist();
-  const cached = hist[date];
+  const cached = hist[target];
   if (cached) {
     return {
       vesPerUsd: cached.vesPerUsd,
       vesPerEur: cached.vesPerEur,
       fetchedAt: cached.fetchedAt,
-      sourceDate: date,
+      sourceDate: target,
     };
   }
-  try {
+
+  // Some dates (fines de semana/feriados) might not have a listed rate.
+  // Fallback: search backwards up to 7 days and use the most recent available.
+  const maxBack = 7;
+  const tryFetch = async (date: string) => {
     const url = `${API_LIST_URL}?from=${date}&to=${date}`;
     const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) return null;
     const json = (await res.json()) as { rates: Array<{ date: string; usd: number; eur: number }> };
     const item = json.rates?.[0];
     if (!item) return null;
-    const snap: ExchangeSnapshot = {
-      vesPerUsd: Number(item.usd),
-      vesPerEur: Number(item.eur),
-      fetchedAt: new Date().toISOString(),
-      sourceDate: item.date,
+    return {
+      date: item.date,
+      usd: Number(item.usd),
+      eur: Number(item.eur),
     };
-    hist[date] = { vesPerUsd: snap.vesPerUsd, vesPerEur: snap.vesPerEur, fetchedAt: snap.fetchedAt };
+  };
+
+  try {
+    // Walk back day-by-day
+    let found: { date: string; usd: number; eur: number } | null = null;
+    let d = new Date(target + 'T00:00:00Z');
+    for (let i = 0; i <= maxBack; i++) {
+      const iso = d.toISOString().slice(0, 10);
+      // Check hist for this specific date
+      const cachedAlt = hist[iso];
+      if (cachedAlt) {
+        found = { date: iso, usd: cachedAlt.vesPerUsd, eur: cachedAlt.vesPerEur };
+        break;
+      }
+      const got = await tryFetch(iso);
+      if (got) { found = got; break; }
+      // step back one day
+      d = new Date(d.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    if (!found) return null;
+
+    const snap: ExchangeSnapshot = {
+      vesPerUsd: found.usd,
+      vesPerEur: found.eur,
+      fetchedAt: new Date().toISOString(),
+      sourceDate: found.date, // actual source date (may be before target)
+    };
+    // Cache under both the found date and the original target date for quicker future lookups
+    hist[found.date] = { vesPerUsd: snap.vesPerUsd, vesPerEur: snap.vesPerEur, fetchedAt: snap.fetchedAt };
+    hist[target] = { vesPerUsd: snap.vesPerUsd, vesPerEur: snap.vesPerEur, fetchedAt: snap.fetchedAt };
     writeHist(hist);
     return snap;
   } catch {
