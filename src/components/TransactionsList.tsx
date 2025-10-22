@@ -228,18 +228,18 @@ export const TransactionsList = () => {
   return (
     <Card className="shadow-md">
       <CardHeader>
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="min-w-0">
             <CardTitle>Transaction Log</CardTitle>
             <CardDescription>View and filter your daily transactions</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-2">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
+            <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-2 w-full sm:w-auto">
               {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               Refresh
             </Button>
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-              <Button onClick={() => setIsAddOpen(true)} className="gap-2">
+              <Button onClick={() => setIsAddOpen(true)} className="gap-2 w-full sm:w-auto">
                 <Plus className="h-4 w-4" />
                 New Transaction
               </Button>
@@ -311,17 +311,15 @@ export const TransactionsList = () => {
         <div className="space-y-6">
           {Object.entries(groupedTransactions).map(([date, transactions]) => (
             <div key={date} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground flex-1">
                   <div className="h-px bg-border flex-1" />
                   <span className="px-3">
-                    {dayjs(String(date).slice(0,10)).format('dddd, MMMM D, YYYY')}
-                    {" , tasa USD: "}
-                    {vesRateByDate[date] != null ? vesRateByDate[date]?.toFixed(4) : '…'}
+                    {dayjs(String(date).slice(0,10)).format('dddd, MMM D, YYYY')} • Tasa: {vesRateByDate[date] != null ? vesRateByDate[date]?.toFixed(2) : '…'}
                   </span>
                   <div className="h-px bg-border flex-1" />
                 </div>
-                <div className="ml-3 flex items-center gap-2 text-xs whitespace-nowrap">
+                <div className="sm:ml-3 flex items-center gap-2 text-xs whitespace-nowrap">
                   <Badge variant="outline" className="border-green-500 text-green-600">+${(groupTotals[date]?.income ?? 0).toFixed(2)}</Badge>
                   <Badge variant="outline" className="border-red-500 text-red-600">-${(groupTotals[date]?.expenses ?? 0).toFixed(2)}</Badge>
                   <Badge variant="secondary" className="font-semibold">Bal: ${(groupTotals[date]?.balance ?? 0).toFixed(2)}</Badge>
@@ -331,20 +329,20 @@ export const TransactionsList = () => {
                 {transactions.map(transaction => (
                   <div
                     key={transaction.id}
-                    className="flex items-center gap-4 p-4 rounded-lg bg-card border border-border hover:shadow-sm transition-shadow"
+                    className="grid grid-cols-1 sm:grid-cols-[auto,1fr,auto,auto] items-center gap-3 p-4 rounded-lg bg-card border border-border hover:shadow-sm transition-shadow"
                   >
-                    <div className="flex-shrink-0">
+                    <div className="">
                       {transaction.type === "income" ? (
                         <ArrowUpCircle className="h-8 w-8 text-primary" />
                       ) : (
                         <ArrowDownCircle className="h-8 w-8 text-accent" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold text-foreground sm:truncate">
                         {transaction.description}
                       </p>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center flex-wrap gap-2 mt-1">
                         {(() => {
                           const cat = categories.find(c => c.id === transaction.categoryId);
                           const acc = accounts.find(a => a.id === transaction.accountId);
@@ -368,11 +366,13 @@ export const TransactionsList = () => {
                         })()}
                       </div>
                     </div>
-                    <TxAmount
-                      transaction={transaction}
-                      accounts={accounts}
-                    />
-                    <div className="flex items-center gap-2">
+                    <div className="justify-self-end">
+                      <TxAmount
+                        transaction={transaction}
+                        accounts={accounts}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 justify-self-end">
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(transaction)} disabled={deletingId === transaction.id}>
                         <Pencil className="h-4 w-4" />
                       </Button>
