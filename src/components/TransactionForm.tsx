@@ -52,7 +52,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
     "Coins","ArrowLeftRight","Users","Home",
     "Heart","Calendar","CalendarCheck","Briefcase",
     "CheckCircle2","FileCheck","PackageCheck","BadgeCheck",
-    "BriefcaseMedical","Hospital","ShoppingBasket","CreditCard"
+    "BriefcaseMedical","Hospital","ShoppingBasket","CreditCard","Gamepad2"
   ];
   const ICON_OPTIONS: string[] = (type === "expense" ? ICON_OPTIONS_EXPENSE : ICON_OPTIONS_INCOME);
 
@@ -248,7 +248,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
             </DialogHeader>
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
               <div className="text-sm text-muted-foreground">Type: <span className="font-medium capitalize">{type}</span></div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2">
                 {uiCategories.map((cat) => {
                   const selected = category === cat.id;
                   return (
@@ -257,19 +257,19 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                       key={cat.id}
                       onClick={() => { setCategory(cat.id); setIsCatPickerOpen(false); }}
                       className={cn(
-                        "flex items-center gap-2 px-3 py-2 rounded-md border text-sm",
+                        "flex items-start text-left gap-2 px-3 py-2 rounded-md border text-sm h-auto w-full max-w-full",
                         selected ? "bg-accent border-accent ring-2 ring-accent/50" : "hover:bg-accent/40"
                       )}
                       title={cat.name}
                     >
                       {cat.icon && (Icons as any)[cat.icon] ? (
-                        (() => { const C = (Icons as any)[cat.icon]; return <C className="h-4 w-4" style={{ color: cat.color || undefined }} />; })()
+                        (() => { const C = (Icons as any)[cat.icon]; return <C className="h-5 w-5 shrink-0" style={{ color: cat.color || undefined }} />; })()
                       ) : null}
                       <span
-                        className="inline-block w-3 h-3 rounded-full"
+                        className="inline-block w-3 h-3 rounded-full shrink-0"
                         style={{ backgroundColor: cat.color || "hsl(var(--muted))" }}
                       />
-                      <span className="truncate">{cat.name}</span>
+                      <span className="flex-1 min-w-0 whitespace-normal break-normal leading-tight">{cat.name}</span>
                     </button>
                   );
                 })}
