@@ -56,6 +56,7 @@ export const TransactionsList = () => {
     date: "",
   });
   const [vesRateByDate, setVesRateByDate] = useState<Record<string, number | null>>({});
+  const [groupTotals, setGroupTotals] = useState<Record<string, { income: number; expenses: number; balance: number }>>({});
 
   useEffect(() => {
     const load = () => {
@@ -197,6 +198,33 @@ export const TransactionsList = () => {
     return () => { mounted = false; };
   }, [groupedTransactions, vesRateByDate]);
 
+  // Compute per-day totals (USD) for income/expenses using historical rate per tx date
+  useEffect(() => {
+    const dates = Object.keys(groupedTransactions);
+    if (dates.length === 0) return;
+    let mounted = true;
+    (async () => {
+      const updates: Record<string, { income: number; expenses: number; balance: number }> = {};
+      await Promise.all(dates.map(async (d) => {
+        if (groupTotals[d] !== undefined) return; // already computed
+        const txs = groupedTransactions[d];
+        const usdValues = await Promise.all(txs.map(async (tx) => {
+          const acc = accounts.find(a => a.id === tx.accountId);
+          const cur = (tx as any).currency ?? acc?.currency ?? 'USD';
+          const usd = await convertToUSDByDate(tx.amount, cur as any, tx.date);
+          return { type: tx.type, usd: usd ?? 0 } as { type: 'income' | 'expense'; usd: number };
+        }));
+        const income = usdValues.filter(v => v.type === 'income').reduce((s, v) => s + v.usd, 0);
+        const expenses = usdValues.filter(v => v.type === 'expense').reduce((s, v) => s + v.usd, 0);
+        updates[d] = { income, expenses, balance: income - expenses };
+      }));
+      if (mounted && Object.keys(updates).length > 0) {
+        setGroupTotals(prev => ({ ...prev, ...updates }));
+      }
+    })();
+    return () => { mounted = false; };
+  }, [groupedTransactions, accounts, groupTotals]);
+
   return (
     <Card className="shadow-md">
       <CardHeader>
@@ -283,14 +311,21 @@ export const TransactionsList = () => {
         <div className="space-y-6">
           {Object.entries(groupedTransactions).map(([date, transactions]) => (
             <div key={date} className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <div className="h-px bg-border flex-1" />
-                <span className="px-3">
-                  {dayjs(String(date).slice(0,10)).format('dddd, MMMM D, YYYY')}
-                  {" , tasa USD: "}
-                  {vesRateByDate[date] != null ? vesRateByDate[date]?.toFixed(4) : '…'}
-                </span>
-                <div className="h-px bg-border flex-1" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground flex-1">
+                  <div className="h-px bg-border flex-1" />
+                  <span className="px-3">
+                    {dayjs(String(date).slice(0,10)).format('dddd, MMMM D, YYYY')}
+                    {" , tasa USD: "}
+                    {vesRateByDate[date] != null ? vesRateByDate[date]?.toFixed(4) : '…'}
+                  </span>
+                  <div className="h-px bg-border flex-1" />
+                </div>
+                <div className="ml-3 flex items-center gap-2 text-xs whitespace-nowrap">
+                  <Badge variant="outline" className="border-green-500 text-green-600">+${(groupTotals[date]?.income ?? 0).toFixed(2)}</Badge>
+                  <Badge variant="outline" className="border-red-500 text-red-600">-${(groupTotals[date]?.expenses ?? 0).toFixed(2)}</Badge>
+                  <Badge variant="secondary" className="font-semibold">Bal: ${(groupTotals[date]?.balance ?? 0).toFixed(2)}</Badge>
+                </div>
               </div>
               <div className="space-y-2">
                 {transactions.map(transaction => (
