@@ -207,7 +207,12 @@ export const TransactionsList = () => {
       const updates: Record<string, { income: number; expenses: number; balance: number }> = {};
       await Promise.all(dates.map(async (d) => {
         if (groupTotals[d] !== undefined) return; // already computed
-        const txs = groupedTransactions[d];
+        // Exclude balance adjustment categories from daily totals
+        const txs = groupedTransactions[d].filter(tx => {
+          const cat = categories.find(c => c.id === tx.categoryId);
+          const name = (cat?.name || '').toLowerCase();
+          return name !== 'ajuste de balance (+)' && name !== 'ajuste de balance (-)';
+        });
         const usdValues = await Promise.all(txs.map(async (tx) => {
           const acc = accounts.find(a => a.id === tx.accountId);
           const cur = (tx as any).currency ?? acc?.currency ?? 'USD';
@@ -223,7 +228,7 @@ export const TransactionsList = () => {
       }
     })();
     return () => { mounted = false; };
-  }, [groupedTransactions, accounts, groupTotals]);
+  }, [groupedTransactions, accounts, categories, groupTotals]);
 
   return (
     <Card className="shadow-md">
