@@ -33,6 +33,7 @@ export const TransactionsList = () => {
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterAccount, setFilterAccount] = useState("all");
+  const [filterDate, setFilterDate] = useState<string>(""); // YYYY-MM-DD or empty
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -75,6 +76,14 @@ export const TransactionsList = () => {
     } finally {
       setRefreshing(false);
     }
+  };
+
+  const handleClearFilters = () => {
+    setSearchQuery("");
+    setFilterType("all");
+    setFilterCategory("all");
+    setFilterAccount("all");
+    setFilterDate("");
   };
 
   const handleEdit = (tx: Transaction) => {
@@ -136,12 +145,15 @@ export const TransactionsList = () => {
     const matchesType = filterType === "all" || transaction.type === filterType;
     const matchesCategory = filterCategory === "all" || transaction.categoryId === filterCategory;
     const matchesAccount = filterAccount === "all" || transaction.accountId === filterAccount;
-    return matchesSearch && matchesType && matchesCategory && matchesAccount;
+    // Normalize to YYYY-MM-DD for robust comparison regardless of timezones or formats
+    const txDateOnly = transaction.date ? dayjs(transaction.date).format('YYYY-MM-DD') : '';
+    const matchesDate = !filterDate || txDateOnly === filterDate;
+    return matchesSearch && matchesType && matchesCategory && matchesAccount && matchesDate;
   });
 
   // Group by date
   const groupedTransactions = filteredTransactions.reduce((groups, transaction) => {
-    const date = transaction.date;
+    const date = transaction.date ? dayjs(transaction.date).format('YYYY-MM-DD') : '';
     if (!groups[date]) {
       groups[date] = [];
     }
@@ -198,7 +210,7 @@ export const TransactionsList = () => {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Filters */}
-  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -240,6 +252,14 @@ export const TransactionsList = () => {
               ))}
             </SelectContent>
           </Select>
+          <div className="flex gap-2">
+            <Input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+            />
+            <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
+          </div>
         </div>
 
         {/* Transaction List */}
@@ -249,12 +269,7 @@ export const TransactionsList = () => {
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <div className="h-px bg-border flex-1" />
                 <span className="px-3">
-                  {new Date(date).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
+                  {dayjs(date).format('dddd, MMMM D, YYYY')}
                   {" , tasa USD: "}
                   {vesRateByDate[date] != null ? vesRateByDate[date]?.toFixed(4) : '…'}
                 </span>
@@ -330,7 +345,7 @@ export const TransactionsList = () => {
               <Label>Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
+                    <Button
                     variant={"outline"}
                     className={cn(
                       "w-full justify-start text-left font-normal",
@@ -338,7 +353,7 @@ export const TransactionsList = () => {
                     type="button"
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.date ? new Date(formData.date).toLocaleDateString() : <span>Pick a date</span>}
+                    {formData.date ? dayjs(formData.date).format('YYYY-MM-DD') : <span>Pick a date</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-2" align="start">
