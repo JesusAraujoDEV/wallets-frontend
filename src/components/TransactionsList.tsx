@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2, Plus, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
-import { convertToUSDByDate } from "@/lib/rates";
+import { convertToUSDByDate, getRateByDate } from "@/lib/rates";
 import type { Transaction, Category, Account } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -52,6 +52,7 @@ export const TransactionsList = () => {
     description: "",
     date: "",
   });
+  const [vesRateByDate, setVesRateByDate] = useState<Record<string, number | null>>({});
 
   useEffect(() => {
     const load = () => {
@@ -148,6 +149,25 @@ export const TransactionsList = () => {
     return groups;
   }, {} as Record<string, Transaction[]>);
 
+  // Fetch VES/USD rate per date group (cached by localStorage in getRateByDate)
+  useEffect(() => {
+    const dates = Object.keys(groupedTransactions);
+    if (dates.length === 0) return;
+    let mounted = true;
+    (async () => {
+      const updates: Record<string, number | null> = {};
+      await Promise.all(dates.map(async (d) => {
+        if (vesRateByDate[d] !== undefined) return; // already have
+        const snap = await getRateByDate(d);
+        updates[d] = snap?.vesPerUsd ?? null;
+      }));
+      if (mounted && Object.keys(updates).length > 0) {
+        setVesRateByDate(prev => ({ ...prev, ...updates }));
+      }
+    })();
+    return () => { mounted = false; };
+  }, [groupedTransactions, vesRateByDate]);
+
   return (
     <Card className="shadow-md">
       <CardHeader>
@@ -228,12 +248,16 @@ export const TransactionsList = () => {
             <div key={date} className="space-y-3">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <div className="h-px bg-border flex-1" />
-                <span className="px-3">{new Date(date).toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}</span>
+                <span className="px-3">
+                  {new Date(date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                  {" , tasa USD: "}
+                  {vesRateByDate[date] != null ? vesRateByDate[date]?.toFixed(4) : '…'}
+                </span>
                 <div className="h-px bg-border flex-1" />
               </div>
               <div className="space-y-2">
