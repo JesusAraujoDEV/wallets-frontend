@@ -77,7 +77,7 @@ export const AccountManager = () => {
 
     try {
       setIsSubmitting(true);
-      if (editingAccount) {
+  if (editingAccount) {
         const prevBalance = editingAccount.balance;
         const nextBalance = parseFloat(formData.balance);
         const changedBalance = isFinite(nextBalance) && nextBalance !== prevBalance;
@@ -134,6 +134,8 @@ export const AccountManager = () => {
             type: adjType,
           });
 
+          // Ensure global stores reflect the latest balances for KPIs
+          await AccountsStore.refresh().catch(() => {});
           toast({
             title: "Account Adjusted",
             description: `Se registró un ajuste de ${Math.abs(delta).toFixed(2)} (${adjType === 'income' ? 'ingreso' : 'gasto'}).`,
@@ -147,6 +149,7 @@ export const AccountManager = () => {
             balance: prevBalance,
           };
           await AccountsStore.upsert(updated);
+          await AccountsStore.refresh().catch(() => {});
           toast({
             title: "Account Updated",
             description: `${formData.name} has been updated successfully.`,
@@ -160,6 +163,7 @@ export const AccountManager = () => {
           balance: parseFloat(formData.balance),
         };
         await AccountsStore.upsert(newAccount);
+        await AccountsStore.refresh().catch(() => {});
         toast({
           title: "Account Created",
           description: `${formData.name} has been created successfully.`,
@@ -176,6 +180,7 @@ export const AccountManager = () => {
     try {
       setDeletingId(accountId);
       await AccountsStore.remove(accountId);
+      await AccountsStore.refresh().catch(() => {});
       toast({
         title: "Account Deleted",
         description: "The account has been removed.",

@@ -62,6 +62,243 @@ export default async function handler(req, res) {
 
     if (method === 'GET') {
       console.log('[API] Procesando GET /transactions...');
+  const { searchParams } = new URL(req.url, 'http://localhost');
+  const grouped = searchParams.get('grouped');
+
+  // Server-side filters
+  const q = (searchParams.get('q') || '').trim() || null;
+  const typeRaw = (searchParams.get('type') || '').trim().toLowerCase();
+  const typeParam: 'ingreso' | 'gasto' | null = typeRaw === 'income' ? 'ingreso' : typeRaw === 'expense' ? 'gasto' : null;
+  const categoryIdParam = (() => { const v = searchParams.get('categoryId'); const n = v ? Number(v) : NaN; return Number.isFinite(n) ? n : null;})();
+  const accountIdParam = (() => { const v = searchParams.get('accountId'); const n = v ? Number(v) : NaN; return Number.isFinite(n) ? n : null;})();
+  const dateParam = (() => { const v = (searchParams.get('date') || '').slice(0,10); return v ? v : null;})();
+      if (grouped === '1' || grouped === 'true') {
+        const pageSizeRaw = searchParams.get('pageSize');
+        const cursorDate = searchParams.get('cursorDate'); // YYYY-MM-DD, exclusive (fetch strictly older days)
+        const pageSize = Math.max(1, Math.min(200, Number(pageSizeRaw) || 20));
+
+        // 1) Determine which days to include fully until cumulative count >= pageSize
+        const daysSql = cursorDate
+          ? sql`
+            WITH days AS (
+              SELECT t.date::date AS day, COUNT(*)::int AS cnt
+              FROM public.transactions t
+              JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
+              WHERE t.user_id = ${userId}
+                AND t.date::date < ${cursorDate}
+                AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
+                AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+                AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
+                AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
+                AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
+              GROUP BY t.date::date
+            ), ordered AS (
+              SELECT day, cnt, SUM(cnt) OVER (ORDER BY day DESC) AS cume
+              FROM days
+              ORDER BY day DESC
+            ), threshold AS (
+              SELECT MIN(day) AS last_day FROM ordered WHERE cume >= ${pageSize}
+            )
+            SELECT day FROM ordered WHERE cume <= ${pageSize}
+            UNION
+            SELECT last_day FROM threshold WHERE last_day IS NOT NULL
+          `
+          : sql`
+            WITH days AS (
+              SELECT t.date::date AS day, COUNT(*)::int AS cnt
+              FROM public.transactions t
+              JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
+              WHERE t.user_id = ${userId}
+                AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
+                AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+                AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
+                AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
+                AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
+              GROUP BY t.date::date
+            ), ordered AS (
+              SELECT day, cnt, SUM(cnt) OVER (ORDER BY day DESC) AS cume
+              FROM days
+              ORDER BY day DESC
+            ), threshold AS (
+              SELECT MIN(day) AS last_day FROM ordered WHERE cume >= ${pageSize}
+            )
+            SELECT day FROM ordered WHERE cume <= ${pageSize}
+            UNION
+            SELECT last_day FROM threshold WHERE last_day IS NOT NULL
+          `;
+
+        // We’ll reuse the computed CTE in a single query to avoid array param issues
+        const list = cursorDate
+          ? await sql`
+            WITH days AS (
+              SELECT t.date::date AS day, COUNT(*)::int AS cnt
+              FROM public.transactions t
+              JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
+              WHERE t.user_id = ${userId}
+                AND t.date::date < ${cursorDate}
+                AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
+                AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+                AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
+                AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
+                AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
+              GROUP BY t.date::date
+            ), ordered AS (
+              SELECT day, cnt, SUM(cnt) OVER (ORDER BY day DESC) AS cume
+              FROM days
+              ORDER BY day DESC
+            ), threshold AS (
+              SELECT MIN(day) AS last_day FROM ordered WHERE cume >= ${pageSize}
+            ), selected_days AS (
+              SELECT day FROM ordered WHERE cume <= ${pageSize}
+              UNION
+              SELECT last_day FROM threshold WHERE last_day IS NOT NULL
+            )
+            SELECT 
+              t.id, 
+              t.date, 
+              t.description, 
+              t.category_id AS "categoryId", 
+              t.account_id AS "accountId", 
+              t.amount,
+              t.currency,
+              t.amount_usd AS "amountUsd",
+              t.exchange_rate_used AS "exchangeRateUsed",
+              c."type" AS "categoryType"
+            FROM public.transactions t
+            JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
+            WHERE t.user_id = ${userId}
+              AND t.date::date IN (SELECT day FROM selected_days)
+              AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
+              AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+              AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
+              AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
+              AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
+            ORDER BY t.date DESC, t.id DESC;
+          `
+          : await sql`
+            WITH days AS (
+              SELECT t.date::date AS day, COUNT(*)::int AS cnt
+              FROM public.transactions t
+              JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
+              WHERE t.user_id = ${userId}
+                AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
+                AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+                AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
+                AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
+                AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
+              GROUP BY t.date::date
+            ), ordered AS (
+              SELECT day, cnt, SUM(cnt) OVER (ORDER BY day DESC) AS cume
+              FROM days
+              ORDER BY day DESC
+            ), threshold AS (
+              SELECT MIN(day) AS last_day FROM ordered WHERE cume >= ${pageSize}
+            ), selected_days AS (
+              SELECT day FROM ordered WHERE cume <= ${pageSize}
+              UNION
+              SELECT last_day FROM threshold WHERE last_day IS NOT NULL
+            )
+            SELECT 
+              t.id, 
+              t.date, 
+              t.description, 
+              t.category_id AS "categoryId", 
+              t.account_id AS "accountId", 
+              t.amount,
+              t.currency,
+              t.amount_usd AS "amountUsd",
+              t.exchange_rate_used AS "exchangeRateUsed",
+              c."type" AS "categoryType"
+            FROM public.transactions t
+            JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
+            WHERE t.user_id = ${userId}
+              AND t.date::date IN (SELECT day FROM selected_days)
+              AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
+              AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+              AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
+              AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
+              AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
+            ORDER BY t.date DESC, t.id DESC;
+          `;
+
+        const safeItems = list.rows.map((tx) => ({
+          id: String(tx.id),
+          date: tx.date,
+          description: tx.description,
+          categoryId: String(tx.categoryId),
+          accountId: String(tx.accountId),
+          amount: Number(tx.amount),
+          type: tx.categoryType === 'ingreso' ? 'income' : 'expense',
+          currency: tx.currency,
+          amountUsd: tx.amountUsd ? Number(tx.amountUsd) : null,
+          exchangeRateUsed: tx.exchangeRateUsed ? Number(tx.exchangeRateUsed) : null,
+        }));
+
+        // 3) Compute next cursor and hasMore: ask for the oldest day included from the selected_days CTE
+        const oldestRes = cursorDate
+          ? await sql`
+            WITH days AS (
+              SELECT t.date::date AS day, COUNT(*)::int AS cnt
+              FROM public.transactions t
+              JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
+              WHERE t.user_id = ${userId} AND t.date::date < ${cursorDate}
+              GROUP BY t.date::date
+            ), ordered AS (
+              SELECT day, cnt, SUM(cnt) OVER (ORDER BY day DESC) AS cume
+              FROM days
+              ORDER BY day DESC
+            ), threshold AS (
+              SELECT MIN(day) AS last_day FROM ordered WHERE cume >= ${pageSize}
+            ), selected_days AS (
+              SELECT day FROM ordered WHERE cume <= ${pageSize}
+              UNION
+              SELECT last_day FROM threshold WHERE last_day IS NOT NULL
+            )
+            SELECT MIN(day) AS oldest FROM selected_days;
+          `
+          : await sql`
+            WITH days AS (
+              SELECT t.date::date AS day, COUNT(*)::int AS cnt
+              FROM public.transactions t
+              JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
+              WHERE t.user_id = ${userId}
+              GROUP BY t.date::date
+            ), ordered AS (
+              SELECT day, cnt, SUM(cnt) OVER (ORDER BY day DESC) AS cume
+              FROM days
+              ORDER BY day DESC
+            ), threshold AS (
+              SELECT MIN(day) AS last_day FROM ordered WHERE cume >= ${pageSize}
+            ), selected_days AS (
+              SELECT day FROM ordered WHERE cume <= ${pageSize}
+              UNION
+              SELECT last_day FROM threshold WHERE last_day IS NOT NULL
+            )
+            SELECT MIN(day) AS oldest FROM selected_days;
+          `;
+        const oldestDayIncluded: string | null = oldestRes.rows?.[0]?.oldest ? String(oldestRes.rows[0].oldest) : null;
+        if (!oldestDayIncluded) {
+          return res.status(200).json({ items: safeItems, hasMore: false, nextCursorDate: null });
+        }
+        const moreRes = await sql`
+          SELECT 1 FROM public.transactions t
+          JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
+          WHERE t.user_id = ${userId}
+            AND t.date::date < ${oldestDayIncluded}
+            AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
+            AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+            AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
+            AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
+            AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
+          LIMIT 1;
+        `;
+        const hasMore = moreRes.rows.length > 0;
+        const nextCursorDate = hasMore ? oldestDayIncluded : null;
+        console.log(`[API] GET /transactions (grouped) items=${safeItems.length} hasMore=${hasMore}`);
+        return res.status(200).json({ items: safeItems, hasMore, nextCursorDate });
+      }
+
+      // Default: return full list (legacy behavior)
       const list = await sql`
         SELECT 
           t.id, 
@@ -77,6 +314,11 @@ export default async function handler(req, res) {
         FROM public.transactions t
         JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
         WHERE t.user_id = ${userId}
+          AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
+          AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+          AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
+          AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
+          AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
         ORDER BY t.date DESC, t.id DESC;
       `;
       console.log(`[API] GET /transactions exitoso. Encontrados ${list.rows.length} registros.`);

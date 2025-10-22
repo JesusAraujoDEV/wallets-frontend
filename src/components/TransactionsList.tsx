@@ -57,10 +57,15 @@ export const TransactionsList = () => {
   });
   const [vesRateByDate, setVesRateByDate] = useState<Record<string, number | null>>({});
   const [groupTotals, setGroupTotals] = useState<Record<string, { income: number; expenses: number; balance: number }>>({});
+  // Server-side grouped pagination state
+  const [nextCursorDate, setNextCursorDate] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState<boolean>(false);
+  const [pageLoading, setPageLoading] = useState<boolean>(false);
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
     const load = () => {
-      setTransactions(TransactionsStore.all());
+      // Keep categories and accounts reactive from the store
       setCategories(CategoriesStore.all());
       setAccounts(AccountsStore.all());
     };
@@ -68,6 +73,99 @@ export const TransactionsList = () => {
     const off = onDataChange(load);
     return off;
   }, []);
+
+  // Fetch first page from server with grouped pagination (days kept intact)
+  const fetchLegacyAll = async () => {
+    // Backward-compatible fallback if grouped API is not available
+    const res = await fetch(`/api/transactions`);
+    if (!res.ok) throw new Error(await res.text());
+    const arr: Transaction[] = await res.json();
+    setTransactions(arr || []);
+    setNextCursorDate(null);
+    setHasMore(false);
+  };
+
+  // Build query string with filters for server requests
+  const buildQuery = (cursor?: string | null) => {
+    const params = new URLSearchParams();
+    params.set('grouped', '1');
+    params.set('pageSize', String(PAGE_SIZE));
+    if (searchQuery.trim()) params.set('q', searchQuery.trim());
+    if (filterType !== 'all') params.set('type', filterType);
+    if (filterCategory !== 'all') params.set('categoryId', filterCategory);
+    if (filterAccount !== 'all') params.set('accountId', filterAccount);
+    if (filterDate) params.set('date', filterDate);
+    if (cursor) params.set('cursorDate', cursor);
+    return `/api/transactions?${params.toString()}`;
+  };
+
+  const fetchFirstPage = async () => {
+    try {
+      setPageLoading(true);
+      const res = await fetch(buildQuery());
+      if (!res.ok) throw new Error(await res.text());
+      const data: any = await res.json();
+      if (Array.isArray(data)) {
+        // Legacy shape
+        setTransactions(data as Transaction[]);
+        setNextCursorDate(null);
+        setHasMore(false);
+      } else {
+        setTransactions((data?.items as Transaction[]) || []);
+        setNextCursorDate((data?.nextCursorDate as string) || null);
+        setHasMore(!!data?.hasMore);
+      }
+      // Reset computed caches for rates/totals to allow recompute for new days
+      setVesRateByDate({});
+      setGroupTotals({});
+    } catch (e) {
+      // Fallback to legacy endpoint if grouped not supported
+      try {
+        await fetchLegacyAll();
+      } catch (e2) {
+        toast({ title: "Failed to load transactions", description: String(e2), variant: "destructive" });
+      }
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  const fetchNextPage = async () => {
+    if (!hasMore || !nextCursorDate) return;
+    try {
+      setPageLoading(true);
+      const res = await fetch(buildQuery(nextCursorDate));
+      if (!res.ok) throw new Error(await res.text());
+      const data: any = await res.json();
+      if (Array.isArray(data)) {
+        // Unexpected legacy shape for a paged call: just append and stop further paging
+        setTransactions(prev => [...prev, ...(data as Transaction[])]);
+        setNextCursorDate(null);
+        setHasMore(false);
+      } else {
+        setTransactions(prev => [...prev, ...(((data?.items as Transaction[]) || []))]);
+        setNextCursorDate((data?.nextCursorDate as string) || null);
+        setHasMore(!!data?.hasMore);
+      }
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Ensure base datasets are available
+    AccountsStore.refresh().catch(() => {});
+    CategoriesStore.refresh().catch(() => {});
+    fetchFirstPage().catch(() => {});
+    // Do not call TransactionsStore.refresh here to avoid loading the entire dataset
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  
+  // Refetch when filters change
+  useEffect(() => {
+    fetchFirstPage().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, filterType, filterCategory, filterAccount, filterDate]);
   const categoriesOptions = useMemo(() => categories, [categories]);
   const accountsOptions = useMemo(() => accounts, [accounts]);
   const editCategories = useMemo(() => categories.filter(c => c.type === formData.type), [categories, formData.type]);
@@ -75,8 +173,8 @@ export const TransactionsList = () => {
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
-      await TransactionsStore.refresh();
-      toast({ title: "Transactions Refreshed", description: "Latest transactions loaded." });
+      await fetchFirstPage();
+      toast({ title: "Transactions Refreshed", description: "Latest transactions loaded (grouped by date)." });
     } finally {
       setRefreshing(false);
     }
@@ -107,6 +205,8 @@ export const TransactionsList = () => {
     try {
       setDeletingId(id);
       await TransactionsStore.remove(id);
+      // Reload first page to keep pagination consistent
+      await fetchFirstPage();
       toast({ title: "Transaction Deleted", description: "The transaction has been removed." });
     } finally {
       setDeletingId(null);
@@ -132,6 +232,7 @@ export const TransactionsList = () => {
     try {
       setSaving(true);
       await TransactionsStore.update(next);
+      await fetchFirstPage();
       setIsDialogOpen(false);
       setEditingTx(null);
       toast({ title: "Transaction Updated", description: "Your changes have been saved." });
@@ -140,20 +241,8 @@ export const TransactionsList = () => {
     }
   };
 
-  // Filter transactions
-  const filteredTransactions = transactions.filter(transaction => {
-    const cat = categories.find(c => c.id === transaction.categoryId);
-    const catName = cat?.name ?? "";
-    const matchesSearch = transaction.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          catName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === "all" || transaction.type === filterType;
-    const matchesCategory = filterCategory === "all" || transaction.categoryId === filterCategory;
-    const matchesAccount = filterAccount === "all" || transaction.accountId === filterAccount;
-    // Normalize using raw date-only slice to avoid timezone shifts
-    const txDateOnly = transaction.date ? String(transaction.date).slice(0, 10) : '';
-    const matchesDate = !filterDate || txDateOnly === filterDate;
-    return matchesSearch && matchesType && matchesCategory && matchesAccount && matchesDate;
-  });
+  // Server-side filtering is in effect; use transactions as-is
+  const filteredTransactions = transactions;
 
   // Always sort by date DESC (YYYY-MM-DD) to ensure correct grouping order regardless of insertion
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
@@ -252,7 +341,7 @@ export const TransactionsList = () => {
                 <DialogHeader>
                   <DialogTitle>Add Transaction</DialogTitle>
                 </DialogHeader>
-                <TransactionForm asModalContent onSubmitted={() => setIsAddOpen(false)} />
+                <TransactionForm asModalContent onSubmitted={async () => { setIsAddOpen(false); await fetchFirstPage(); }} />
               </DialogContent>
             </Dialog>
           </div>
@@ -394,11 +483,18 @@ export const TransactionsList = () => {
               </div>
             </div>
           ))}
-          {filteredTransactions.length === 0 && (
+          {filteredTransactions.length === 0 && !pageLoading && (
             <div className="text-center py-12 text-muted-foreground">
               No transactions found. Try adjusting your filters.
             </div>
           )}
+          <div className="flex justify-center pt-2">
+            {pageLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
+            ) : hasMore ? (
+              <Button variant="outline" onClick={fetchNextPage}>Load more days</Button>
+            ) : null}
+          </div>
         </div>
       </CardContent>
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
