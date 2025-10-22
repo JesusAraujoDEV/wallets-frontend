@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2, Plus, RefreshCw } from "lucide-react";
@@ -323,7 +324,9 @@ export const TransactionsList = () => {
                               />
                               <p className="text-sm text-muted-foreground">{cat?.name || "Uncategorized"}</p>
                               {acc ? (
-                                <span className="text-xs text-muted-foreground">• {acc.name} ({acc.currency})</span>
+                                <Badge variant="secondary" className="ml-1 text-xs md:text-sm font-semibold">
+                                  {acc.name} ({acc.currency})
+                                </Badge>
                               ) : null}
                             </>
                           );
