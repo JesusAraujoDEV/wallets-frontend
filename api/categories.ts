@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     if (method === 'GET') {
       console.log('[API] Procesando GET /categories...');
       const list = await sql`
-        SELECT id, name, "type" 
+        SELECT id, name, "type", icon, color, color_name AS "colorName" 
         FROM public.categories 
         WHERE user_id = ${userId}
         ORDER BY name ASC;
@@ -40,9 +40,10 @@ export default async function handler(req, res) {
         id: String(c.id),
         name: c.name,
         type: c.type === 'ingreso' ? 'income' : 'expense',
+        icon: c.icon ?? null,
         // UI expects color fields; provide defaults if DB doesn't have them
-        color: 'hsl(var(--chart-6))',
-        colorName: 'Pastel Blue',
+        color: c.color ?? 'hsl(var(--chart-6))',
+        colorName: c.colorName ?? 'Pastel Blue',
       }));
       res.status(200).json(safeList);
       return;
@@ -52,7 +53,7 @@ export default async function handler(req, res) {
       console.log('[API] Procesando POST /categories (Crear)...');
       const body = await readJsonBody(req);
       // Frontend uses 'income' | 'expense'. Map to DB values 'ingreso' | 'gasto'
-      const { name, type } = body || {};
+      const { name, type, icon, color, colorName } = body || {};
       const dbType = type === 'income' ? 'ingreso' : type === 'expense' ? 'gasto' : type;
 
       if (!name || !dbType) {
@@ -65,8 +66,8 @@ export default async function handler(req, res) {
       }
 
       const result = await sql`
-        INSERT INTO public.categories (name, "type", user_id) 
-        VALUES (${name}, ${dbType}, ${userId})
+        INSERT INTO public.categories (name, "type", icon, color, color_name, user_id) 
+        VALUES (${name}, ${dbType}, ${icon ?? null}, ${color ?? null}, ${colorName ?? null}, ${userId})
         RETURNING id;
       `;
       const newId = String(result.rows[0].id);
@@ -85,7 +86,7 @@ export default async function handler(req, res) {
       }
 
       const body = await readJsonBody(req);
-      const { name, type } = body || {};
+      const { name, type, icon, color, colorName } = body || {};
       const dbType = type === 'income' ? 'ingreso' : type === 'expense' ? 'gasto' : type;
 
       if (!name || !dbType) {
@@ -102,6 +103,9 @@ export default async function handler(req, res) {
         SET 
           name = ${name}, 
           "type" = ${dbType},
+          icon = ${icon ?? null},
+          color = ${color ?? null},
+          color_name = ${colorName ?? null},
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ${Number(id)} AND user_id = ${userId};
       `;

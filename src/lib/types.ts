@@ -9,6 +9,7 @@ export interface Category {
   id: string;
   name: string;
   type: "income" | "expense";
+  icon?: string | null;
   color: string; // CSS color value
   colorName: string;
 }

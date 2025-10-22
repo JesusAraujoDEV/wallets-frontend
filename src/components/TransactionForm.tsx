@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar as CalendarIcon, PlusCircle, Loader2 } from "lucide-react";
+import * as Icons from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AccountsStore, CategoriesStore, TransactionsStore, newId, onDataChange } from "@/lib/storage";
 import type { Account, Category } from "@/lib/types";
@@ -15,6 +16,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import dayjs from 'dayjs';
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asModalContent?: boolean; onSubmitted?: () => void }) => {
   const [account, setAccount] = useState("");
@@ -28,6 +30,36 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
   const { rate } = useVESExchangeRate();
   const [submitting, setSubmitting] = useState(false);
   const filteredCategories = categories.filter((c) => c.type === type);
+  const [isCatPickerOpen, setIsCatPickerOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [creatingCat, setCreatingCat] = useState(false);
+  const [newCatColor, setNewCatColor] = useState<string>("hsl(var(--chart-6))");
+  const [newCatColorName, setNewCatColorName] = useState<string>("Pastel Blue");
+  const [newCatIcon, setNewCatIcon] = useState<string | null>(null);
+
+  const ICON_OPTIONS_EXPENSE: string[] = [
+    "ShoppingCart","ShoppingBag","ShoppingBasket","Store",
+    "Gift","Percent","Receipt","Banknote",
+    "Scissors","Users","Home","Car",
+    "Fuel","Droplet","Film","Ticket",
+    "Gamepad2","Tv","Puzzle","Paperclip",
+    "FileText","PenLine","Pencil","Utensils",
+    "Pizza","Shirt","SquareParking","Cloud",
+    "Database","GraduationCap","Music2"
+  ];
+  const ICON_OPTIONS_INCOME: string[] = [
+    "Wallet","PiggyBank","Banknote","DollarSign",
+    "Coins","ArrowLeftRight","Users","Home",
+    "Heart","Calendar","CalendarCheck","Briefcase",
+    "CheckCircle2","FileCheck","PackageCheck","BadgeCheck",
+    "BriefcaseMedical","Hospital","ShoppingBasket","CreditCard"
+  ];
+  const ICON_OPTIONS: string[] = (type === "expense" ? ICON_OPTIONS_EXPENSE : ICON_OPTIONS_INCOME);
+
+  const uiCategories = filteredCategories.filter((c) => {
+    const n = c.name.toLowerCase();
+    return n !== "ajuste de balance (+)" && n !== "ajuste de balance (-)";
+  });
 
   useEffect(() => {
     const load = () => {
@@ -163,7 +195,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                   type="button"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? new Date(date).toLocaleDateString() : <span>Pick a date</span>}
+                  {date ? dayjs(date).format('YYYY-MM-DD') : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-2" align="start">
@@ -184,19 +216,159 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
         </div>
         <div className="space-y-2">
           <Label htmlFor="category">Category</Label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger id="category">
-              <SelectValue placeholder={`Select ${type} category`} />
-            </SelectTrigger>
-            <SelectContent>
-              {filteredCategories.map((cat) => (
-                <SelectItem key={cat.id} value={cat.id}>
-                  {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsCatPickerOpen(true)}
+            className="w-full justify-start"
+          >
+            {(() => {
+              const selected = uiCategories.find(c => c.id === category) || filteredCategories.find(c => c.id === category);
+              return selected ? (
+                <span className="flex items-center gap-2">
+                  {selected.icon && (Icons as any)[selected.icon] ? (
+                    (() => { const C = (Icons as any)[selected.icon]; return <C className="h-4 w-4" />; })()
+                  ) : null}
+                  <span
+                    className="inline-block w-3 h-3 rounded-full"
+                    style={{ backgroundColor: selected.color || "hsl(var(--muted))" }}
+                  />
+                  <span className="truncate">{selected.name}</span>
+                </span>
+              ) : (
+                <span className="text-muted-foreground">Select {type} category</span>
+              );
+            })()}
+          </Button>
         </div>
+        <Dialog open={isCatPickerOpen} onOpenChange={setIsCatPickerOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Select Category</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">Type: <span className="font-medium capitalize">{type}</span></div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                {uiCategories.map((cat) => {
+                  const selected = category === cat.id;
+                  return (
+                    <button
+                      type="button"
+                      key={cat.id}
+                      onClick={() => { setCategory(cat.id); setIsCatPickerOpen(false); }}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-md border text-sm",
+                        selected ? "bg-accent border-accent ring-2 ring-accent/50" : "hover:bg-accent/40"
+                      )}
+                      title={cat.name}
+                    >
+                      {cat.icon && (Icons as any)[cat.icon] ? (
+                        (() => { const C = (Icons as any)[cat.icon]; return <C className="h-4 w-4" />; })()
+                      ) : null}
+                      <span
+                        className="inline-block w-3 h-3 rounded-full"
+                        style={{ backgroundColor: cat.color || "hsl(var(--muted))" }}
+                      />
+                      <span className="truncate">{cat.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="pt-2 border-t" />
+              <div className="space-y-2">
+                <Label htmlFor="newCatName">Create new category</Label>
+                <div className="flex gap-2">
+                  <Input id="newCatName" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="e.g. Groceries" />
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      const name = newCatName.trim();
+                      if (!name) {
+                        toast({ title: "Missing name", description: "Please enter a category name.", variant: "destructive" });
+                        return;
+                      }
+                      try {
+                        setCreatingCat(true);
+                        const tempId = newId();
+                        await CategoriesStore.upsert({ id: tempId, name, type, color: newCatColor, colorName: newCatColorName, icon: newCatIcon ?? undefined });
+                        const created = CategoriesStore.all().find(c => c.name.toLowerCase() === name.toLowerCase() && c.type === type);
+                        if (created) {
+                          setCategory(created.id);
+                          setIsCatPickerOpen(false);
+                        }
+                        setNewCatName("");
+                        setNewCatColor("hsl(var(--chart-6))");
+                        setNewCatColorName("Pastel Blue");
+                        setNewCatIcon(null);
+                        toast({ title: "Category created", description: `${name} added to ${type}.` });
+                      } finally {
+                        setCreatingCat(false);
+                      }
+                    }}
+                    disabled={creatingCat}
+                  >
+                    {creatingCat ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Create</>) : 'Create'}
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <Label>Color</Label>
+                  <div className="grid grid-cols-6 gap-2">
+                    {[
+                      { color: "hsl(var(--chart-1))", name: "Chart 1" },
+                      { color: "hsl(var(--chart-2))", name: "Chart 2" },
+                      { color: "hsl(var(--chart-3))", name: "Chart 3" },
+                      { color: "hsl(var(--chart-4))", name: "Chart 4" },
+                      { color: "hsl(var(--chart-5))", name: "Chart 5" },
+                      { color: "hsl(var(--chart-6))", name: "Pastel Blue" },
+                      { color: "hsl(var(--primary))", name: "Primary" },
+                      { color: "hsl(var(--secondary))", name: "Secondary" },
+                      { color: "hsl(var(--accent))", name: "Accent" },
+                      { color: "#22c55e", name: "Green" },
+                      { color: "#ef4444", name: "Red" },
+                      { color: "#f59e0b", name: "Amber" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.name}
+                        type="button"
+                        className={cn(
+                          "h-8 w-8 rounded-full border",
+                          newCatColor === opt.color ? "ring-2 ring-offset-2 ring-accent" : ""
+                        )}
+                        style={{ backgroundColor: opt.color }}
+                        title={opt.name}
+                        onClick={() => { setNewCatColor(opt.color); setNewCatColorName(opt.name); }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Icon</Label>
+                  <div className="grid grid-cols-6 gap-2">
+                    {ICON_OPTIONS.map((key) => {
+                      const C = (Icons as any)[key];
+                      if (!C) return null;
+                      const active = newCatIcon === key;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          className={cn(
+                            "h-9 w-9 rounded-md border flex items-center justify-center",
+                            active ? "bg-accent ring-2 ring-accent/70" : "hover:bg-accent/40"
+                          )}
+                          title={key}
+                          onClick={() => setNewCatIcon(key)}
+                        >
+                          <C className="h-4 w-4" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         <div className="space-y-2">
           <Label htmlFor="description">Description (Optional)</Label>
           <Input
