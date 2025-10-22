@@ -227,7 +227,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
               return selected ? (
                 <span className="flex items-center gap-2">
                   {selected.icon && (Icons as any)[selected.icon] ? (
-                    (() => { const C = (Icons as any)[selected.icon]; return <C className="h-4 w-4" />; })()
+                    (() => { const C = (Icons as any)[selected.icon]; return <C className="h-4 w-4" style={{ color: selected.color || undefined }} />; })()
                   ) : null}
                   <span
                     className="inline-block w-3 h-3 rounded-full"
@@ -246,9 +246,9 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
             <DialogHeader>
               <DialogTitle>Select Category</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
               <div className="text-sm text-muted-foreground">Type: <span className="font-medium capitalize">{type}</span></div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                 {uiCategories.map((cat) => {
                   const selected = category === cat.id;
                   return (
@@ -263,7 +263,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                       title={cat.name}
                     >
                       {cat.icon && (Icons as any)[cat.icon] ? (
-                        (() => { const C = (Icons as any)[cat.icon]; return <C className="h-4 w-4" />; })()
+                        (() => { const C = (Icons as any)[cat.icon]; return <C className="h-4 w-4" style={{ color: cat.color || undefined }} />; })()
                       ) : null}
                       <span
                         className="inline-block w-3 h-3 rounded-full"
@@ -312,7 +312,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                 </div>
                 <div className="space-y-2">
                   <Label>Color</Label>
-                  <div className="grid grid-cols-6 gap-2">
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                     {[
                       { color: "hsl(var(--chart-1))", name: "Chart 1" },
                       { color: "hsl(var(--chart-2))", name: "Chart 2" },
@@ -343,7 +343,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                 </div>
                 <div className="space-y-2">
                   <Label>Icon</Label>
-                  <div className="grid grid-cols-6 gap-2">
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                     {ICON_OPTIONS.map((key) => {
                       const C = (Icons as any)[key];
                       if (!C) return null;
@@ -353,13 +353,13 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                           key={key}
                           type="button"
                           className={cn(
-                            "h-9 w-9 rounded-md border flex items-center justify-center",
+                            "h-10 w-10 rounded-md border flex items-center justify-center",
                             active ? "bg-accent ring-2 ring-accent/70" : "hover:bg-accent/40"
                           )}
                           title={key}
                           onClick={() => setNewCatIcon(key)}
                         >
-                          <C className="h-4 w-4" />
+                          <C className="h-5 w-5" style={{ color: newCatColor || undefined }} />
                         </button>
                       );
                     })}

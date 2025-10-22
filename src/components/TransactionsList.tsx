@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2, Plus, RefreshCw } from "lucide-react";
+import * as Icons from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
 import { convertToUSDByDate, getRateByDate } from "@/lib/rates";
@@ -297,6 +298,9 @@ export const TransactionsList = () => {
                           const cat = categories.find(c => c.id === transaction.categoryId);
                           return (
                             <>
+                              {cat?.icon && (Icons as any)[cat.icon] ? (
+                                (() => { const C = (Icons as any)[cat.icon]; return <C className="h-4 w-4" style={{ color: cat?.color || undefined }} />; })()
+                              ) : null}
                               <span
                                 className="inline-block w-3 h-3 rounded-full"
                                 style={{ backgroundColor: cat?.color || "hsl(var(--muted))" }}
