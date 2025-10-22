@@ -56,18 +56,20 @@ export default async function handler(req, res) {
       console.log('[API] Procesando GET /transactions...');
       const list = await sql`
         SELECT 
-          id, 
-          date, 
-          description, 
-          category_id AS "categoryId", 
-          account_id AS "accountId", 
-          amount,
-          currency,
-          amount_usd AS "amountUsd",
-          exchange_rate_used AS "exchangeRateUsed"
-        FROM public.transactions 
-        WHERE user_id = ${userId}
-        ORDER BY date DESC, id DESC;
+          t.id, 
+          t.date, 
+          t.description, 
+          t.category_id AS "categoryId", 
+          t.account_id AS "accountId", 
+          t.amount,
+          t.currency,
+          t.amount_usd AS "amountUsd",
+          t.exchange_rate_used AS "exchangeRateUsed",
+          c."type" AS "categoryType"
+        FROM public.transactions t
+        JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
+        WHERE t.user_id = ${userId}
+        ORDER BY t.date DESC, t.id DESC;
       `;
       console.log(`[API] GET /transactions exitoso. Encontrados ${list.rows.length} registros.`);
 
@@ -78,6 +80,7 @@ export default async function handler(req, res) {
         categoryId: String(tx.categoryId),
         accountId: String(tx.accountId),
         amount: Number(tx.amount),
+        type: tx.categoryType === 'ingreso' ? 'income' : 'expense',
         currency: tx.currency,
         amountUsd: tx.amountUsd ? Number(tx.amountUsd) : null,
         exchangeRateUsed: tx.exchangeRateUsed ? Number(tx.exchangeRateUsed) : null,

@@ -108,14 +108,26 @@ const Index = () => {
       const acc = accounts.find(a => a.id === t.accountId);
       const cur = acc?.currency ?? "USD";
       const usdAmount = convertToUSD(t.amount, cur as any, rate || null) ?? 0;
-      if (t.type === "income") inc += usdAmount; else exp += usdAmount;
+      if (t.type === "income") {
+        inc += usdAmount;
+      } else {
+        // Excluir ajustes de balance del total de gastos
+        const cat = categories.find(c => c.id === t.categoryId);
+        const name = (cat?.name || '').toLowerCase();
+        const isAdjustment = name === 'ajuste de balance (+)' || name === 'ajuste de balance (-)';
+        if (!isAdjustment) exp += usdAmount;
+      }
     }
     return { totalIncome: inc, totalExpenses: exp };
-  }, [txByAccount, accounts, rate]);
+  }, [txByAccount, accounts, rate, categories]);
 
   // Charts
   const expensePieData = useMemo(() => {
-    const expTx = txByAccount.filter(t => t.type === "expense" && isCurrentMonth(t.date));
+    const expTx = txByAccount.filter(t => t.type === "expense" && isCurrentMonth(t.date)).filter(t => {
+      const cat = categories.find(c => c.id === t.categoryId);
+      const name = (cat?.name || '').toLowerCase();
+      return name !== 'ajuste de balance (+)' && name !== 'ajuste de balance (-)';
+    });
     const map = new Map<string, number>();
     for (const t of expTx) {
       const acc = accounts.find(a => a.id === t.accountId);
@@ -147,17 +159,28 @@ const Index = () => {
           const acc = accounts.find(a => a.id === t.accountId);
           const cur = acc?.currency ?? "USD";
           const usd = convertToUSD(t.amount, cur as any, rate || null) ?? 0;
-          if (t.type === "income") inc += usd; else exp += usd;
+          if (t.type === "income") {
+            inc += usd;
+          } else {
+            const cat = categories.find(c => c.id === t.categoryId);
+            const name = (cat?.name || '').toLowerCase();
+            const isAdjustment = name === 'ajuste de balance (+)' || name === 'ajuste de balance (-)';
+            if (!isAdjustment) exp += usd;
+          }
         }
       }
       out.push({ month: labels[d.getMonth()], income: inc, expenses: exp });
     }
     return out;
-  }, [txByAccount, accounts, rate]);
+  }, [txByAccount, accounts, rate, categories]);
 
   const budgetData = useMemo(() => {
     // Placeholder budgets (0) with actual monthly expenses per category
-    const expTx = txByAccount.filter(t => t.type === "expense" && isCurrentMonth(t.date));
+    const expTx = txByAccount.filter(t => t.type === "expense" && isCurrentMonth(t.date)).filter(t => {
+      const cat = categories.find(c => c.id === t.categoryId);
+      const name = (cat?.name || '').toLowerCase();
+      return name !== 'ajuste de balance (+)' && name !== 'ajuste de balance (-)';
+    });
     const map = new Map<string, number>();
     for (const t of expTx) {
       const acc = accounts.find(a => a.id === t.accountId);
