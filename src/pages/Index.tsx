@@ -108,12 +108,14 @@ const Index = () => {
       const acc = accounts.find(a => a.id === t.accountId);
       const cur = acc?.currency ?? "USD";
       const usdAmount = convertToUSD(t.amount, cur as any, rate || null) ?? 0;
+      const cat = categories.find(c => c.id === t.categoryId);
+      const name = (cat?.name || '').toLowerCase();
       if (t.type === "income") {
-        inc += usdAmount;
+        // Excluir ajustes de balance del total de ingresos
+        const isAdjustmentPlus = name === 'ajuste de balance (+)';
+        if (!isAdjustmentPlus) inc += usdAmount;
       } else {
         // Excluir ajustes de balance del total de gastos
-        const cat = categories.find(c => c.id === t.categoryId);
-        const name = (cat?.name || '').toLowerCase();
         const isAdjustment = name === 'ajuste de balance (+)' || name === 'ajuste de balance (-)';
         if (!isAdjustment) exp += usdAmount;
       }
@@ -159,11 +161,12 @@ const Index = () => {
           const acc = accounts.find(a => a.id === t.accountId);
           const cur = acc?.currency ?? "USD";
           const usd = convertToUSD(t.amount, cur as any, rate || null) ?? 0;
+          const cat = categories.find(c => c.id === t.categoryId);
+          const name = (cat?.name || '').toLowerCase();
           if (t.type === "income") {
-            inc += usd;
+            const isAdjustmentPlus = name === 'ajuste de balance (+)';
+            if (!isAdjustmentPlus) inc += usd;
           } else {
-            const cat = categories.find(c => c.id === t.categoryId);
-            const name = (cat?.name || '').toLowerCase();
             const isAdjustment = name === 'ajuste de balance (+)' || name === 'ajuste de balance (-)';
             if (!isAdjustment) exp += usd;
           }
