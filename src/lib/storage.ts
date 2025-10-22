@@ -138,12 +138,15 @@ export const TransactionsStore = {
     if (!currency) {
       throw new Error("Missing account currency for transaction POST");
     }
-    const created = await fetchJSON<{ ok: boolean; newId: string }>(
+    // Do not send client-side amountUsd/exchangeRateUsed to force server to compute authoritative values
+    const { amountUsd: _omitUsd, exchangeRateUsed: _omitRate, ...rest } = tx as any;
+    const created = await fetchJSON<{ ok: boolean; newId: string; tx?: Transaction }>(
       `${API_BASE}/transactions`,
-      { method: "POST", body: JSON.stringify({ ...tx, currency }) }
+      { method: "POST", body: JSON.stringify({ ...rest, currency }) }
     );
-    const serverId = created?.newId ? String(created.newId) : tx.id;
-    transactionsCache.push({ ...tx, id: serverId });
+    const serverTx: Transaction = created?.tx ? created.tx : { ...tx, id: created?.newId ? String(created.newId) : tx.id };
+    const serverId = serverTx.id;
+    transactionsCache.push(serverTx);
     // Adjust account balance client-side only (server already updated it)
     if (acc) {
       const delta = tx.type === "income" ? tx.amount : -tx.amount;
@@ -188,9 +191,12 @@ export const TransactionsStore = {
     const acc = accountsCache.find(a => a.id === next.accountId);
     const currency = acc?.currency;
     if (!currency) throw new Error("Missing account currency for transaction PUT");
-    await fetchJSON(`${API_BASE}/transactions?id=${encodeURIComponent(next.id)}`, { method: "PUT", body: JSON.stringify({ ...next, currency }) });
+    // Strip any client-side amountUsd/exchangeRateUsed; server will recompute for VES
+    const { amountUsd: _omitUsd2, exchangeRateUsed: _omitRate2, ...payload } = next as any;
+    const resp = await fetchJSON<{ ok: boolean; tx?: Transaction }>(`${API_BASE}/transactions?id=${encodeURIComponent(next.id)}`, { method: "PUT", body: JSON.stringify({ ...payload, currency }) });
+    const serverTx: Transaction = resp?.tx ? resp.tx : next;
     const idx = transactionsCache.findIndex(t => t.id === next.id);
-    if (idx >= 0) transactionsCache[idx] = next; else transactionsCache.push(next);
+    if (idx >= 0) transactionsCache[idx] = serverTx; else transactionsCache.push(serverTx);
     // Reconcile account balances
     if (prev) {
       // Revert prev
@@ -208,9 +214,9 @@ export const TransactionsStore = {
         }
       }
       // Apply next
-      const nextAcc = accountsCache.find(a => a.id === next.accountId);
+      const nextAcc = accountsCache.find(a => a.id === serverTx.accountId);
       if (nextAcc) {
-        const nextDelta = next.type === "income" ? next.amount : -next.amount;
+        const nextDelta = serverTx.type === "income" ? serverTx.amount : -serverTx.amount;
         const newBalance = Number(((nextAcc.balance || 0) + nextDelta).toFixed(2));
         const idx = accountsCache.findIndex(a => a.id === nextAcc.id);
         if (idx >= 0) {

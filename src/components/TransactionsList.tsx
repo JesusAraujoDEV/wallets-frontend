@@ -287,7 +287,9 @@ export const TransactionsList = () => {
     return () => { mounted = false; };
   }, [groupedTransactions, vesRateByDate]);
 
-  // Compute per-day totals (USD) for income/expenses using historical rate per tx date
+  // Compute per-day totals (USD) for income/expenses.
+  // Prefer server-provided amountUsd (and exchangeRateUsed) to ensure consistency with backend;
+  // fallback to client historical conversion when not available.
   useEffect(() => {
     const dates = Object.keys(groupedTransactions);
     if (dates.length === 0) return;
@@ -303,6 +305,9 @@ export const TransactionsList = () => {
           return name !== 'ajuste de balance (+)' && name !== 'ajuste de balance (-)';
         });
         const usdValues = await Promise.all(txs.map(async (tx) => {
+          if (tx.amountUsd != null) {
+            return { type: tx.type, usd: tx.amountUsd } as { type: 'income' | 'expense'; usd: number };
+          }
           const acc = accounts.find(a => a.id === tx.accountId);
           const cur = (tx as any).currency ?? acc?.currency ?? 'USD';
           const usd = await convertToUSDByDate(tx.amount, cur as any, tx.date);
@@ -409,7 +414,7 @@ export const TransactionsList = () => {
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground flex-1">
                   <div className="h-px bg-border flex-1" />
                   <span className="px-3">
-                    {dayjs(String(date).slice(0,10)).format('dddd, MMM D, YYYY')} • Tasa: {vesRateByDate[date] != null ? vesRateByDate[date]?.toFixed(2) : '…'}
+                    {dayjs(String(date).slice(0,10)).format('dddd, MMM D, YYYY')} • Tasa: {vesRateByDate[date] != null ? Number(vesRateByDate[date]).toFixed(2) : '…'}
                   </span>
                   <div className="h-px bg-border flex-1" />
                 </div>
@@ -464,6 +469,7 @@ export const TransactionsList = () => {
                       <TxAmount
                         transaction={transaction}
                         accounts={accounts}
+                        rateForDate={vesRateByDate[String(date).slice(0,10)] ?? null}
                       />
                     </div>
                     <div className="flex items-center gap-2 justify-self-end">
@@ -630,7 +636,7 @@ export const TransactionsList = () => {
 };
 
 // Inline component to render transaction amount in original currency and USD (by date)
-const TxAmount = ({ transaction, accounts }: { transaction: Transaction; accounts: Account[] }) => {
+const TxAmount = ({ transaction, accounts, rateForDate }: { transaction: Transaction; accounts: Account[]; rateForDate?: number | null }) => {
   const acc = accounts.find(a => a.id === transaction.accountId);
   const currency = transaction.currency ?? acc?.currency ?? "USD";
   const sign = transaction.type === "income" ? "+" : "-";
@@ -648,12 +654,19 @@ const TxAmount = ({ transaction, accounts }: { transaction: Transaction; account
       setUsd(transaction.amount);
       return;
     }
+    // If we have the per-day rate from parent, compute synchronously for stability
+    if (rateForDate != null && isFinite(rateForDate) && rateForDate > 0) {
+      const value = transaction.amount / rateForDate;
+      setUsd(value);
+      return;
+    }
+    // Fallback to historical fetch
     (async () => {
       const converted = await convertToUSDByDate(transaction.amount, currency as any, transaction.date);
       if (mounted) setUsd(converted);
     })();
     return () => { mounted = false; };
-  }, [transaction.amount, transaction.date, currency, transaction.amountUsd]);
+  }, [transaction.amount, transaction.date, currency, transaction.amountUsd, rateForDate]);
 
   return (
     <div className={`text-right ${transaction.type === "income" ? "text-primary" : "text-destructive"}`}>

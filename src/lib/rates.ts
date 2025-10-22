@@ -148,6 +148,29 @@ export async function getRateByDate(dateISO: string): Promise<ExchangeSnapshot |
   const hist = readHist();
   const cached = hist[target];
   if (cached) {
+    // Validate cached value against the official list for the exact target date.
+    // If the API returns a definitive value for the target date, refresh cache to avoid stale/mismatched entries.
+    try {
+      const url = `${API_LIST_URL}?from=${target}&to=${target}`;
+      const res = await fetch(url, { cache: "no-store" });
+      if (res.ok) {
+        const json = (await res.json()) as { rates: Array<{ date: string; usd: number; eur: number }> };
+        const item = json.rates?.[0];
+        if (item && isFinite(item.usd) && item.date === target) {
+          const snap: ExchangeSnapshot = {
+            vesPerUsd: Number(item.usd),
+            vesPerEur: Number(item.eur),
+            fetchedAt: new Date().toISOString(),
+            sourceDate: target,
+          };
+          hist[target] = { vesPerUsd: snap.vesPerUsd, vesPerEur: snap.vesPerEur, fetchedAt: snap.fetchedAt };
+          writeHist(hist);
+          return snap;
+        }
+      }
+    } catch {
+      // ignore network errors; fall back to cached
+    }
     return {
       vesPerUsd: cached.vesPerUsd,
       vesPerEur: cached.vesPerEur,

@@ -402,16 +402,15 @@ export default async function handler(req, res) {
       let finalAmountUsd: number | null = null;
       let finalRateUsed: number | null = null;
       if (currency === 'VES') {
-        if (amountUsd != null && exchangeRateUsed != null) {
-          finalAmountUsd = Number(amountUsd);
-          finalRateUsed = Number(exchangeRateUsed);
+        // Always recompute from authoritative historical rate; ignore client-provided values
+        const rate = await getVesPerUsdByDate(String(date));
+        if (rate) {
+          finalRateUsed = rate;
+          const usd = Number(amount) / rate;
+          finalAmountUsd = Number(usd.toFixed(2));
         } else {
-          const rate = await getVesPerUsdByDate(String(date));
-          if (rate) {
-            finalRateUsed = rate;
-            const usd = Number(amount) / rate;
-            finalAmountUsd = Number(usd.toFixed(2));
-          }
+          finalAmountUsd = null;
+          finalRateUsed = null;
         }
       } else if (currency === 'USD') {
         finalAmountUsd = Number(amount);
@@ -439,8 +438,41 @@ export default async function handler(req, res) {
         WHERE id = ${numericId} AND user_id = ${userId};
       `;
 
+      // Return updated transaction with computed USD equivalence and type
+      const updated = await sql`
+        SELECT 
+          t.id, 
+          t.date, 
+          t.description, 
+          t.category_id AS "categoryId", 
+          t.account_id AS "accountId", 
+          t.amount,
+          t.currency,
+          t.amount_usd AS "amountUsd",
+          t.exchange_rate_used AS "exchangeRateUsed",
+          c."type" AS "categoryType"
+        FROM public.transactions t
+        JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
+        WHERE t.id = ${numericId} AND t.user_id = ${userId}
+        LIMIT 1;
+      `;
+
+      const row = updated.rows[0];
+      const safe = row ? {
+        id: String(row.id),
+        date: row.date,
+        description: row.description,
+        categoryId: String(row.categoryId),
+        accountId: String(row.accountId),
+        amount: Number(row.amount),
+        type: row.categoryType === 'ingreso' ? 'income' : 'expense',
+        currency: row.currency,
+        amountUsd: row.amountUsd != null ? Number(row.amountUsd) : null,
+        exchangeRateUsed: row.exchangeRateUsed != null ? Number(row.exchangeRateUsed) : null,
+      } : null;
+
       console.log(`[API] PUT /transactions exitoso. Actualizado ID: ${id}`);
-      res.status(200).json({ ok: true, message: 'Transacción actualizada' });
+      res.status(200).json({ ok: true, tx: safe, message: 'Transacción actualizada' });
       return;
     }
     if (method === 'POST') {
@@ -453,8 +485,6 @@ export default async function handler(req, res) {
         accountId,
         amount,
         currency,
-        amountUsd,
-        exchangeRateUsed,
       } = body;
 
       if (!date || !description || !categoryId || !accountId || amount === undefined || !currency) {
@@ -479,17 +509,15 @@ export default async function handler(req, res) {
       let finalAmountUsd: number | null = null;
       let finalRateUsed: number | null = null;
       if (currency === 'VES') {
-        // Si viene en el payload, respétalo; si no, calculamos por fecha
-        if (amountUsd != null && exchangeRateUsed != null) {
-          finalAmountUsd = Number(amountUsd);
-          finalRateUsed = Number(exchangeRateUsed);
+        // Always compute from historical rate for the given date (authoritative)
+        const rate = await getVesPerUsdByDate(String(date));
+        if (rate) {
+          finalRateUsed = rate; // VES per USD
+          const usd = Number(amount) / rate;
+          finalAmountUsd = Number(usd.toFixed(2));
         } else {
-          const rate = await getVesPerUsdByDate(String(date));
-          if (rate) {
-            finalRateUsed = rate; // VES por USD
-            const usd = Number(amount) / rate;
-            finalAmountUsd = Number(usd.toFixed(2));
-          }
+          finalAmountUsd = null;
+          finalRateUsed = null;
         }
       } else if (currency === 'USD') {
         // Para USD guardamos el monto tal cual en amount_usd
@@ -513,8 +541,41 @@ export default async function handler(req, res) {
         WHERE id = ${Number(accountId)} AND user_id = ${userId};
       `;
 
+      // Return the created transaction row with computed USD equivalence for client consistency
+      const createdRow = await sql`
+        SELECT 
+          t.id, 
+          t.date, 
+          t.description, 
+          t.category_id AS "categoryId", 
+          t.account_id AS "accountId", 
+          t.amount,
+          t.currency,
+          t.amount_usd AS "amountUsd",
+          t.exchange_rate_used AS "exchangeRateUsed",
+          c."type" AS "categoryType"
+        FROM public.transactions t
+        JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
+        WHERE t.id = ${newTransactionId} AND t.user_id = ${userId}
+        LIMIT 1;
+      `;
+
+      const row = createdRow.rows[0];
+      const safe = row ? {
+        id: String(row.id),
+        date: row.date,
+        description: row.description,
+        categoryId: String(row.categoryId),
+        accountId: String(row.accountId),
+        amount: Number(row.amount),
+        type: row.categoryType === 'ingreso' ? 'income' : 'expense',
+        currency: row.currency,
+        amountUsd: row.amountUsd != null ? Number(row.amountUsd) : null,
+        exchangeRateUsed: row.exchangeRateUsed != null ? Number(row.exchangeRateUsed) : null,
+      } : null;
+
       console.log(`[API] POST /transactions exitoso. Nuevo ID: ${newTransactionId}`);
-  res.status(200).json({ ok: true, newId: String(newTransactionId) });
+      res.status(200).json({ ok: true, newId: String(newTransactionId), tx: safe });
       return;
     }
 
