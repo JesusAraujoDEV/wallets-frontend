@@ -184,7 +184,11 @@ export const TransactionsStore = {
   },
   async update(next: Transaction): Promise<void> {
     const prev = this.getById(next.id);
-    await fetchJSON(`${API_BASE}/transactions`, { method: "POST", body: JSON.stringify(next) });
+    // Backend needs currency; derive from next account
+    const acc = accountsCache.find(a => a.id === next.accountId);
+    const currency = acc?.currency;
+    if (!currency) throw new Error("Missing account currency for transaction PUT");
+    await fetchJSON(`${API_BASE}/transactions?id=${encodeURIComponent(next.id)}`, { method: "PUT", body: JSON.stringify({ ...next, currency }) });
     const idx = transactionsCache.findIndex(t => t.id === next.id);
     if (idx >= 0) transactionsCache[idx] = next; else transactionsCache.push(next);
     // Reconcile account balances

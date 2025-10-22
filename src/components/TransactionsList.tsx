@@ -68,6 +68,7 @@ export const TransactionsList = () => {
   }, []);
   const categoriesOptions = useMemo(() => categories, [categories]);
   const accountsOptions = useMemo(() => accounts, [accounts]);
+  const editCategories = useMemo(() => categories.filter(c => c.type === formData.type), [categories, formData.type]);
 
   const handleRefresh = async () => {
     try {
@@ -146,19 +147,19 @@ export const TransactionsList = () => {
     const matchesType = filterType === "all" || transaction.type === filterType;
     const matchesCategory = filterCategory === "all" || transaction.categoryId === filterCategory;
     const matchesAccount = filterAccount === "all" || transaction.accountId === filterAccount;
-    // Normalize to YYYY-MM-DD for robust comparison regardless of timezones or formats
-    const txDateOnly = transaction.date ? dayjs(transaction.date).format('YYYY-MM-DD') : '';
+    // Normalize using raw date-only slice to avoid timezone shifts
+    const txDateOnly = transaction.date ? String(transaction.date).slice(0, 10) : '';
     const matchesDate = !filterDate || txDateOnly === filterDate;
     return matchesSearch && matchesType && matchesCategory && matchesAccount && matchesDate;
   });
 
   // Group by date
   const groupedTransactions = filteredTransactions.reduce((groups, transaction) => {
-    const date = transaction.date ? dayjs(transaction.date).format('YYYY-MM-DD') : '';
-    if (!groups[date]) {
-      groups[date] = [];
+    const dateKey = transaction.date ? String(transaction.date).slice(0, 10) : '';
+    if (!groups[dateKey]) {
+      groups[dateKey] = [];
     }
-    groups[date].push(transaction);
+    groups[dateKey].push(transaction);
     return groups;
   }, {} as Record<string, Transaction[]>);
 
@@ -270,7 +271,7 @@ export const TransactionsList = () => {
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <div className="h-px bg-border flex-1" />
                 <span className="px-3">
-                  {dayjs(date).format('dddd, MMMM D, YYYY')}
+                  {dayjs(String(date).slice(0,10)).format('dddd, MMMM D, YYYY')}
                   {" , tasa USD: "}
                   {vesRateByDate[date] != null ? vesRateByDate[date]?.toFixed(4) : '…'}
                 </span>
@@ -391,7 +392,13 @@ export const TransactionsList = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="type">Type</Label>
-                <Select value={formData.type} onValueChange={(v: any) => setFormData({ ...formData, type: v })}>
+                <Select value={formData.type} onValueChange={(v: any) => {
+                  const nextType = v as 'income' | 'expense';
+                  // If current category doesn't match new type, clear it
+                  const currentCat = categories.find(c => c.id === formData.categoryId);
+                  const nextCategoryId = currentCat && currentCat.type === nextType ? formData.categoryId : "";
+                  setFormData({ ...formData, type: nextType, categoryId: nextCategoryId });
+                }}>
                   <SelectTrigger id="type">
                     <SelectValue />
                   </SelectTrigger>
@@ -415,12 +422,12 @@ export const TransactionsList = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
-              <Select value={formData.categoryId} onValueChange={(v) => setFormData({ ...formData, categoryId: v })}>
+                <Select value={formData.categoryId} onValueChange={(v) => setFormData({ ...formData, categoryId: v })}>
                 <SelectTrigger id="category">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categoriesOptions.map(cat => (
+                  {editCategories.map(cat => (
                     <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                   ))}
                 </SelectContent>

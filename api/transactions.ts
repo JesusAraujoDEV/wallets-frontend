@@ -87,6 +87,109 @@ export default async function handler(req, res) {
       return;
     }
 
+    if (method === 'PUT') {
+      console.log('[API] Procesando PUT /transactions (Actualizar)...');
+      const { searchParams } = new URL(req.url, 'http://localhost');
+      const id = searchParams.get('id');
+      if (!id) {
+        res.status(400).json({ error: 'Se requiere "id" en URL para actualizar' });
+        return;
+      }
+
+      const numericId = Number(id);
+      if (isNaN(numericId)) {
+        res.status(400).json({ error: '"id" debe ser un número' });
+        return;
+      }
+
+      const body = await readJsonBody(req);
+      const {
+        date,
+        description,
+        categoryId,
+        accountId,
+        amount,
+        currency,
+        amountUsd,
+        exchangeRateUsed,
+      } = body || {};
+
+      if (!date || !description || !categoryId || !accountId || amount === undefined || !currency) {
+        res.status(400).json({ error: 'Campos requeridos: date, description, categoryId, accountId, amount, currency' });
+        return;
+      }
+
+      // Fetch existing tx and its category type
+      const prevTxResult = await sql`
+        SELECT t.account_id, t.amount, c."type" AS prev_type
+        FROM public.transactions t
+        JOIN public.categories c ON t.category_id = c.id AND c.user_id = ${userId}
+        WHERE t.id = ${numericId} AND t.user_id = ${userId};
+      `;
+      if (prevTxResult.rows.length === 0) {
+        res.status(404).json({ error: 'Transacción no encontrada' });
+        return;
+      }
+      const prev = prevTxResult.rows[0] as { account_id: number; amount: number; prev_type: 'ingreso' | 'gasto' };
+
+      // Validate new category and account
+      const categoryResult = await sql`SELECT "type" FROM public.categories WHERE id = ${Number(categoryId)} AND user_id = ${userId};`;
+      if (categoryResult.rows.length === 0) {
+        res.status(400).json({ error: `La categoría con id ${categoryId} no existe` });
+        return;
+      }
+      const newType = categoryResult.rows[0].type as 'ingreso' | 'gasto';
+      const accountCheck = await sql`SELECT id FROM public.accounts WHERE id = ${Number(accountId)} AND user_id = ${userId};`;
+      if (accountCheck.rows.length === 0) {
+        res.status(400).json({ error: `La cuenta con id ${accountId} no existe` });
+        return;
+      }
+
+      // Calcular equivalencia a USD
+      let finalAmountUsd: number | null = null;
+      let finalRateUsed: number | null = null;
+      if (currency === 'VES') {
+        if (amountUsd != null && exchangeRateUsed != null) {
+          finalAmountUsd = Number(amountUsd);
+          finalRateUsed = Number(exchangeRateUsed);
+        } else {
+          const rate = await getVesPerUsdByDate(String(date));
+          if (rate) {
+            finalRateUsed = rate;
+            const usd = Number(amount) / rate;
+            finalAmountUsd = Number(usd.toFixed(2));
+          }
+        }
+      } else if (currency === 'USD') {
+        finalAmountUsd = Number(amount);
+        finalRateUsed = null;
+      }
+
+      // Revert prev balance then apply new (could be different account)
+      const revert = getDelta(prev.prev_type, Number(prev.amount)) * -1;
+      await sql`UPDATE public.accounts SET balance = ROUND(COALESCE(balance,0) + ${revert}, 2) WHERE id = ${prev.account_id} AND user_id = ${userId};`;
+      const apply = getDelta(newType, Number(amount));
+      await sql`UPDATE public.accounts SET balance = ROUND(COALESCE(balance,0) + ${apply}, 2) WHERE id = ${Number(accountId)} AND user_id = ${userId};`;
+
+      // Update transaction row
+      await sql`
+        UPDATE public.transactions
+        SET 
+          date = ${date},
+          description = ${description},
+          category_id = ${Number(categoryId)},
+          account_id = ${Number(accountId)},
+          amount = ${Number(amount)},
+          currency = ${currency},
+          amount_usd = ${finalAmountUsd},
+          exchange_rate_used = ${finalRateUsed}
+        WHERE id = ${numericId} AND user_id = ${userId};
+      `;
+
+      console.log(`[API] PUT /transactions exitoso. Actualizado ID: ${id}`);
+      res.status(200).json({ ok: true, message: 'Transacción actualizada' });
+      return;
+    }
     if (method === 'POST') {
       console.log('[API] Procesando POST /transactions (Crear)...');
       const body = await readJsonBody(req);
