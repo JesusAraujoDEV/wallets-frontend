@@ -520,7 +520,7 @@ const TxAmount = ({ transaction, accounts }: { transaction: Transaction; account
   }, [transaction.amount, transaction.date, currency, transaction.amountUsd]);
 
   return (
-    <div className={`text-right ${transaction.type === "income" ? "text-primary" : "text-foreground"}`}>
+    <div className={`text-right ${transaction.type === "income" ? "text-primary" : "text-destructive"}`}>
       <div className="text-lg font-semibold">
         {sign}{symbol}{transaction.amount.toFixed(2)}
       </div>
