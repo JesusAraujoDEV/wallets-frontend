@@ -153,8 +153,22 @@ export const TransactionsList = () => {
     return matchesSearch && matchesType && matchesCategory && matchesAccount && matchesDate;
   });
 
+  // Always sort by date DESC (YYYY-MM-DD) to ensure correct grouping order regardless of insertion
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+    const ad = String(a.date || '').slice(0, 10);
+    const bd = String(b.date || '').slice(0, 10);
+    if (ad === bd) {
+      // Secondary sort: try by numeric id desc if both look numeric, else string desc
+      const an = Number(a.id);
+      const bn = Number(b.id);
+      if (!Number.isNaN(an) && !Number.isNaN(bn)) return bn - an;
+      return String(b.id).localeCompare(String(a.id));
+    }
+    return bd.localeCompare(ad);
+  });
+
   // Group by date
-  const groupedTransactions = filteredTransactions.reduce((groups, transaction) => {
+  const groupedTransactions = sortedTransactions.reduce((groups, transaction) => {
     const dateKey = transaction.date ? String(transaction.date).slice(0, 10) : '';
     if (!groups[dateKey]) {
       groups[dateKey] = [];
@@ -297,6 +311,7 @@ export const TransactionsList = () => {
                       <div className="flex items-center gap-2 mt-1">
                         {(() => {
                           const cat = categories.find(c => c.id === transaction.categoryId);
+                          const acc = accounts.find(a => a.id === transaction.accountId);
                           return (
                             <>
                               {cat?.icon && (Icons as any)[cat.icon] ? (
@@ -307,6 +322,9 @@ export const TransactionsList = () => {
                                 style={{ backgroundColor: cat?.color || "hsl(var(--muted))" }}
                               />
                               <p className="text-sm text-muted-foreground">{cat?.name || "Uncategorized"}</p>
+                              {acc ? (
+                                <span className="text-xs text-muted-foreground">• {acc.name} ({acc.currency})</span>
+                              ) : null}
                             </>
                           );
                         })()}
