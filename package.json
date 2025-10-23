@@ -6,14 +6,11 @@
   "scripts": {
     "dev": "vite",
     "dev:ui": "vite",
-    "dev:api": "vercel dev --yes --confirm",
-    "dev:all": "concurrently \"npm:dev:ui\" \"npm:dev:api\"",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "db:migrate:tx-usd": "node -e \"console.log('Apply SQL in db/migrations/20251021_add_tx_usd.sql via your DB console (Vercel Postgres).')\"",
-    "db:backfill:tx-usd": "node ./scripts/backfill_transactions_usd.mjs"
+    "db:migrate:tx-usd": "node -e \"console.log('This project now uses an external API; database scripts are no longer applicable.')\""
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -49,7 +46,6 @@
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tanstack/react-query": "^5.83.0",
-    "@vercel/postgres": "^0.10.0",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -82,7 +78,6 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
-    "concurrently": "^9.1.2",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
@@ -92,7 +87,6 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vercel": "^36.0.0",
     "vite": "^5.4.19"
   }
 }

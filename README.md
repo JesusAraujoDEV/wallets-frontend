@@ -72,18 +72,18 @@ To connect a domain, navigate to Project > Settings > Domains and click Connect 
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
 
-## Local serverless dev with Neon
+## Backend integration: Wallets API
 
-This project uses serverless API routes under `api/` and a Neon Postgres database.
+This app now consumes an external backend called "Wallets API" (OAS 3.0). Ensure the backend is running locally and reachable.
 
-Setup:
+Environment variables:
 
-1. Copy `.env.local.example` to `.env.local` and set `DATABASE_URL` with your Neon connection string.
-2. Install dependencies: `npm install`.
-3. Start both Vite and the serverless API:
-	- `npm run dev:all` (runs Vite and `vercel dev` concurrently)
+```sh
+VITE_BACKEND_URL="http://localhost:3001/"
+```
 
 Notes:
 
-- API endpoints are available at `/api/*` during `vercel dev` and in production.
-- If you only run `vite` without `vercel dev`, API calls will fail unless you proxy `/api` to a backend.
+- The frontend will call `${VITE_BACKEND_URL}api/...` (e.g., `http://localhost:3001/api/accounts`).
+- Authentication uses Bearer tokens returned by `POST /auth/login` and stored in localStorage.
+- No serverless or local database is required in this repo anymore.

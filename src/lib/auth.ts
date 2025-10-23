@@ -1,27 +1,32 @@
-export type AuthUser = { id: string; username: string };
+export type AuthUser = { id: string | number; username: string };
 
-async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { headers: { 'content-type': 'application/json' }, credentials: 'include', ...init });
-  if (!res.ok) {
-    let msg = 'Request failed';
-    try { msg = await res.text(); } catch {}
-    throw new Error(msg || `${res.status}`);
-  }
-  return res.json() as Promise<T>;
-}
+import { apiFetch, setToken, getToken } from "./http";
 
 export const AuthApi = {
   async login(username: string, password: string): Promise<AuthUser> {
-    const out = await fetchJSON<{ ok: boolean; user: AuthUser }>(`/api/login`, {
-      method: 'POST',
-      body: JSON.stringify({ username, password }),
-    });
-    return out.user;
+    const out = await apiFetch<{ ok: boolean; token: string; user: { id: number | string; username: string } }>(
+      `auth/login`,
+      {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      }
+    );
+    if (out?.token) setToken(out.token);
+    return { id: String(out.user.id), username: out.user.username };
   },
   async me(): Promise<AuthUser> {
-    return fetchJSON<AuthUser>(`/api/me`, { method: 'GET' });
+    const out = await apiFetch<{ ok: boolean; user: { id: number | string; username: string } }>(`auth/me`, { method: "GET" });
+    return { id: String(out.user.id), username: out.user.username };
   },
   async logout(): Promise<void> {
-    await fetchJSON(`/api/logout`, { method: 'POST' });
+    try {
+      await apiFetch(`auth/logout`, { method: "POST" });
+    } finally {
+      // Always clear local token
+      setToken(null);
+    }
+  },
+  token(): string | null {
+    return getToken();
   },
 };
