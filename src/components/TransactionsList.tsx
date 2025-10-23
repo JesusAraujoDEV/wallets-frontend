@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2, Plus, RefreshCw } from "lucide-react";
 import * as Icons from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
 import { convertToUSDByDate, getRateByDate } from "@/lib/rates";
 import type { Transaction, Category, Account } from "@/lib/types";
@@ -62,6 +62,9 @@ export const TransactionsList = () => {
   const [hasMore, setHasMore] = useState<boolean>(false);
   const [pageLoading, setPageLoading] = useState<boolean>(false);
   const PAGE_SIZE = 20;
+  // Track in-flight requests to prevent race conditions on rapid filter changes
+  const reqIdRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const load = () => {
@@ -75,9 +78,9 @@ export const TransactionsList = () => {
   }, []);
 
   // Fetch first page from server with grouped pagination (days kept intact)
-  const fetchLegacyAll = async () => {
+  const fetchLegacyAll = async (signal?: AbortSignal) => {
     // Backward-compatible fallback if grouped API is not available
-    const res = await fetch(`/api/transactions`);
+    const res = await fetch(`/api/transactions`, { signal });
     if (!res.ok) throw new Error(await res.text());
     const arr: Transaction[] = await res.json();
     setTransactions(arr || []);
@@ -102,9 +105,16 @@ export const TransactionsList = () => {
   const fetchFirstPage = async () => {
     try {
       setPageLoading(true);
-      const res = await fetch(buildQuery());
+      // Cancel previous in-flight request, if any
+      if (abortRef.current) abortRef.current.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const myReqId = ++reqIdRef.current;
+      const res = await fetch(buildQuery(), { signal: controller.signal });
       if (!res.ok) throw new Error(await res.text());
       const data: any = await res.json();
+      // Ignore if a newer request has been issued
+      if (myReqId !== reqIdRef.current) return;
       if (Array.isArray(data)) {
         // Legacy shape
         setTransactions(data as Transaction[]);
@@ -121,7 +131,10 @@ export const TransactionsList = () => {
     } catch (e) {
       // Fallback to legacy endpoint if grouped not supported
       try {
-        await fetchLegacyAll();
+        // If aborted due to a newer filter change, just exit silently
+        if ((e as any)?.name === 'AbortError') return;
+        // Otherwise, try legacy
+        await fetchLegacyAll(abortRef.current?.signal);
       } catch (e2) {
         toast({ title: "Failed to load transactions", description: String(e2), variant: "destructive" });
       }
@@ -161,8 +174,12 @@ export const TransactionsList = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
-  // Refetch when filters change
+  // Refetch when filters change (immediately)
   useEffect(() => {
+    // Clear current results for snappier feedback and reset pagination
+    setTransactions([]);
+    setNextCursorDate(null);
+    setHasMore(false);
     fetchFirstPage().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, filterType, filterCategory, filterAccount, filterDate]);

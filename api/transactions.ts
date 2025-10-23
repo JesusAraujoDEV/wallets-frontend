@@ -69,8 +69,9 @@ export default async function handler(req, res) {
   const q = (searchParams.get('q') || '').trim() || null;
   const typeRaw = (searchParams.get('type') || '').trim().toLowerCase();
   const typeParam: 'ingreso' | 'gasto' | null = typeRaw === 'income' ? 'ingreso' : typeRaw === 'expense' ? 'gasto' : null;
-  const categoryIdParam = (() => { const v = searchParams.get('categoryId'); const n = v ? Number(v) : NaN; return Number.isFinite(n) ? n : null;})();
-  const accountIdParam = (() => { const v = searchParams.get('accountId'); const n = v ? Number(v) : NaN; return Number.isFinite(n) ? n : null;})();
+  // Accept raw string IDs (to support any client id string); compare via ::text
+  const categoryIdParam = (() => { const v = searchParams.get('categoryId'); return v && v !== 'all' ? v : null; })();
+  const accountIdParam = (() => { const v = searchParams.get('accountId'); return v && v !== 'all' ? v : null; })();
   const dateParam = (() => { const v = (searchParams.get('date') || '').slice(0,10); return v ? v : null;})();
       if (grouped === '1' || grouped === 'true') {
         const pageSizeRaw = searchParams.get('pageSize');
@@ -86,8 +87,8 @@ export default async function handler(req, res) {
               JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
               WHERE t.user_id = ${userId}
                 AND t.date::date < ${cursorDate}
-                AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
-                AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+                AND (${accountIdParam}::text IS NULL OR t.account_id::text = ${accountIdParam})
+                AND (${categoryIdParam}::text IS NULL OR t.category_id::text = ${categoryIdParam})
                 AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
                 AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
                 AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
@@ -109,8 +110,8 @@ export default async function handler(req, res) {
               FROM public.transactions t
               JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
               WHERE t.user_id = ${userId}
-                AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
-                AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+                AND (${accountIdParam}::text IS NULL OR t.account_id::text = ${accountIdParam})
+                AND (${categoryIdParam}::text IS NULL OR t.category_id::text = ${categoryIdParam})
                 AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
                 AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
                 AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
@@ -168,8 +169,8 @@ export default async function handler(req, res) {
             JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
             WHERE t.user_id = ${userId}
               AND t.date::date IN (SELECT day FROM selected_days)
-              AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
-              AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+              AND (${accountIdParam}::text IS NULL OR t.account_id::text = ${accountIdParam})
+              AND (${categoryIdParam}::text IS NULL OR t.category_id::text = ${categoryIdParam})
               AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
               AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
               AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
@@ -181,8 +182,8 @@ export default async function handler(req, res) {
               FROM public.transactions t
               JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
               WHERE t.user_id = ${userId}
-                AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
-                AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+                AND (${accountIdParam}::text IS NULL OR t.account_id::text = ${accountIdParam})
+                AND (${categoryIdParam}::text IS NULL OR t.category_id::text = ${categoryIdParam})
                 AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
                 AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
                 AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
@@ -285,8 +286,8 @@ export default async function handler(req, res) {
           JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
           WHERE t.user_id = ${userId}
             AND t.date::date < ${oldestDayIncluded}
-            AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
-            AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+            AND (${accountIdParam}::text IS NULL OR t.account_id::text = ${accountIdParam})
+            AND (${categoryIdParam}::text IS NULL OR t.category_id::text = ${categoryIdParam})
             AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
             AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
             AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
@@ -314,8 +315,8 @@ export default async function handler(req, res) {
         FROM public.transactions t
         JOIN public.categories c ON c.id = t.category_id AND c.user_id = ${userId}
         WHERE t.user_id = ${userId}
-          AND (${accountIdParam}::int IS NULL OR t.account_id = ${accountIdParam})
-          AND (${categoryIdParam}::int IS NULL OR t.category_id = ${categoryIdParam})
+          AND (${accountIdParam}::text IS NULL OR t.account_id::text = ${accountIdParam})
+          AND (${categoryIdParam}::text IS NULL OR t.category_id::text = ${categoryIdParam})
           AND (${typeParam}::text IS NULL OR c."type" = ${typeParam})
           AND (${dateParam}::date IS NULL OR t.date::date = ${dateParam})
           AND (${q}::text IS NULL OR (t.description ILIKE '%' || ${q} || '%' OR c.name ILIKE '%' || ${q} || '%'))
