@@ -194,6 +194,8 @@ export const AccountManager = () => {
   useEffect(() => {
     setAccounts(AccountsStore.all());
     const off = onDataChange(() => setAccounts(AccountsStore.all()));
+    // Force a fresh load from server to avoid any stale in-memory values
+    AccountsStore.refresh().catch(() => {});
     return off;
   }, []);
 
