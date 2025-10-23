@@ -9,6 +9,7 @@ import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as Cal
 import * as Icons from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
+import { apiFetch } from "@/lib/http";
 import { convertToUSDByDate, getRateByDate } from "@/lib/rates";
 import type { Transaction, Category, Account } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
@@ -78,12 +79,32 @@ export const TransactionsList = () => {
   }, []);
 
   // Fetch first page from server with grouped pagination (days kept intact)
+  const mapServerTx = (t: any): Transaction => {
+    const categoryId = String(t.category_id ?? t.categoryId);
+    const accountId = String(t.account_id ?? t.accountId);
+    const rawType = t.type;
+    const type: 'income' | 'expense' = rawType === 'ingreso' ? 'income' : rawType === 'gasto' ? 'expense' : (rawType as any) || 'expense';
+    const amount = Number(t.amount ?? 0);
+    const amountUsd = t.amount_usd != null ? Number(t.amount_usd) : (t.amountUsd != null ? Number(t.amountUsd) : null);
+    const exchangeRateUsed = t.exchange_rate_used != null ? Number(t.exchange_rate_used) : (t.exchangeRateUsed != null ? Number(t.exchangeRateUsed) : null);
+    return {
+      id: String(t.id),
+      description: String(t.description ?? ''),
+      amount,
+      currency: t.currency || undefined,
+      amountUsd,
+      exchangeRateUsed,
+      date: String(t.date),
+      categoryId,
+      accountId,
+      type,
+    } as Transaction;
+  };
+
   const fetchLegacyAll = async (signal?: AbortSignal) => {
     // Backward-compatible fallback if grouped API is not available
-    const res = await fetch(`/api/transactions`, { signal });
-    if (!res.ok) throw new Error(await res.text());
-    const arr: Transaction[] = await res.json();
-    setTransactions(arr || []);
+    const arr = await apiFetch<any[]>(`transactions`, { signal });
+    setTransactions((arr || []).map(mapServerTx));
     setNextCursorDate(null);
     setHasMore(false);
   };
@@ -99,7 +120,7 @@ export const TransactionsList = () => {
     if (filterAccount !== 'all') params.set('accountId', filterAccount);
     if (filterDate) params.set('date', filterDate);
     if (cursor) params.set('cursorDate', cursor);
-    return `/api/transactions?${params.toString()}`;
+    return `transactions?${params.toString()}`;
   };
 
   const fetchFirstPage = async () => {
@@ -110,18 +131,16 @@ export const TransactionsList = () => {
       const controller = new AbortController();
       abortRef.current = controller;
       const myReqId = ++reqIdRef.current;
-      const res = await fetch(buildQuery(), { signal: controller.signal });
-      if (!res.ok) throw new Error(await res.text());
-      const data: any = await res.json();
+      const data: any = await apiFetch<any>(buildQuery(), { signal: controller.signal });
       // Ignore if a newer request has been issued
       if (myReqId !== reqIdRef.current) return;
       if (Array.isArray(data)) {
         // Legacy shape
-        setTransactions(data as Transaction[]);
+        setTransactions((data as any[]).map(mapServerTx));
         setNextCursorDate(null);
         setHasMore(false);
       } else {
-        setTransactions((data?.items as Transaction[]) || []);
+        setTransactions(((data?.items as any[]) || []).map(mapServerTx));
         setNextCursorDate((data?.nextCursorDate as string) || null);
         setHasMore(!!data?.hasMore);
       }
@@ -147,16 +166,14 @@ export const TransactionsList = () => {
     if (!hasMore || !nextCursorDate) return;
     try {
       setPageLoading(true);
-      const res = await fetch(buildQuery(nextCursorDate));
-      if (!res.ok) throw new Error(await res.text());
-      const data: any = await res.json();
+      const data: any = await apiFetch<any>(buildQuery(nextCursorDate));
       if (Array.isArray(data)) {
         // Unexpected legacy shape for a paged call: just append and stop further paging
-        setTransactions(prev => [...prev, ...(data as Transaction[])]);
+        setTransactions(prev => [...prev, ...(data as any[]).map(mapServerTx)]);
         setNextCursorDate(null);
         setHasMore(false);
       } else {
-        setTransactions(prev => [...prev, ...(((data?.items as Transaction[]) || []))]);
+        setTransactions(prev => [...prev, ...(((data?.items as any[]) || []).map(mapServerTx))]);
         setNextCursorDate((data?.nextCursorDate as string) || null);
         setHasMore(!!data?.hasMore);
       }
