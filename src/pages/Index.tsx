@@ -8,6 +8,7 @@ import { TransactionsList } from "@/components/TransactionsList";
 import { CategoryManager } from "@/components/CategoryManager";
 import { AccountManager } from "@/components/AccountManager";
 import { AccountSelector } from "@/components/AccountSelector";
+import CategoryMultiSelect from "@/components/CategoryMultiSelect";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // No import/export UI; data persistence handled via storage functions
 import { useSearchParams } from "react-router-dom";
@@ -25,6 +26,8 @@ const Index = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [selectedIncomeCats, setSelectedIncomeCats] = useState<string[]>([]);
+  const [selectedExpenseCats, setSelectedExpenseCats] = useState<string[]>([]);
   const { rate } = useVESExchangeRate();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -61,6 +64,28 @@ const Index = () => {
     const off = onDataChange(load);
     return off;
   }, []);
+
+  // Restore persisted category filters once categories are loaded
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("dashboard.categoryFilters");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { income: string[]; expense: string[] } | null;
+      if (!parsed) return;
+      const catIds = new Set(categories.map((c) => c.id));
+      setSelectedIncomeCats((parsed.income || []).filter((id) => catIds.has(id)));
+      setSelectedExpenseCats((parsed.expense || []).filter((id) => catIds.has(id)));
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories.length]);
+
+  // Persist filters
+  useEffect(() => {
+    const payload = JSON.stringify({ income: selectedIncomeCats, expense: selectedExpenseCats });
+    localStorage.setItem("dashboard.categoryFilters", payload);
+  }, [selectedIncomeCats, selectedExpenseCats]);
 
   // Fetch current user for header title
   useEffect(() => {
@@ -101,6 +126,11 @@ const Index = () => {
     transactions.filter(t => selectedAccount === "all" || t.accountId === selectedAccount)
   ), [transactions, selectedAccount]);
 
+  const incomeFilterSet = useMemo(() => new Set(selectedIncomeCats), [selectedIncomeCats]);
+  const expenseFilterSet = useMemo(() => new Set(selectedExpenseCats), [selectedExpenseCats]);
+  const incomeCategories = useMemo(() => categories.filter(c => c.type === "income"), [categories]);
+  const expenseCategories = useMemo(() => categories.filter(c => c.type === "expense"), [categories]);
+
   const { totalIncome, totalExpenses } = useMemo(() => {
     const monthTx = txByAccount.filter(t => isCurrentMonth(t.date));
     let inc = 0, exp = 0;
@@ -111,17 +141,21 @@ const Index = () => {
       const cat = categories.find(c => c.id === t.categoryId);
       const name = (cat?.name || '').toLowerCase();
       if (t.type === "income") {
+        // Apply income category filter when set
+        if (selectedIncomeCats.length > 0 && !incomeFilterSet.has(t.categoryId)) continue;
         // Excluir ajustes de balance del total de ingresos
         const isAdjustmentPlus = name === 'ajuste de balance (+)';
         if (!isAdjustmentPlus) inc += usdAmount;
       } else {
+        // Apply expense category filter when set
+        if (selectedExpenseCats.length > 0 && !expenseFilterSet.has(t.categoryId)) continue;
         // Excluir ajustes de balance del total de gastos
         const isAdjustment = name === 'ajuste de balance (+)' || name === 'ajuste de balance (-)';
         if (!isAdjustment) exp += usdAmount;
       }
     }
     return { totalIncome: inc, totalExpenses: exp };
-  }, [txByAccount, accounts, rate, categories]);
+  }, [txByAccount, accounts, rate, categories, incomeFilterSet, expenseFilterSet, selectedIncomeCats.length, selectedExpenseCats.length]);
 
   // Charts
   const expensePieData = useMemo(() => {
@@ -129,7 +163,7 @@ const Index = () => {
       const cat = categories.find(c => c.id === t.categoryId);
       const name = (cat?.name || '').toLowerCase();
       return name !== 'ajuste de balance (+)' && name !== 'ajuste de balance (-)';
-    });
+    }).filter(t => selectedExpenseCats.length > 0 ? expenseFilterSet.has(t.categoryId) : true);
     const map = new Map<string, number>();
     for (const t of expTx) {
       const acc = accounts.find(a => a.id === t.accountId);
@@ -145,7 +179,7 @@ const Index = () => {
         color: cat?.color || "hsl(var(--chart-6))",
       };
     });
-  }, [txByAccount, categories, accounts, rate]);
+  }, [txByAccount, categories, accounts, rate, expenseFilterSet, selectedExpenseCats.length]);
 
   const trendData = useMemo(() => {
     const labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -164,9 +198,11 @@ const Index = () => {
           const cat = categories.find(c => c.id === t.categoryId);
           const name = (cat?.name || '').toLowerCase();
           if (t.type === "income") {
+            if (selectedIncomeCats.length > 0 && !incomeFilterSet.has(t.categoryId)) continue;
             const isAdjustmentPlus = name === 'ajuste de balance (+)';
             if (!isAdjustmentPlus) inc += usd;
           } else {
+            if (selectedExpenseCats.length > 0 && !expenseFilterSet.has(t.categoryId)) continue;
             const isAdjustment = name === 'ajuste de balance (+)' || name === 'ajuste de balance (-)';
             if (!isAdjustment) exp += usd;
           }
@@ -175,7 +211,7 @@ const Index = () => {
       out.push({ month: labels[d.getMonth()], income: inc, expenses: exp });
     }
     return out;
-  }, [txByAccount, accounts, rate, categories]);
+  }, [txByAccount, accounts, rate, categories, incomeFilterSet, expenseFilterSet, selectedIncomeCats.length, selectedExpenseCats.length]);
 
   const budgetData = useMemo(() => {
     // Placeholder budgets (0) with actual monthly expenses per category
@@ -183,7 +219,7 @@ const Index = () => {
       const cat = categories.find(c => c.id === t.categoryId);
       const name = (cat?.name || '').toLowerCase();
       return name !== 'ajuste de balance (+)' && name !== 'ajuste de balance (-)';
-    });
+    }).filter(t => selectedExpenseCats.length > 0 ? expenseFilterSet.has(t.categoryId) : true);
     const map = new Map<string, number>();
     for (const t of expTx) {
       const acc = accounts.find(a => a.id === t.accountId);
@@ -195,7 +231,7 @@ const Index = () => {
       const cat = categories.find(c => c.id === categoryId);
       return { category: cat?.name || "Uncategorized", budget: 0, actual };
     });
-  }, [txByAccount, categories, accounts, rate]);
+  }, [txByAccount, categories, accounts, rate, expenseFilterSet, selectedExpenseCats.length]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -283,6 +319,24 @@ const Index = () => {
                 </p>
               </div>
             )}
+
+            {/* Category Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CategoryMultiSelect
+                label="Elegir categorías Income"
+                categories={incomeCategories}
+                selected={selectedIncomeCats}
+                onChange={setSelectedIncomeCats}
+                placeholder="Todas las categorías de Income"
+              />
+              <CategoryMultiSelect
+                label="Elegir categorías Expense"
+                categories={expenseCategories}
+                selected={selectedExpenseCats}
+                onChange={setSelectedExpenseCats}
+                placeholder="Todas las categorías de Expense"
+              />
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ExpensePieChart data={expensePieData} />
