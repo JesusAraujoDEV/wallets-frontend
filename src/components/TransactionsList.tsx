@@ -20,6 +20,9 @@ import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import dayjs from 'dayjs';
 import { cn } from "@/lib/utils";
 import { TransactionForm } from "@/components/TransactionForm";
+import CategoryMultiSelect from "@/components/CategoryMultiSelect";
+import AccountMultiSelect from "@/components/AccountMultiSelect";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,8 +37,9 @@ import {
 export const TransactionsList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
-  const [filterCategory, setFilterCategory] = useState("all");
-  const [filterAccount, setFilterAccount] = useState("all");
+  const [filterIncomeCategories, setFilterIncomeCategories] = useState<string[]>([]);
+  const [filterExpenseCategories, setFilterExpenseCategories] = useState<string[]>([]);
+  const [filterAccounts, setFilterAccounts] = useState<string[]>([]);
   const [filterDate, setFilterDate] = useState<string>(""); // YYYY-MM-DD or empty
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -44,6 +48,7 @@ export const TransactionsList = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [advOpen, setAdvOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -116,8 +121,13 @@ export const TransactionsList = () => {
     params.set('pageSize', String(PAGE_SIZE));
     if (searchQuery.trim()) params.set('q', searchQuery.trim());
     if (filterType !== 'all') params.set('type', filterType);
-    if (filterCategory !== 'all') params.set('categoryId', filterCategory);
-    if (filterAccount !== 'all') params.set('accountId', filterAccount);
+    const combinedCats = filterType === 'income'
+      ? filterIncomeCategories
+      : filterType === 'expense'
+        ? filterExpenseCategories
+        : [...filterIncomeCategories, ...filterExpenseCategories];
+    if (combinedCats.length > 0) params.set('categoryId', combinedCats.join(','));
+    if (filterAccounts.length > 0) params.set('accountId', filterAccounts.join(','));
     if (filterDate) params.set('date', filterDate);
     if (cursor) params.set('cursorDate', cursor);
     return `transactions?${params.toString()}`;
@@ -199,8 +209,10 @@ export const TransactionsList = () => {
     setHasMore(false);
     fetchFirstPage().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, filterType, filterCategory, filterAccount, filterDate]);
+  }, [searchQuery, filterType, filterIncomeCategories, filterExpenseCategories, filterAccounts, filterDate]);
   const categoriesOptions = useMemo(() => categories, [categories]);
+  const incomeCategoryOptions = useMemo(() => categories.filter(c => c.type === 'income'), [categories]);
+  const expenseCategoryOptions = useMemo(() => categories.filter(c => c.type === 'expense'), [categories]);
   const accountsOptions = useMemo(() => accounts, [accounts]);
   const editCategories = useMemo(() => categories.filter(c => c.type === formData.type), [categories, formData.type]);
 
@@ -217,8 +229,9 @@ export const TransactionsList = () => {
   const handleClearFilters = () => {
     setSearchQuery("");
     setFilterType("all");
-    setFilterCategory("all");
-    setFilterAccount("all");
+    setFilterIncomeCategories([]);
+    setFilterExpenseCategories([]);
+    setFilterAccounts([]);
     setFilterDate("");
   };
 
@@ -361,84 +374,150 @@ export const TransactionsList = () => {
   return (
     <Card className="shadow-md">
       <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-start sm:items-center justify-between gap-3">
           <div className="min-w-0">
             <CardTitle>Transaction Log</CardTitle>
             <CardDescription>View and filter your daily transactions</CardDescription>
           </div>
-          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
-            <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-2 w-full sm:w-auto">
-              {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Refresh
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <Button onClick={() => setIsAddOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Transaction
             </Button>
-            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-              <Button onClick={() => setIsAddOpen(true)} className="gap-2 w-full sm:w-auto">
-                <Plus className="h-4 w-4" />
-                New Transaction
-              </Button>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Add Transaction</DialogTitle>
-                </DialogHeader>
-                <TransactionForm asModalContent onSubmitted={async () => { setIsAddOpen(false); await fetchFirstPage(); }} />
-              </DialogContent>
-            </Dialog>
-          </div>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Add Transaction</DialogTitle>
+              </DialogHeader>
+              <TransactionForm asModalContent onSubmitted={async () => { setIsAddOpen(false); await fetchFirstPage(); }} />
+            </DialogContent>
+          </Dialog>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Filters */}
-  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search transactions..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
+        <div className="space-y-3">
+          {/* Compact top row for small screens */}
+          <div className="grid grid-cols-1 sm:hidden gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search transactions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
+                  <SelectItem value="expense">Expenses</SelectItem>
+                </SelectContent>
+              </Select>
+              <Collapsible open={advOpen} onOpenChange={setAdvOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" className="whitespace-nowrap">More Filters</Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3 space-y-3">
+                  <CategoryMultiSelect
+                    label="Categorías de Ingreso"
+                    categories={incomeCategoryOptions}
+                    selected={filterIncomeCategories}
+                    onChange={setFilterIncomeCategories}
+                    placeholder="Todas las de Ingreso"
+                  />
+                  <CategoryMultiSelect
+                    label="Categorías de Gasto"
+                    categories={expenseCategoryOptions}
+                    selected={filterExpenseCategories}
+                    onChange={setFilterExpenseCategories}
+                    placeholder="Todas las de Gasto"
+                  />
+                  <AccountMultiSelect
+                    label="Accounts"
+                    accounts={accountsOptions}
+                    selected={filterAccounts}
+                    onChange={setFilterAccounts}
+                    placeholder="All Accounts"
+                  />
+                  <div className="flex gap-2 items-center">
+                    <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
+                    <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
+                    <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-2">
+                      {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                      Refresh
+                    </Button>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
           </div>
-          <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="income">Income</SelectItem>
-              <SelectItem value="expense">Expenses</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categoriesOptions.map(category => (
-                <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterAccount} onValueChange={setFilterAccount}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by account" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Accounts</SelectItem>
-              {accountsOptions.map(acc => (
-                <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="flex gap-2">
-            <Input
-              type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-            />
-            <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
+
+          {/* Full filter bar for >= sm */}
+          <div className="hidden sm:grid items-end gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-8">
+            <div className="relative sm:col-span-2 lg:col-span-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search transactions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
+                  <SelectItem value="expense">Expenses</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="lg:col-span-1">
+              <CategoryMultiSelect
+                label="Categorías de Ingreso"
+                categories={incomeCategoryOptions}
+                selected={filterIncomeCategories}
+                onChange={setFilterIncomeCategories}
+                placeholder="Todas las de Ingreso"
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <CategoryMultiSelect
+                label="Categorías de Gasto"
+                categories={expenseCategoryOptions}
+                selected={filterExpenseCategories}
+                onChange={setFilterExpenseCategories}
+                placeholder="Todas las de Gasto"
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <AccountMultiSelect
+                label="Accounts"
+                accounts={accountsOptions}
+                selected={filterAccounts}
+                onChange={setFilterAccounts}
+                placeholder="All Accounts"
+              />
+            </div>
+            <div className="flex items-center gap-2 lg:col-span-2">
+              <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
+              <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
+              <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-2">
+                {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
+        
 
         {/* Transaction List */}
         <div className="space-y-6">
