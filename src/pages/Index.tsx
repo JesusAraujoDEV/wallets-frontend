@@ -16,6 +16,7 @@ import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from 
 import { AuthApi, type AuthUser } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
 import { useVESExchangeRate, convertToUSD } from "@/lib/rates";
+import { isBalanceAdjustmentCategory, isBalanceAdjustmentPlus } from "@/lib/utils";
 import type { Account, Category, Transaction } from "@/lib/types";
 
 // Dashboard data is derived from localStorage (JSON DB)
@@ -139,19 +140,16 @@ const Index = () => {
       const cur = acc?.currency ?? "USD";
       const usdAmount = convertToUSD(t.amount, cur as any, rate || null) ?? 0;
       const cat = categories.find(c => c.id === t.categoryId);
-      const name = (cat?.name || '').toLowerCase();
       if (t.type === "income") {
         // Apply income category filter when set
         if (selectedIncomeCats.length > 0 && !incomeFilterSet.has(t.categoryId)) continue;
         // Excluir ajustes de balance del total de ingresos
-        const isAdjustmentPlus = name === 'ajuste de balance (+)';
-        if (!isAdjustmentPlus) inc += usdAmount;
+        if (!isBalanceAdjustmentPlus(cat?.name)) inc += usdAmount;
       } else {
         // Apply expense category filter when set
         if (selectedExpenseCats.length > 0 && !expenseFilterSet.has(t.categoryId)) continue;
         // Excluir ajustes de balance del total de gastos
-        const isAdjustment = name === 'ajuste de balance (+)' || name === 'ajuste de balance (-)';
-        if (!isAdjustment) exp += usdAmount;
+        if (!isBalanceAdjustmentCategory(cat?.name)) exp += usdAmount;
       }
     }
     return { totalIncome: inc, totalExpenses: exp };
@@ -161,8 +159,7 @@ const Index = () => {
   const expensePieData = useMemo(() => {
     const expTx = txByAccount.filter(t => t.type === "expense" && isCurrentMonth(t.date)).filter(t => {
       const cat = categories.find(c => c.id === t.categoryId);
-      const name = (cat?.name || '').toLowerCase();
-      return name !== 'ajuste de balance (+)' && name !== 'ajuste de balance (-)';
+      return !isBalanceAdjustmentCategory(cat?.name);
     }).filter(t => selectedExpenseCats.length > 0 ? expenseFilterSet.has(t.categoryId) : true);
     const map = new Map<string, number>();
     for (const t of expTx) {
@@ -196,15 +193,12 @@ const Index = () => {
           const cur = acc?.currency ?? "USD";
           const usd = convertToUSD(t.amount, cur as any, rate || null) ?? 0;
           const cat = categories.find(c => c.id === t.categoryId);
-          const name = (cat?.name || '').toLowerCase();
           if (t.type === "income") {
             if (selectedIncomeCats.length > 0 && !incomeFilterSet.has(t.categoryId)) continue;
-            const isAdjustmentPlus = name === 'ajuste de balance (+)';
-            if (!isAdjustmentPlus) inc += usd;
+            if (!isBalanceAdjustmentPlus(cat?.name)) inc += usd;
           } else {
             if (selectedExpenseCats.length > 0 && !expenseFilterSet.has(t.categoryId)) continue;
-            const isAdjustment = name === 'ajuste de balance (+)' || name === 'ajuste de balance (-)';
-            if (!isAdjustment) exp += usd;
+            if (!isBalanceAdjustmentCategory(cat?.name)) exp += usd;
           }
         }
       }
@@ -217,8 +211,7 @@ const Index = () => {
     // Placeholder budgets (0) with actual monthly expenses per category
     const expTx = txByAccount.filter(t => t.type === "expense" && isCurrentMonth(t.date)).filter(t => {
       const cat = categories.find(c => c.id === t.categoryId);
-      const name = (cat?.name || '').toLowerCase();
-      return name !== 'ajuste de balance (+)' && name !== 'ajuste de balance (-)';
+      return !isBalanceAdjustmentCategory(cat?.name);
     }).filter(t => selectedExpenseCats.length > 0 ? expenseFilterSet.has(t.categoryId) : true);
     const map = new Map<string, number>();
     for (const t of expTx) {

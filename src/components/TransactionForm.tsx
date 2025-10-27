@@ -15,8 +15,9 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import dayjs from 'dayjs';
-import { cn } from "@/lib/utils";
+import { cn, isBalanceAdjustmentCategory } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { getIconOptionsForType } from "@/lib/categoryIcons";
 
 export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asModalContent?: boolean; onSubmitted?: () => void }) => {
   const [account, setAccount] = useState("");
@@ -37,29 +38,9 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
   const [newCatColorName, setNewCatColorName] = useState<string>("Pastel Blue");
   const [newCatIcon, setNewCatIcon] = useState<string | null>(null);
 
-  const ICON_OPTIONS_EXPENSE: string[] = [
-    "ShoppingCart","ShoppingBag","ShoppingBasket","Store",
-    "Gift","Percent","Receipt","Banknote",
-    "Scissors","Users","Home","Car",
-    "Fuel","Droplet","Film","Ticket",
-    "Gamepad2","Tv","Puzzle","Paperclip",
-    "FileText","PenLine","Pencil","Utensils",
-    "Pizza","Shirt","SquareParking","Cloud",
-    "Database","GraduationCap","Music2"
-  ];
-  const ICON_OPTIONS_INCOME: string[] = [
-    "Wallet","PiggyBank","Banknote","DollarSign",
-    "Coins","ArrowLeftRight","Users","Home",
-    "Heart","Calendar","CalendarCheck","Briefcase",
-    "CheckCircle2","FileCheck","PackageCheck","BadgeCheck",
-    "BriefcaseMedical","Hospital","ShoppingBasket","CreditCard","Gamepad2"
-  ];
-  const ICON_OPTIONS: string[] = (type === "expense" ? ICON_OPTIONS_EXPENSE : ICON_OPTIONS_INCOME);
+  const ICON_OPTIONS: string[] = getIconOptionsForType(type);
 
-  const uiCategories = filteredCategories.filter((c) => {
-    const n = c.name.toLowerCase();
-    return n !== "ajuste de balance (+)" && n !== "ajuste de balance (-)";
-  });
+  const uiCategories = filteredCategories.filter((c) => !isBalanceAdjustmentCategory(c.name));
 
   useEffect(() => {
     const load = () => {

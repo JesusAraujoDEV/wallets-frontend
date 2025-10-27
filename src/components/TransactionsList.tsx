@@ -18,7 +18,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import dayjs from 'dayjs';
-import { cn } from "@/lib/utils";
+import { cn, isBalanceAdjustmentCategory } from "@/lib/utils";
 import { TransactionForm } from "@/components/TransactionForm";
 import CategoryMultiSelect from "@/components/CategoryMultiSelect";
 import AccountMultiSelect from "@/components/AccountMultiSelect";
@@ -34,6 +34,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TxAmount } from "@/components/TxAmount";
+import { TransactionsDeleteConfirm } from "@/components/TransactionsDeleteConfirm";
 
 export const TransactionsList = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -355,8 +357,7 @@ export const TransactionsList = () => {
     if (!isAnyFilterActive) return byType;
     return byType.filter(t => {
       const cat = categories.find(c => c.id === t.categoryId);
-      const name = (cat?.name || '').toLowerCase();
-      return name !== 'ajuste de balance (+)' && name !== 'ajuste de balance (-)';
+      return !isBalanceAdjustmentCategory(cat?.name);
     });
   }, [transactions, filterType, isAnyFilterActive, categories]);
 
@@ -417,8 +418,7 @@ export const TransactionsList = () => {
         // Exclude balance adjustment categories from daily totals
         const txs = groupedTransactions[d].filter(tx => {
           const cat = categories.find(c => c.id === tx.categoryId);
-          const name = (cat?.name || '').toLowerCase();
-          return name !== 'ajuste de balance (+)' && name !== 'ajuste de balance (-)';
+          return !isBalanceAdjustmentCategory(cat?.name);
         });
         const usdValues = await Promise.all(txs.map(async (tx) => {
           if (tx.amountUsd != null) {
@@ -894,83 +894,4 @@ export const TransactionsList = () => {
   );
 };
 
-// Inline component to render transaction amount in original currency and USD (by date)
-const TxAmount = ({ transaction, accounts, rateForDate }: { transaction: Transaction; accounts: Account[]; rateForDate?: number | null }) => {
-  const acc = accounts.find(a => a.id === transaction.accountId);
-  const currency = transaction.currency ?? acc?.currency ?? "USD";
-  const sign = transaction.type === "income" ? "+" : "-";
-  const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "Bs.";
-  const [usd, setUsd] = useState<number | null>(transaction.amountUsd ?? null);
-
-  useEffect(() => {
-    let mounted = true;
-    // If server provided USD equivalence, prefer it; else compute client-side
-    if (transaction.amountUsd != null) {
-      setUsd(transaction.amountUsd);
-      return;
-    }
-    if (currency === 'USD') {
-      setUsd(transaction.amount);
-      return;
-    }
-    // If we have the per-day rate from parent, compute synchronously for stability
-    if (rateForDate != null && isFinite(rateForDate) && rateForDate > 0) {
-      const value = transaction.amount / rateForDate;
-      setUsd(value);
-      return;
-    }
-    // Fallback to historical fetch
-    (async () => {
-      const converted = await convertToUSDByDate(transaction.amount, currency as any, transaction.date);
-      if (mounted) setUsd(converted);
-    })();
-    return () => { mounted = false; };
-  }, [transaction.amount, transaction.date, currency, transaction.amountUsd, rateForDate]);
-
-  return (
-    <div className={`text-right ${transaction.type === "income" ? "text-primary" : "text-destructive"}`}>
-      <div className="text-lg font-semibold">
-        {sign}{symbol}{transaction.amount.toFixed(2)}
-      </div>
-      {currency !== "USD" && usd != null ? (
-        <div className="text-xs text-muted-foreground">≈ {sign}${usd.toFixed(2)} USD</div>
-      ) : null}
-    </div>
-  );
-};
-
-// Confirm delete dialog (mounted once at bottom of list card)
-// Note: Placing here to keep file self-contained; dialog is rendered at same level as the list Card.
-export const TransactionsDeleteConfirm = ({
-  open,
-  onOpenChange,
-  onConfirm,
-  busy,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onConfirm: () => Promise<void> | void;
-  busy: boolean;
-}) => (
-  <AlertDialog open={open} onOpenChange={onOpenChange}>
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
-        <AlertDialogDescription>
-          This action cannot be undone. This will permanently delete the transaction from your history.
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
-        <AlertDialogAction
-          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          disabled={busy}
-          onClick={onConfirm}
-        >
-          {busy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-          Delete
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
-);
+// (Moved TxAmount and TransactionsDeleteConfirm into dedicated files for SRP and reuse)
