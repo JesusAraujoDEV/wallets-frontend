@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2, Plus, RefreshCw } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2, Plus } from "lucide-react";
 import * as Icons from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
-import { apiFetch } from "@/lib/http";
+import { apiFetch, buildApiUrl } from "@/lib/http";
 import { convertToUSDByDate, getRateByDate } from "@/lib/rates";
 import type { Transaction, Category, Account } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
@@ -23,6 +23,7 @@ import { TransactionForm } from "@/components/TransactionForm";
 import CategoryMultiSelect from "@/components/CategoryMultiSelect";
 import AccountMultiSelect from "@/components/AccountMultiSelect";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,18 +40,19 @@ export const TransactionsList = () => {
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [filterIncomeCategories, setFilterIncomeCategories] = useState<string[]>([]);
   const [filterExpenseCategories, setFilterExpenseCategories] = useState<string[]>([]);
+  const [filterAllCategories, setFilterAllCategories] = useState<string[]>([]);
   const [filterAccounts, setFilterAccounts] = useState<string[]>([]);
-  const [filterDate, setFilterDate] = useState<string>(""); // YYYY-MM-DD or empty (exact day)
-  const [filterDateFrom, setFilterDateFrom] = useState<string>(""); // YYYY-MM-DD
-  const [filterDateTo, setFilterDateTo] = useState<string>(""); // YYYY-MM-DD
-  const [filterMonth, setFilterMonth] = useState<string>(""); // YYYY-MM
+  const [filterDate, setFilterDate] = useState<string>(""); // YYYY-MM-DD (Exact day)
+  const [filterDateFrom, setFilterDateFrom] = useState<string>(""); // YYYY-MM-DD (Range from)
+  const [filterDateTo, setFilterDateTo] = useState<string>(""); // YYYY-MM-DD (Range to)
+  const [filterMonth, setFilterMonth] = useState<string>(""); // YYYY-MM (Month)
+  const [dateMode, setDateMode] = useState<"none" | "day" | "range" | "month">("none");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [advOpen, setAdvOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [saving, setSaving] = useState(false);
@@ -111,6 +113,9 @@ export const TransactionsList = () => {
 
   const fetchLegacyAll = async (signal?: AbortSignal) => {
     // Backward-compatible fallback if grouped API is not available
+    if (import.meta.env.DEV) {
+      console.debug('[TxList] fetchLegacyAll -> GET', buildApiUrl('transactions'));
+    }
     const arr = await apiFetch<any[]>(`transactions`, { signal });
     setTransactions((arr || []).map(mapServerTx));
     setNextCursorDate(null);
@@ -128,14 +133,18 @@ export const TransactionsList = () => {
       ? filterIncomeCategories
       : filterType === 'expense'
         ? filterExpenseCategories
-        : [...filterIncomeCategories, ...filterExpenseCategories];
+        : filterAllCategories;
     if (combinedCats.length > 0) params.set('categoryId', combinedCats.join(','));
     if (filterAccounts.length > 0) params.set('accountId', filterAccounts.join(','));
-  // Date/range/month precedence: dateFrom/dateTo > month > exact date
-  if (filterDateFrom) params.set('dateFrom', filterDateFrom);
-  if (filterDateTo) params.set('dateTo', filterDateTo);
-  if (!filterDateFrom && !filterDateTo && filterMonth) params.set('month', filterMonth);
-  if (!filterDateFrom && !filterDateTo && !filterMonth && filterDate) params.set('date', filterDate);
+    // Apply only the selected date mode
+    if (dateMode === 'day' && filterDate) {
+      params.set('date', filterDate);
+    } else if (dateMode === 'range') {
+      if (filterDateFrom) params.set('dateFrom', filterDateFrom);
+      if (filterDateTo) params.set('dateTo', filterDateTo);
+    } else if (dateMode === 'month' && filterMonth) {
+      params.set('month', filterMonth);
+    }
     if (cursor) params.set('cursorDate', cursor);
     return `transactions?${params.toString()}`;
   };
@@ -148,7 +157,26 @@ export const TransactionsList = () => {
       const controller = new AbortController();
       abortRef.current = controller;
       const myReqId = ++reqIdRef.current;
-      const data: any = await apiFetch<any>(buildQuery(), { signal: controller.signal });
+      const path = buildQuery();
+      if (import.meta.env.DEV) {
+        console.groupCollapsed('[TxList] fetchFirstPage');
+        console.log('filters', {
+          searchQuery,
+          filterType,
+          filterIncomeCategories,
+          filterExpenseCategories,
+          filterAccounts,
+          filterDate,
+          filterDateFrom,
+          filterDateTo,
+          filterMonth,
+          pageSize: PAGE_SIZE,
+        });
+        console.log('queryPath', path);
+        console.log('fullUrl', buildApiUrl(path));
+        console.groupEnd();
+      }
+      const data: any = await apiFetch<any>(path, { signal: controller.signal });
       // Ignore if a newer request has been issued
       if (myReqId !== reqIdRef.current) return;
       if (Array.isArray(data)) {
@@ -183,7 +211,15 @@ export const TransactionsList = () => {
     if (!hasMore || !nextCursorDate) return;
     try {
       setPageLoading(true);
-      const data: any = await apiFetch<any>(buildQuery(nextCursorDate));
+      const path = buildQuery(nextCursorDate);
+      if (import.meta.env.DEV) {
+        console.groupCollapsed('[TxList] fetchNextPage');
+        console.log('cursorDate', nextCursorDate);
+        console.log('queryPath', path);
+        console.log('fullUrl', buildApiUrl(path));
+        console.groupEnd();
+      }
+      const data: any = await apiFetch<any>(path);
       if (Array.isArray(data)) {
         // Unexpected legacy shape for a paged call: just append and stop further paging
         setTransactions(prev => [...prev, ...(data as any[]).map(mapServerTx)]);
@@ -216,33 +252,36 @@ export const TransactionsList = () => {
     setHasMore(false);
     fetchFirstPage().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, filterType, filterIncomeCategories, filterExpenseCategories, filterAccounts, filterDate, filterDateFrom, filterDateTo, filterMonth]);
+  }, [searchQuery, filterType, filterIncomeCategories, filterExpenseCategories, filterAllCategories, filterAccounts, dateMode, filterDate, filterDateFrom, filterDateTo, filterMonth]);
   const categoriesOptions = useMemo(() => categories, [categories]);
   const incomeCategoryOptions = useMemo(() => categories.filter(c => c.type === 'income'), [categories]);
   const expenseCategoryOptions = useMemo(() => categories.filter(c => c.type === 'expense'), [categories]);
   const accountsOptions = useMemo(() => accounts, [accounts]);
   const editCategories = useMemo(() => categories.filter(c => c.type === formData.type), [categories, formData.type]);
-
-  const handleRefresh = async () => {
-    try {
-      setRefreshing(true);
-      await fetchFirstPage();
-      toast({ title: "Transactions Refreshed", description: "Latest transactions loaded (grouped by date)." });
-    } finally {
-      setRefreshing(false);
+  
+  // Keep category selections consistent with type
+  useEffect(() => {
+    if (filterType === 'income' && filterExpenseCategories.length) {
+      setFilterExpenseCategories([]);
+    } else if (filterType === 'expense' && filterIncomeCategories.length) {
+      setFilterIncomeCategories([]);
     }
-  };
+  }, [filterType]);
+
+  // No manual refresh; list reacts automatically to filter changes
 
   const handleClearFilters = () => {
     setSearchQuery("");
     setFilterType("all");
     setFilterIncomeCategories([]);
     setFilterExpenseCategories([]);
+    setFilterAllCategories([]);
     setFilterAccounts([]);
     setFilterDate("");
     setFilterDateFrom("");
     setFilterDateTo("");
     setFilterMonth("");
+    setDateMode("none");
   };
 
   const handleEdit = (tx: Transaction) => {
@@ -437,18 +476,15 @@ export const TransactionsList = () => {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-3 space-y-3">
                   <CategoryMultiSelect
-                    label="Categorías de Ingreso"
-                    categories={incomeCategoryOptions}
-                    selected={filterIncomeCategories}
-                    onChange={setFilterIncomeCategories}
-                    placeholder="Todas las de Ingreso"
-                  />
-                  <CategoryMultiSelect
-                    label="Categorías de Gasto"
-                    categories={expenseCategoryOptions}
-                    selected={filterExpenseCategories}
-                    onChange={setFilterExpenseCategories}
-                    placeholder="Todas las de Gasto"
+                    label="Categoría"
+                    categories={filterType === 'income' ? incomeCategoryOptions : filterType === 'expense' ? expenseCategoryOptions : categoriesOptions}
+                    selected={filterType === 'income' ? filterIncomeCategories : filterType === 'expense' ? filterExpenseCategories : filterAllCategories}
+                    onChange={(vals) => {
+                      if (filterType === 'income') setFilterIncomeCategories(vals);
+                      else if (filterType === 'expense') setFilterExpenseCategories(vals);
+                      else setFilterAllCategories(vals);
+                    }}
+                    placeholder="Todas"
                   />
                   <AccountMultiSelect
                     label="Accounts"
@@ -458,25 +494,41 @@ export const TransactionsList = () => {
                     placeholder="All Accounts"
                   />
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm text-muted-foreground w-24">Exact day</label>
-                        <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
+                      <div className="space-y-2">
+                        <Label className="text-sm">Date filter</Label>
+                        <RadioGroup value={dateMode} onValueChange={(v: any) => setDateMode(v)} className="grid grid-cols-3 gap-2">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="day" id="dm-day-sm" />
+                            <Label htmlFor="dm-day-sm" className="text-sm">Exact day</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="range" id="dm-range-sm" />
+                            <Label htmlFor="dm-range-sm" className="text-sm">Range</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="month" id="dm-month-sm" />
+                            <Label htmlFor="dm-month-sm" className="text-sm">Month</Label>
+                          </div>
+                        </RadioGroup>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm text-muted-foreground w-24">Range</label>
-                        <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} placeholder="From" />
-                        <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} placeholder="To" />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm text-muted-foreground w-24">Month</label>
-                        <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} />
-                      </div>
+                      {dateMode === 'day' && (
+                        <div className="flex items-center gap-2">
+                          <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-full" />
+                        </div>
+                      )}
+                      {dateMode === 'range' && (
+                        <div className="flex items-center gap-2">
+                          <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="w-full" placeholder="From" />
+                          <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="w-full" placeholder="To" />
+                        </div>
+                      )}
+                      {dateMode === 'month' && (
+                        <div className="flex items-center gap-2">
+                          <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-full" />
+                        </div>
+                      )}
                       <div className="flex items-center gap-2">
                         <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
-                        <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-2">
-                          {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                          Refresh
-                        </Button>
                       </div>
                     </div>
                 </CollapsibleContent>
@@ -507,22 +559,17 @@ export const TransactionsList = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-2">
               <CategoryMultiSelect
-                label="Categorías de Ingreso"
-                categories={incomeCategoryOptions}
-                selected={filterIncomeCategories}
-                onChange={setFilterIncomeCategories}
-                placeholder="Todas las de Ingreso"
-              />
-            </div>
-            <div className="lg:col-span-1">
-              <CategoryMultiSelect
-                label="Categorías de Gasto"
-                categories={expenseCategoryOptions}
-                selected={filterExpenseCategories}
-                onChange={setFilterExpenseCategories}
-                placeholder="Todas las de Gasto"
+                label="Categoría"
+                categories={filterType === 'income' ? incomeCategoryOptions : filterType === 'expense' ? expenseCategoryOptions : categoriesOptions}
+                selected={filterType === 'income' ? filterIncomeCategories : filterType === 'expense' ? filterExpenseCategories : filterAllCategories}
+                onChange={(vals) => {
+                  if (filterType === 'income') setFilterIncomeCategories(vals);
+                  else if (filterType === 'expense') setFilterExpenseCategories(vals);
+                  else setFilterAllCategories(vals);
+                }}
+                placeholder="Todas"
               />
             </div>
             <div className="lg:col-span-1">
@@ -535,27 +582,62 @@ export const TransactionsList = () => {
               />
             </div>
             <div className="flex flex-col gap-2 lg:col-span-2">
-              <div className="flex items-center gap-2">
-                <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
-                <div className="text-sm text-muted-foreground">Exact day</div>
+              <div className="flex items-center gap-4">
+                <Label className="text-sm">Date filter</Label>
+                <div className="flex items-center gap-4">
+                  <RadioGroup value={dateMode} onValueChange={(v: any) => setDateMode(v)} className="grid grid-cols-3 gap-3">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="day" id="dm-day" />
+                      <Label htmlFor="dm-day" className="text-sm">Exact day</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="range" id="dm-range" />
+                      <Label htmlFor="dm-range" className="text-sm">Range</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="month" id="dm-month" />
+                      <Label htmlFor="dm-month" className="text-sm">Month</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
               </div>
+              {dateMode === 'day' && (
+                <div className="flex items-center gap-2">
+                  <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-full" />
+                </div>
+              )}
+              {dateMode === 'range' && (
+                <div className="flex items-center gap-2">
+                  <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="w-full" placeholder="From" />
+                  <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="w-full" placeholder="To" />
+                </div>
+              )}
+              {dateMode === 'month' && (
+                <div className="flex items-center gap-2">
+                  <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-full" />
+                </div>
+              )}
               <div className="flex items-center gap-2">
-                <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} placeholder="From" />
-                <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} placeholder="To" />
-                <div className="text-sm text-muted-foreground">Range</div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} />
-                <div className="text-sm text-muted-foreground">Month</div>
                 <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
-                <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-2">
-                  {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                  Refresh
-                </Button>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Overall totals summary for current results */}
+        {Object.keys(groupedTransactions).length > 0 ? (
+          <div className="flex items-center gap-2 text-xs sm:text-sm flex-wrap">
+            <Badge variant="outline" className="border-green-500 text-green-600">
+              Total Income: ${Object.keys(groupTotals).reduce((s, d) => s + (groupTotals[d]?.income ?? 0), 0).toFixed(2)}
+            </Badge>
+            <Badge variant="outline" className="border-red-500 text-red-600">
+              Total Expenses: -${Object.keys(groupTotals).reduce((s, d) => s + (groupTotals[d]?.expenses ?? 0), 0).toFixed(2)}
+            </Badge>
+            <Badge variant="secondary" className="font-semibold">
+              Net: {(Object.keys(groupTotals).reduce((s, d) => s + ((groupTotals[d]?.income ?? 0) - (groupTotals[d]?.expenses ?? 0)), 0)).toFixed(2)}
+            </Badge>
+          </div>
+        ) : null}
         
 
         {/* Transaction List */}
