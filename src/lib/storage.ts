@@ -136,7 +136,7 @@ export const TransactionsStore = {
     });
     emit();
   },
-  async add(tx: Transaction): Promise<void> {
+  async add(tx: Transaction, options?: { commission?: number }): Promise<void> {
     const acc = accountsCache.find(a => a.id === tx.accountId);
     const currency = acc?.currency;
     if (!currency) throw new Error("Missing account currency for transaction POST");
@@ -147,7 +147,8 @@ export const TransactionsStore = {
       date: tx.date,
       categoryId: Number(tx.categoryId),
       accountId: Number(tx.accountId),
-    };
+      ...(options?.commission != null && options.commission !== 0 ? { commission: Number(options.commission) } : {}),
+    } as any;
     await fetchJSON(`transactions`, { method: "POST", body: JSON.stringify(payload) });
     await AccountsStore.refresh().catch(() => {});
     await this.refresh();

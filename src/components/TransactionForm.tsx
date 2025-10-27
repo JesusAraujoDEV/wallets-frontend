@@ -24,6 +24,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
   const [account, setAccount] = useState("");
   const [type, setType] = useState<"income" | "expense">("expense");
   const [amount, setAmount] = useState("");
+  const [singleCommission, setSingleCommission] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
@@ -95,15 +96,16 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
         accountId: selectedAccount?.id || "",
         amount: parseFloat(amount),
         type,
-      });
+      }, { commission: singleCommission ? parseFloat(singleCommission) : undefined });
       toast({
         title: "Transaction Added",
-        description: `${type === "income" ? "Income" : "Expense"} of $${amount} recorded to ${selectedAccount?.name}.`,
+        description: `${type === "income" ? "Income" : "Expense"} of $${amount}${singleCommission ? ` (+$${Number(singleCommission).toFixed(2)} commission)` : ""} recorded to ${selectedAccount?.name}.`,
       });
 
       // Reset form
       setAccount("");
       setAmount("");
+      setSingleCommission("");
       setCategory("");
       setDescription("");
       setDate(new Date().toISOString().slice(0, 10));
@@ -189,7 +191,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
             </SelectContent>
           </Select>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
             <Label htmlFor="type">Type</Label>
             <Select value={type} onValueChange={(value) => setType(value as "income" | "expense")}>
@@ -212,6 +214,17 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="singleCommission">Commission (optional)</Label>
+            <Input
+              id="singleCommission"
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              value={singleCommission}
+              onChange={(e) => setSingleCommission(e.target.value)}
             />
           </div>
           <div className="space-y-2">
