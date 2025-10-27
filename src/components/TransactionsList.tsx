@@ -40,7 +40,10 @@ export const TransactionsList = () => {
   const [filterIncomeCategories, setFilterIncomeCategories] = useState<string[]>([]);
   const [filterExpenseCategories, setFilterExpenseCategories] = useState<string[]>([]);
   const [filterAccounts, setFilterAccounts] = useState<string[]>([]);
-  const [filterDate, setFilterDate] = useState<string>(""); // YYYY-MM-DD or empty
+  const [filterDate, setFilterDate] = useState<string>(""); // YYYY-MM-DD or empty (exact day)
+  const [filterDateFrom, setFilterDateFrom] = useState<string>(""); // YYYY-MM-DD
+  const [filterDateTo, setFilterDateTo] = useState<string>(""); // YYYY-MM-DD
+  const [filterMonth, setFilterMonth] = useState<string>(""); // YYYY-MM
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -128,7 +131,11 @@ export const TransactionsList = () => {
         : [...filterIncomeCategories, ...filterExpenseCategories];
     if (combinedCats.length > 0) params.set('categoryId', combinedCats.join(','));
     if (filterAccounts.length > 0) params.set('accountId', filterAccounts.join(','));
-    if (filterDate) params.set('date', filterDate);
+  // Date/range/month precedence: dateFrom/dateTo > month > exact date
+  if (filterDateFrom) params.set('dateFrom', filterDateFrom);
+  if (filterDateTo) params.set('dateTo', filterDateTo);
+  if (!filterDateFrom && !filterDateTo && filterMonth) params.set('month', filterMonth);
+  if (!filterDateFrom && !filterDateTo && !filterMonth && filterDate) params.set('date', filterDate);
     if (cursor) params.set('cursorDate', cursor);
     return `transactions?${params.toString()}`;
   };
@@ -209,7 +216,7 @@ export const TransactionsList = () => {
     setHasMore(false);
     fetchFirstPage().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, filterType, filterIncomeCategories, filterExpenseCategories, filterAccounts, filterDate]);
+  }, [searchQuery, filterType, filterIncomeCategories, filterExpenseCategories, filterAccounts, filterDate, filterDateFrom, filterDateTo, filterMonth]);
   const categoriesOptions = useMemo(() => categories, [categories]);
   const incomeCategoryOptions = useMemo(() => categories.filter(c => c.type === 'income'), [categories]);
   const expenseCategoryOptions = useMemo(() => categories.filter(c => c.type === 'expense'), [categories]);
@@ -233,6 +240,9 @@ export const TransactionsList = () => {
     setFilterExpenseCategories([]);
     setFilterAccounts([]);
     setFilterDate("");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+    setFilterMonth("");
   };
 
   const handleEdit = (tx: Transaction) => {
@@ -288,8 +298,11 @@ export const TransactionsList = () => {
     }
   };
 
-  // Server-side filtering is in effect; use transactions as-is
-  const filteredTransactions = transactions;
+  // Apply a defensive client-side filter by type as well, in case the server ignores the param (e.g., grouped endpoint differences)
+  const filteredTransactions = useMemo(() => {
+    if (filterType === 'all') return transactions;
+    return transactions.filter(t => t.type === filterType);
+  }, [transactions, filterType]);
 
   // Always sort by date DESC (YYYY-MM-DD) to ensure correct grouping order regardless of insertion
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
@@ -444,14 +457,28 @@ export const TransactionsList = () => {
                     onChange={setFilterAccounts}
                     placeholder="All Accounts"
                   />
-                  <div className="flex gap-2 items-center">
-                    <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
-                    <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
-                    <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-2">
-                      {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                      Refresh
-                    </Button>
-                  </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm text-muted-foreground w-24">Exact day</label>
+                        <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm text-muted-foreground w-24">Range</label>
+                        <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} placeholder="From" />
+                        <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} placeholder="To" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm text-muted-foreground w-24">Month</label>
+                        <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
+                        <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-2">
+                          {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                          Refresh
+                        </Button>
+                      </div>
+                    </div>
                 </CollapsibleContent>
               </Collapsible>
             </div>
@@ -507,13 +534,25 @@ export const TransactionsList = () => {
                 placeholder="All Accounts"
               />
             </div>
-            <div className="flex items-center gap-2 lg:col-span-2">
-              <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
-              <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
-              <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-2">
-                {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Refresh
-              </Button>
+            <div className="flex flex-col gap-2 lg:col-span-2">
+              <div className="flex items-center gap-2">
+                <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
+                <div className="text-sm text-muted-foreground">Exact day</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} placeholder="From" />
+                <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} placeholder="To" />
+                <div className="text-sm text-muted-foreground">Range</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} />
+                <div className="text-sm text-muted-foreground">Month</div>
+                <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
+                <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-2">
+                  {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Refresh
+                </Button>
+              </div>
             </div>
           </div>
         </div>

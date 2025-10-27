@@ -8,14 +8,15 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Check, ChevronsUpDown, X } from "lucide-react";
 
 interface Props {
-  label: string;
+  label?: string;
   categories: Category[];
   selected: string[]; // category ids
   onChange: (ids: string[]) => void;
   placeholder?: string;
+  hideLabel?: boolean;
 }
 
-export default function CategoryMultiSelect({ label, categories, selected, onChange, placeholder }: Props) {
+export default function CategoryMultiSelect({ label, categories, selected, onChange, placeholder, hideLabel }: Props) {
   const [open, setOpen] = useState(false);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -36,7 +37,9 @@ export default function CategoryMultiSelect({ label, categories, selected, onCha
 
   return (
     <div className="w-full">
-      <div className="mb-2 text-sm font-medium text-muted-foreground">{label}</div>
+      {!hideLabel && label ? (
+        <div className="mb-2 text-sm font-medium text-muted-foreground">{label}</div>
+      ) : null}
       <div className="flex items-center gap-2 flex-wrap">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
