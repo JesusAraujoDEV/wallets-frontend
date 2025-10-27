@@ -335,11 +335,30 @@ export const TransactionsList = () => {
     }
   };
 
-  // Apply a defensive client-side filter by type as well, in case the server ignores the param (e.g., grouped endpoint differences)
+  // Track if any filter is active to optionally hide Balance Adjustment entries from the visible list
+  const isAnyFilterActive = useMemo(() => {
+    return Boolean(
+      (searchQuery && searchQuery.trim()) ||
+      filterType !== 'all' ||
+      filterIncomeCategories.length ||
+      filterExpenseCategories.length ||
+      filterAccounts.length ||
+      (dateMode === 'day' && filterDate) ||
+      (dateMode === 'range' && (filterDateFrom || filterDateTo)) ||
+      (dateMode === 'month' && filterMonth)
+    );
+  }, [searchQuery, filterType, filterIncomeCategories, filterExpenseCategories, filterAccounts, dateMode, filterDate, filterDateFrom, filterDateTo, filterMonth]);
+
+  // Apply a defensive client-side filter by type and exclude balance adjustments when any filter is active
   const filteredTransactions = useMemo(() => {
-    if (filterType === 'all') return transactions;
-    return transactions.filter(t => t.type === filterType);
-  }, [transactions, filterType]);
+    const byType = filterType === 'all' ? transactions : transactions.filter(t => t.type === filterType);
+    if (!isAnyFilterActive) return byType;
+    return byType.filter(t => {
+      const cat = categories.find(c => c.id === t.categoryId);
+      const name = (cat?.name || '').toLowerCase();
+      return name !== 'ajuste de balance (+)' && name !== 'ajuste de balance (-)';
+    });
+  }, [transactions, filterType, isAnyFilterActive, categories]);
 
   // Always sort by date DESC (YYYY-MM-DD) to ensure correct grouping order regardless of insertion
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
