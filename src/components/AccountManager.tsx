@@ -20,6 +20,8 @@ import { toast } from "@/hooks/use-toast";
 import { AccountsStore, CategoriesStore, TransactionsStore, newId, onDataChange } from "@/lib/storage";
 import type { Account, Category } from "@/lib/types";
 import { useVESExchangeRate } from "@/lib/rates";
+import { createBalanceAdjustmentTransaction } from "@/lib/adjustments";
+import { AccountEditorDialog, type AccountEditorValue } from "@/components/AccountEditorDialog";
 
 // All accounts are now loaded from localStorage via AccountsStore
 
@@ -38,9 +40,9 @@ export const AccountManager = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<AccountEditorValue>({
     name: "",
-    currency: "USD" as "USD" | "EUR" | "VES",
+    currency: "USD",
     balance: "",
   });
 
@@ -63,8 +65,7 @@ export const AccountManager = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
 
     if (!formData.name || !formData.balance) {
       toast({
@@ -78,7 +79,7 @@ export const AccountManager = () => {
     try {
       setIsSubmitting(true);
   if (editingAccount) {
-        const prevBalance = editingAccount.balance;
+  const prevBalance = editingAccount.balance;
         const nextBalance = parseFloat(formData.balance);
         const changedBalance = isFinite(nextBalance) && nextBalance !== prevBalance;
 
@@ -91,54 +92,10 @@ export const AccountManager = () => {
             balance: prevBalance, // keep; balance will be adjusted via transaction
           };
           await AccountsStore.upsert(updatedMeta);
-
-          // 2) Ensure adjustment category exists
-          const delta = Number((nextBalance - prevBalance).toFixed(2));
-          const adjType: "income" | "expense" = delta > 0 ? "income" : "expense";
-          const ensureAdjustmentCategory = async (kind: "income" | "expense"): Promise<Category> => {
-            const name = kind === "income" ? "Ajuste de Balance (+)" : "Ajuste de Balance (-)";
-            // 1) Try from cache first
-            let cat = CategoriesStore.all().find(c => c.name === name);
-            if (cat) return cat;
-            // 2) Try create; if duplicate error occurs (race), refresh and read again
-            try {
-              const newCat: Category = {
-                id: newId(),
-                name,
-                type: kind,
-                color: kind === "income" ? "hsl(var(--chart-2))" : "hsl(var(--chart-3))",
-                colorName: kind === "income" ? "Lavender" : "Peach",
-              };
-              await CategoriesStore.upsert(newCat);
-              cat = CategoriesStore.all().find(c => c.name === name) || newCat;
-              return cat;
-            } catch (e) {
-              // Fallback: refresh and find by name (handles server-side unique constraint)
-              await CategoriesStore.refresh().catch(() => {});
-              cat = CategoriesStore.all().find(c => c.name === name);
-              if (cat) return cat;
-              throw e;
-            }
-          };
-          const adjCat = await ensureAdjustmentCategory(adjType);
-
-          // 3) Create adjustment transaction to reach new balance
-          const todayISO = new Date().toISOString().slice(0, 10);
-          await TransactionsStore.add({
-            id: newId(),
-            date: todayISO,
-            description: `Ajuste de balance: ${prevBalance.toFixed(2)} → ${nextBalance.toFixed(2)}`,
-            categoryId: adjCat.id,
-            accountId: editingAccount.id,
-            amount: Math.abs(delta),
-            type: adjType,
-          });
-
-          // Ensure global stores reflect the latest balances for KPIs
-          await AccountsStore.refresh().catch(() => {});
+          await createBalanceAdjustmentTransaction(updatedMeta, nextBalance);
           toast({
             title: "Account Adjusted",
-            description: `Se registró un ajuste de ${Math.abs(delta).toFixed(2)} (${adjType === 'income' ? 'ingreso' : 'gasto'}).`,
+            description: `Se registró un ajuste para alcanzar ${nextBalance.toFixed(2)}.`,
           });
         } else {
           // No balance change: simple metadata update
@@ -213,65 +170,16 @@ export const AccountManager = () => {
               Create Account
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{editingAccount ? "Edit Account" : "Create New Account"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="accountName">Account Name</Label>
-                <Input
-                  id="accountName"
-                  type="text"
-                  placeholder="e.g., Checking, Savings, Cash"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="currency">Currency</Label>
-                <Select value={formData.currency} onValueChange={(value) => setFormData({ ...formData, currency: value as "USD" | "EUR" | "VES" })}>
-                  <SelectTrigger id="currency">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USD">USD - US Dollar</SelectItem>
-                    <SelectItem value="EUR">EUR - Euro</SelectItem>
-                    <SelectItem value="VES">VES - Venezuelan Bolívar</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="balance">Initial Balance</Label>
-                <Input
-                  id="balance"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={formData.balance}
-                  onChange={(e) => setFormData({ ...formData, balance: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1" disabled={isSubmitting}>
-                  Cancel
-                </Button>
-                <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90" disabled={isSubmitting} aria-busy={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {editingAccount ? "Saving..." : "Creating..."}
-                    </>
-                  ) : (
-                    editingAccount ? "Update" : "Create"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
         </Dialog>
+        <AccountEditorDialog
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          value={formData}
+          onChange={setFormData}
+          onSubmit={handleSubmit}
+          submitting={isSubmitting}
+          title={editingAccount ? "Edit Account" : "Create New Account"}
+        />
       </div>
 
       {/* No import/export UI; persistence handled via functions (localStorage) */}

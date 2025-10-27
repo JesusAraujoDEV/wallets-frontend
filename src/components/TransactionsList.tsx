@@ -24,6 +24,7 @@ import CategoryMultiSelect from "@/components/CategoryMultiSelect";
 import AccountMultiSelect from "@/components/AccountMultiSelect";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { TransactionFilters } from "@/components/TransactionFilters";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +37,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TxAmount } from "@/components/TxAmount";
 import { TransactionsDeleteConfirm } from "@/components/TransactionsDeleteConfirm";
+import { buildTransactionsQuery, mapServerTransaction, PAGE_SIZE_DEFAULT } from "@/lib/transactions";
+import { useTransactionsQuery } from "@/hooks/use-transactions-query";
 
 export const TransactionsList = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -48,7 +51,19 @@ export const TransactionsList = () => {
   const [filterDateTo, setFilterDateTo] = useState<string>(""); // YYYY-MM-DD (Range to)
   const [filterMonth, setFilterMonth] = useState<string>(""); // YYYY-MM (Month)
   const [dateMode, setDateMode] = useState<"none" | "day" | "range" | "month">("none");
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Filters pack for the query hook
+  const filtersPack = {
+    searchQuery,
+    filterType,
+    filterIncomeCategories,
+    filterExpenseCategories,
+    filterAccounts,
+    dateMode,
+    filterDate,
+    filterDateFrom,
+    filterDateTo,
+    filterMonth,
+  };
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
 
@@ -69,14 +84,12 @@ export const TransactionsList = () => {
   });
   const [vesRateByDate, setVesRateByDate] = useState<Record<string, number | null>>({});
   const [groupTotals, setGroupTotals] = useState<Record<string, { income: number; expenses: number; balance: number }>>({});
-  // Server-side grouped pagination state
-  const [nextCursorDate, setNextCursorDate] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState<boolean>(false);
-  const [pageLoading, setPageLoading] = useState<boolean>(false);
-  const PAGE_SIZE = 20;
-  // Track in-flight requests to prevent race conditions on rapid filter changes
-  const reqIdRef = useRef(0);
-  const abortRef = useRef<AbortController | null>(null);
+  const PAGE_SIZE = PAGE_SIZE_DEFAULT;
+
+  const { transactions, pageLoading, hasMore, fetchNextPage, refetch, firstReloadTick } = useTransactionsQuery({
+    filters: filtersPack,
+    pageSize: PAGE_SIZE,
+  });
 
   useEffect(() => {
     const load = () => {
@@ -89,171 +102,21 @@ export const TransactionsList = () => {
     return off;
   }, []);
 
-  // Fetch first page from server with grouped pagination (days kept intact)
-  const mapServerTx = (t: any): Transaction => {
-    const categoryId = String(t.category_id ?? t.categoryId);
-    const accountId = String(t.account_id ?? t.accountId);
-    const rawType = t.type;
-    const type: 'income' | 'expense' = rawType === 'ingreso' ? 'income' : rawType === 'gasto' ? 'expense' : (rawType as any) || 'expense';
-    const amount = Number(t.amount ?? 0);
-    const amountUsd = t.amount_usd != null ? Number(t.amount_usd) : (t.amountUsd != null ? Number(t.amountUsd) : null);
-    const exchangeRateUsed = t.exchange_rate_used != null ? Number(t.exchange_rate_used) : (t.exchangeRateUsed != null ? Number(t.exchangeRateUsed) : null);
-    return {
-      id: String(t.id),
-      description: String(t.description ?? ''),
-      amount,
-      currency: t.currency || undefined,
-      amountUsd,
-      exchangeRateUsed,
-      date: String(t.date),
-      categoryId,
-      accountId,
-      type,
-    } as Transaction;
-  };
-
-  const fetchLegacyAll = async (signal?: AbortSignal) => {
-    // Backward-compatible fallback if grouped API is not available
-    if (import.meta.env.DEV) {
-      console.debug('[TxList] fetchLegacyAll -> GET', buildApiUrl('transactions'));
-    }
-    const arr = await apiFetch<any[]>(`transactions`, { signal });
-    setTransactions((arr || []).map(mapServerTx));
-    setNextCursorDate(null);
-    setHasMore(false);
-  };
-
-  // Build query string with filters for server requests
-  const buildQuery = (cursor?: string | null) => {
-    const params = new URLSearchParams();
-    params.set('grouped', '1');
-    params.set('pageSize', String(PAGE_SIZE));
-    if (searchQuery.trim()) params.set('q', searchQuery.trim());
-    if (filterType !== 'all') params.set('type', filterType);
-    const combinedCats = filterType === 'income'
-      ? filterIncomeCategories
-      : filterType === 'expense'
-        ? filterExpenseCategories
-        : [...filterIncomeCategories, ...filterExpenseCategories];
-    if (combinedCats.length > 0) params.set('categoryId', combinedCats.join(','));
-    if (filterAccounts.length > 0) params.set('accountId', filterAccounts.join(','));
-    // Apply only the selected date mode
-    if (dateMode === 'day' && filterDate) {
-      params.set('date', filterDate);
-    } else if (dateMode === 'range') {
-      if (filterDateFrom) params.set('dateFrom', filterDateFrom);
-      if (filterDateTo) params.set('dateTo', filterDateTo);
-    } else if (dateMode === 'month' && filterMonth) {
-      params.set('month', filterMonth);
-    }
-    if (cursor) params.set('cursorDate', cursor);
-    return `transactions?${params.toString()}`;
-  };
-
-  const fetchFirstPage = async () => {
-    try {
-      setPageLoading(true);
-      // Cancel previous in-flight request, if any
-      if (abortRef.current) abortRef.current.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-      const myReqId = ++reqIdRef.current;
-      const path = buildQuery();
-      if (import.meta.env.DEV) {
-        console.groupCollapsed('[TxList] fetchFirstPage');
-        console.log('filters', {
-          searchQuery,
-          filterType,
-          filterIncomeCategories,
-          filterExpenseCategories,
-          filterAccounts,
-          filterDate,
-          filterDateFrom,
-          filterDateTo,
-          filterMonth,
-          pageSize: PAGE_SIZE,
-        });
-        console.log('queryPath', path);
-        console.log('fullUrl', buildApiUrl(path));
-        console.groupEnd();
-      }
-      const data: any = await apiFetch<any>(path, { signal: controller.signal });
-      // Ignore if a newer request has been issued
-      if (myReqId !== reqIdRef.current) return;
-      if (Array.isArray(data)) {
-        // Legacy shape
-        setTransactions((data as any[]).map(mapServerTx));
-        setNextCursorDate(null);
-        setHasMore(false);
-      } else {
-        setTransactions(((data?.items as any[]) || []).map(mapServerTx));
-        setNextCursorDate((data?.nextCursorDate as string) || null);
-        setHasMore(!!data?.hasMore);
-      }
-      // Reset computed caches for rates/totals to allow recompute for new days
-      setVesRateByDate({});
-      setGroupTotals({});
-    } catch (e) {
-      // Fallback to legacy endpoint if grouped not supported
-      try {
-        // If aborted due to a newer filter change, just exit silently
-        if ((e as any)?.name === 'AbortError') return;
-        // Otherwise, try legacy
-        await fetchLegacyAll(abortRef.current?.signal);
-      } catch (e2) {
-        toast({ title: "Failed to load transactions", description: String(e2), variant: "destructive" });
-      }
-    } finally {
-      setPageLoading(false);
-    }
-  };
-
-  const fetchNextPage = async () => {
-    if (!hasMore || !nextCursorDate) return;
-    try {
-      setPageLoading(true);
-      const path = buildQuery(nextCursorDate);
-      if (import.meta.env.DEV) {
-        console.groupCollapsed('[TxList] fetchNextPage');
-        console.log('cursorDate', nextCursorDate);
-        console.log('queryPath', path);
-        console.log('fullUrl', buildApiUrl(path));
-        console.groupEnd();
-      }
-      const data: any = await apiFetch<any>(path);
-      if (Array.isArray(data)) {
-        // Unexpected legacy shape for a paged call: just append and stop further paging
-        setTransactions(prev => [...prev, ...(data as any[]).map(mapServerTx)]);
-        setNextCursorDate(null);
-        setHasMore(false);
-      } else {
-        setTransactions(prev => [...prev, ...(((data?.items as any[]) || []).map(mapServerTx))]);
-        setNextCursorDate((data?.nextCursorDate as string) || null);
-        setHasMore(!!data?.hasMore);
-      }
-    } finally {
-      setPageLoading(false);
-    }
-  };
+  // Fetch logic now handled by useTransactionsQuery
 
   useEffect(() => {
     // Ensure base datasets are available
     AccountsStore.refresh().catch(() => {});
     CategoriesStore.refresh().catch(() => {});
-    fetchFirstPage().catch(() => {});
     // Do not call TransactionsStore.refresh here to avoid loading the entire dataset
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
-  // Refetch when filters change (immediately)
+  // Reset computed caches (rates/totals) when first page is (re)loaded by the hook
   useEffect(() => {
-    // Clear current results for snappier feedback and reset pagination
-    setTransactions([]);
-    setNextCursorDate(null);
-    setHasMore(false);
-    fetchFirstPage().catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, filterType, filterIncomeCategories, filterExpenseCategories, filterAccounts, dateMode, filterDate, filterDateFrom, filterDateTo, filterMonth]);
+    setVesRateByDate({});
+    setGroupTotals({});
+  }, [firstReloadTick]);
   const categoriesOptions = useMemo(() => categories, [categories]);
   const incomeCategoryOptions = useMemo(() => categories.filter(c => c.type === 'income'), [categories]);
   const expenseCategoryOptions = useMemo(() => categories.filter(c => c.type === 'expense'), [categories]);
@@ -302,7 +165,7 @@ export const TransactionsList = () => {
       setDeletingId(id);
       await TransactionsStore.remove(id);
       // Reload first page to keep pagination consistent
-      await fetchFirstPage();
+      await refetch();
       toast({ title: "Transaction Deleted", description: "The transaction has been removed." });
     } finally {
       setDeletingId(null);
@@ -327,8 +190,8 @@ export const TransactionsList = () => {
     };
     try {
       setSaving(true);
-      await TransactionsStore.update(next);
-      await fetchFirstPage();
+  await TransactionsStore.update(next);
+  await refetch();
       setIsDialogOpen(false);
       setEditingTx(null);
       toast({ title: "Transaction Updated", description: "Your changes have been saved." });
@@ -457,197 +320,28 @@ export const TransactionsList = () => {
               <DialogHeader>
                 <DialogTitle>Add Transaction</DialogTitle>
               </DialogHeader>
-              <TransactionForm asModalContent onSubmitted={async () => { setIsAddOpen(false); await fetchFirstPage(); }} />
+              <TransactionForm asModalContent onSubmitted={async () => { setIsAddOpen(false); await refetch(); }} />
             </DialogContent>
           </Dialog>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Filters */}
-        <div className="space-y-3">
-          {/* Compact top row for small screens */}
-          <div className="grid grid-cols-1 sm:hidden gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search transactions..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <div className="flex items-center gap-3">
-              <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Filter by type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="income">Income</SelectItem>
-                  <SelectItem value="expense">Expenses</SelectItem>
-                </SelectContent>
-              </Select>
-              <Collapsible open={advOpen} onOpenChange={setAdvOpen}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="outline" className="whitespace-nowrap">More Filters</Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-3 space-y-3">
-                  <CategoryMultiSelect
-                    label="Categorías de Ingreso"
-                    categories={incomeCategoryOptions}
-                    selected={filterIncomeCategories}
-                    onChange={setFilterIncomeCategories}
-                    placeholder="Todas"
-                  />
-                  <CategoryMultiSelect
-                    label="Categorías de Gasto"
-                    categories={expenseCategoryOptions}
-                    selected={filterExpenseCategories}
-                    onChange={setFilterExpenseCategories}
-                    placeholder="Todas"
-                  />
-                  <AccountMultiSelect
-                    label="Accounts"
-                    accounts={accountsOptions}
-                    selected={filterAccounts}
-                    onChange={setFilterAccounts}
-                    placeholder="All Accounts"
-                  />
-                    <div className="space-y-2">
-                      <div className="space-y-2">
-                        <Label className="text-sm">Date filter</Label>
-                        <RadioGroup value={dateMode} onValueChange={(v: any) => setDateMode(v)} className="grid grid-cols-3 gap-2">
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="day" id="dm-day-sm" />
-                            <Label htmlFor="dm-day-sm" className="text-sm">Exact day</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="range" id="dm-range-sm" />
-                            <Label htmlFor="dm-range-sm" className="text-sm">Range</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="month" id="dm-month-sm" />
-                            <Label htmlFor="dm-month-sm" className="text-sm">Month</Label>
-                          </div>
-                        </RadioGroup>
-                      </div>
-                      {dateMode === 'day' && (
-                        <div className="flex items-center gap-2">
-                          <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-full" />
-                        </div>
-                      )}
-                      {dateMode === 'range' && (
-                        <div className="flex items-center gap-2">
-                          <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="w-full" placeholder="From" />
-                          <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="w-full" placeholder="To" />
-                        </div>
-                      )}
-                      {dateMode === 'month' && (
-                        <div className="flex items-center gap-2">
-                          <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-full" />
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
-                      </div>
-                    </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
-          </div>
-
-          {/* Full filter bar for >= sm */}
-          <div className="hidden sm:grid items-end gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-8">
-            <div className="relative sm:col-span-2 lg:col-span-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search transactions..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <div className="lg:col-span-1">
-              <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Filter by type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="income">Income</SelectItem>
-                  <SelectItem value="expense">Expenses</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="lg:col-span-1">
-              <CategoryMultiSelect
-                label="Categorías de Ingreso"
-                categories={incomeCategoryOptions}
-                selected={filterIncomeCategories}
-                onChange={setFilterIncomeCategories}
-                placeholder="Todas"
-              />
-            </div>
-            <div className="lg:col-span-1">
-              <CategoryMultiSelect
-                label="Categorías de Gasto"
-                categories={expenseCategoryOptions}
-                selected={filterExpenseCategories}
-                onChange={setFilterExpenseCategories}
-                placeholder="Todas"
-              />
-            </div>
-            <div className="lg:col-span-1">
-              <AccountMultiSelect
-                label="Accounts"
-                accounts={accountsOptions}
-                selected={filterAccounts}
-                onChange={setFilterAccounts}
-                placeholder="All Accounts"
-              />
-            </div>
-            <div className="flex flex-col gap-2 lg:col-span-2">
-              <div className="flex items-center gap-4">
-                <Label className="text-sm">Date filter</Label>
-                <div className="flex items-center gap-4">
-                  <RadioGroup value={dateMode} onValueChange={(v: any) => setDateMode(v)} className="grid grid-cols-3 gap-3">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="day" id="dm-day" />
-                      <Label htmlFor="dm-day" className="text-sm">Exact day</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="range" id="dm-range" />
-                      <Label htmlFor="dm-range" className="text-sm">Range</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="month" id="dm-month" />
-                      <Label htmlFor="dm-month" className="text-sm">Month</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              </div>
-              {dateMode === 'day' && (
-                <div className="flex items-center gap-2">
-                  <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-full" />
-                </div>
-              )}
-              {dateMode === 'range' && (
-                <div className="flex items-center gap-2">
-                  <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="w-full" placeholder="From" />
-                  <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="w-full" placeholder="To" />
-                </div>
-              )}
-              {dateMode === 'month' && (
-                <div className="flex items-center gap-2">
-                  <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-full" />
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <TransactionFilters
+          searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+          filterType={filterType} setFilterType={setFilterType}
+          filterIncomeCategories={filterIncomeCategories} setFilterIncomeCategories={setFilterIncomeCategories}
+          filterExpenseCategories={filterExpenseCategories} setFilterExpenseCategories={setFilterExpenseCategories}
+          filterAccounts={filterAccounts} setFilterAccounts={setFilterAccounts}
+          dateMode={dateMode} setDateMode={setDateMode}
+          filterDate={filterDate} setFilterDate={setFilterDate}
+          filterDateFrom={filterDateFrom} setFilterDateFrom={setFilterDateFrom}
+          filterDateTo={filterDateTo} setFilterDateTo={setFilterDateTo}
+          filterMonth={filterMonth} setFilterMonth={setFilterMonth}
+          categories={categories}
+          accounts={accountsOptions}
+          onClear={handleClearFilters}
+        />
 
         {/* Overall totals summary for current results */}
         {Object.keys(groupedTransactions).length > 0 ? (

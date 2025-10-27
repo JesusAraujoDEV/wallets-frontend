@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { CategoriesStore, newId, onDataChange } from "@/lib/storage";
 import type { Category } from "@/lib/types";
+import { CategoryEditorDialog, type CategoryEditorValue } from "@/components/CategoryEditorDialog";
 
 
 // Available pastel colors from the design system
@@ -39,9 +40,9 @@ export const CategoryManager = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CategoryEditorValue>({
     name: "",
-    type: "expense" as "income" | "expense",
+    type: "expense",
     colorName: "Mint Green",
   });
 
@@ -137,77 +138,17 @@ export const CategoryManager = () => {
                 New Category
               </Button>
             </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingCategory ? "Edit Category" : "Create New Category"}</DialogTitle>
-                <DialogDescription>
-                  {editingCategory ? "Update the category details below." : "Add a new category to organize your transactions."}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="category-name">Category Name</Label>
-                  <Input
-                    id="category-name"
-                    placeholder="e.g., Groceries, Rent, Gifts"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category-type">Type</Label>
-                  <Select value={formData.type} onValueChange={(value: any) => setFormData({ ...formData, type: value })}>
-                    <SelectTrigger id="category-type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="expense">Expense</SelectItem>
-                      <SelectItem value="income">Income</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Color</Label>
-                  <div className="grid grid-cols-4 gap-3">
-                    {pastelColors.map((color) => (
-                      <button
-                        key={color.name}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, colorName: color.name })}
-                        className={`group relative h-12 rounded-md transition-all ${
-                          formData.colorName === color.name 
-                            ? "ring-2 ring-ring ring-offset-2" 
-                            : "hover:scale-105"
-                        }`}
-                        style={{ backgroundColor: `hsl(${color.hsl})` }}
-                      >
-                        <span className="sr-only">{color.name}</span>
-                        {formData.colorName === color.name && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="h-3 w-3 rounded-full bg-background" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">Selected: {formData.colorName}</p>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={handleCloseDialog} disabled={isSubmitting}>Cancel</Button>
-                <Button onClick={handleCreateOrUpdate} disabled={isSubmitting} aria-busy={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {editingCategory ? "Saving..." : "Creating..."}
-                    </>
-                  ) : (
-                    editingCategory ? "Update" : "Create"
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
           </Dialog>
+          <CategoryEditorDialog
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+            value={formData}
+            onChange={setFormData}
+            onSubmit={handleCreateOrUpdate}
+            submitting={isSubmitting}
+            title={editingCategory ? "Edit Category" : "Create New Category"}
+            description={editingCategory ? "Update the category details below." : "Add a new category to organize your transactions."}
+          />
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
