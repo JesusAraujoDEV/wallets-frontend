@@ -40,7 +40,6 @@ export const TransactionsList = () => {
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [filterIncomeCategories, setFilterIncomeCategories] = useState<string[]>([]);
   const [filterExpenseCategories, setFilterExpenseCategories] = useState<string[]>([]);
-  const [filterAllCategories, setFilterAllCategories] = useState<string[]>([]);
   const [filterAccounts, setFilterAccounts] = useState<string[]>([]);
   const [filterDate, setFilterDate] = useState<string>(""); // YYYY-MM-DD (Exact day)
   const [filterDateFrom, setFilterDateFrom] = useState<string>(""); // YYYY-MM-DD (Range from)
@@ -133,7 +132,7 @@ export const TransactionsList = () => {
       ? filterIncomeCategories
       : filterType === 'expense'
         ? filterExpenseCategories
-        : filterAllCategories;
+        : [...filterIncomeCategories, ...filterExpenseCategories];
     if (combinedCats.length > 0) params.set('categoryId', combinedCats.join(','));
     if (filterAccounts.length > 0) params.set('accountId', filterAccounts.join(','));
     // Apply only the selected date mode
@@ -252,7 +251,7 @@ export const TransactionsList = () => {
     setHasMore(false);
     fetchFirstPage().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, filterType, filterIncomeCategories, filterExpenseCategories, filterAllCategories, filterAccounts, dateMode, filterDate, filterDateFrom, filterDateTo, filterMonth]);
+  }, [searchQuery, filterType, filterIncomeCategories, filterExpenseCategories, filterAccounts, dateMode, filterDate, filterDateFrom, filterDateTo, filterMonth]);
   const categoriesOptions = useMemo(() => categories, [categories]);
   const incomeCategoryOptions = useMemo(() => categories.filter(c => c.type === 'income'), [categories]);
   const expenseCategoryOptions = useMemo(() => categories.filter(c => c.type === 'expense'), [categories]);
@@ -274,8 +273,7 @@ export const TransactionsList = () => {
     setSearchQuery("");
     setFilterType("all");
     setFilterIncomeCategories([]);
-    setFilterExpenseCategories([]);
-    setFilterAllCategories([]);
+  setFilterExpenseCategories([]);
     setFilterAccounts([]);
     setFilterDate("");
     setFilterDateFrom("");
@@ -476,14 +474,17 @@ export const TransactionsList = () => {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-3 space-y-3">
                   <CategoryMultiSelect
-                    label="Categoría"
-                    categories={filterType === 'income' ? incomeCategoryOptions : filterType === 'expense' ? expenseCategoryOptions : categoriesOptions}
-                    selected={filterType === 'income' ? filterIncomeCategories : filterType === 'expense' ? filterExpenseCategories : filterAllCategories}
-                    onChange={(vals) => {
-                      if (filterType === 'income') setFilterIncomeCategories(vals);
-                      else if (filterType === 'expense') setFilterExpenseCategories(vals);
-                      else setFilterAllCategories(vals);
-                    }}
+                    label="Categorías de Ingreso"
+                    categories={incomeCategoryOptions}
+                    selected={filterIncomeCategories}
+                    onChange={setFilterIncomeCategories}
+                    placeholder="Todas"
+                  />
+                  <CategoryMultiSelect
+                    label="Categorías de Gasto"
+                    categories={expenseCategoryOptions}
+                    selected={filterExpenseCategories}
+                    onChange={setFilterExpenseCategories}
                     placeholder="Todas"
                   />
                   <AccountMultiSelect
@@ -559,16 +560,21 @@ export const TransactionsList = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-1">
               <CategoryMultiSelect
-                label="Categoría"
-                categories={filterType === 'income' ? incomeCategoryOptions : filterType === 'expense' ? expenseCategoryOptions : categoriesOptions}
-                selected={filterType === 'income' ? filterIncomeCategories : filterType === 'expense' ? filterExpenseCategories : filterAllCategories}
-                onChange={(vals) => {
-                  if (filterType === 'income') setFilterIncomeCategories(vals);
-                  else if (filterType === 'expense') setFilterExpenseCategories(vals);
-                  else setFilterAllCategories(vals);
-                }}
+                label="Categorías de Ingreso"
+                categories={incomeCategoryOptions}
+                selected={filterIncomeCategories}
+                onChange={setFilterIncomeCategories}
+                placeholder="Todas"
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <CategoryMultiSelect
+                label="Categorías de Gasto"
+                categories={expenseCategoryOptions}
+                selected={filterExpenseCategories}
+                onChange={setFilterExpenseCategories}
                 placeholder="Todas"
               />
             </div>
