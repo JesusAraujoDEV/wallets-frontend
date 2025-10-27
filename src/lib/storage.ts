@@ -175,6 +175,32 @@ export const TransactionsStore = {
   },
 };
 
+// Transfers
+export const TransfersStore = {
+  async create(params: {
+    fromAccountId: string | number;
+    toAccountId: string | number;
+    amount: number;
+    commission?: number;
+    date: string;
+    concept?: string;
+  }): Promise<void> {
+    const payload = {
+      fromAccountId: Number(params.fromAccountId),
+      toAccountId: Number(params.toAccountId),
+      amount: Number(params.amount),
+      date: params.date,
+      ...(params.commission != null && params.commission !== undefined && params.commission !== 0
+        ? { commission: Number(params.commission) }
+        : {}),
+      ...(params.concept && params.concept.trim() ? { concept: params.concept.trim() } : {}),
+    } as any;
+    await fetchJSON(`transactions/transfer`, { method: "POST", body: JSON.stringify(payload) });
+    await AccountsStore.refresh().catch(() => {});
+    await TransactionsStore.refresh();
+  },
+};
+
 // Utility for generating IDs
 export function newId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;

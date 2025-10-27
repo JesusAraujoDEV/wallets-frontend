@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar as CalendarIcon, PlusCircle, Loader2 } from "lucide-react";
 import * as Icons from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { AccountsStore, CategoriesStore, TransactionsStore, newId, onDataChange } from "@/lib/storage";
+import { AccountsStore, CategoriesStore, TransactionsStore, TransfersStore, newId, onDataChange } from "@/lib/storage";
 import type { Account, Category } from "@/lib/types";
 import { useVESExchangeRate } from "@/lib/rates";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -18,6 +18,7 @@ import dayjs from 'dayjs';
 import { cn, isBalanceAdjustmentCategory } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getIconOptionsForType } from "@/lib/categoryIcons";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asModalContent?: boolean; onSubmitted?: () => void }) => {
   const [account, setAccount] = useState("");
@@ -30,6 +31,14 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
   const [categories, setCategories] = useState<Category[]>([]);
   const { rate } = useVESExchangeRate();
   const [submitting, setSubmitting] = useState(false);
+  // Transfer state
+  const [fromAccount, setFromAccount] = useState("");
+  const [toAccount, setToAccount] = useState("");
+  const [transferAmount, setTransferAmount] = useState("");
+  const [commission, setCommission] = useState("");
+  const [transferDate, setTransferDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [concept, setConcept] = useState("");
+  const [submittingTransfer, setSubmittingTransfer] = useState(false);
   const filteredCategories = categories.filter((c) => c.type === type);
   const [isCatPickerOpen, setIsCatPickerOpen] = useState(false);
   const [newCatName, setNewCatName] = useState("");
@@ -104,7 +113,48 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
     }
   };
 
-  const formEl = (
+  const handleTransferSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fromAccount || !toAccount || !transferAmount) {
+      toast({ title: "Missing Information", description: "Please choose both accounts and an amount.", variant: "destructive" });
+      return;
+    }
+    if (fromAccount === toAccount) {
+      toast({ title: "Invalid Accounts", description: "Origin and destination accounts must be different.", variant: "destructive" });
+      return;
+    }
+    const from = accounts.find(a => a.id === fromAccount);
+    const to = accounts.find(a => a.id === toAccount);
+    if (!from || !to) return;
+    if (from.currency !== to.currency) {
+      toast({ title: "Currencies mismatch", description: "Both accounts must have the same currency for a transfer.", variant: "destructive" });
+      return;
+    }
+    try {
+      setSubmittingTransfer(true);
+      await TransfersStore.create({
+        fromAccountId: fromAccount,
+        toAccountId: toAccount,
+        amount: parseFloat(transferAmount),
+        commission: commission ? parseFloat(commission) : undefined,
+        date: transferDate || new Date().toISOString().slice(0, 10),
+        concept: concept || undefined,
+      });
+      toast({ title: "Transfer created", description: `Moved ${from.currency === "USD" ? "$" : from.currency === "EUR" ? "€" : ""}${transferAmount} from ${from.name} to ${to.name}.` });
+      // Reset transfer form
+      setFromAccount("");
+      setToAccount("");
+      setTransferAmount("");
+      setCommission("");
+      setTransferDate(new Date().toISOString().slice(0, 10));
+      setConcept("");
+      onSubmitted?.();
+    } finally {
+      setSubmittingTransfer(false);
+    }
+  };
+
+  const singleFormEl = (
     <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="account">Account</Label>
@@ -376,14 +426,176 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
       </form>
   );
 
+  const transferFormEl = (
+    <form onSubmit={handleTransferSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="fromAccount">From account</Label>
+          <Select value={fromAccount} onValueChange={setFromAccount}>
+            <SelectTrigger id="fromAccount">
+              <SelectValue placeholder="Select origin account" />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((acc) => (
+                <SelectItem key={acc.id} value={acc.id}>
+                  <div className="flex items-center justify-between gap-3 w-full">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{acc.name}</span>
+                      <span className="text-xs text-muted-foreground">({acc.currency})</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-foreground/80">
+                        {acc.currency === "USD" && "$"}
+                        {acc.currency === "EUR" && "€"}
+                        {acc.currency === "VES" && "Bs."}
+                        {acc.balance.toFixed(2)}
+                      </div>
+                      {acc.currency === "VES" && rate?.vesPerUsd ? (
+                        <div className="text-[10px] text-muted-foreground">$
+                          {(acc.balance / rate.vesPerUsd).toFixed(2)} USD
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="toAccount">To account</Label>
+          <Select value={toAccount} onValueChange={setToAccount}>
+            <SelectTrigger id="toAccount">
+              <SelectValue placeholder="Select destination account" />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((acc) => (
+                <SelectItem key={acc.id} value={acc.id}>
+                  <div className="flex items-center justify-between gap-3 w-full">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{acc.name}</span>
+                      <span className="text-xs text-muted-foreground">({acc.currency})</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-foreground/80">
+                        {acc.currency === "USD" && "$"}
+                        {acc.currency === "EUR" && "€"}
+                        {acc.currency === "VES" && "Bs."}
+                        {acc.balance.toFixed(2)}
+                      </div>
+                      {acc.currency === "VES" && rate?.vesPerUsd ? (
+                        <div className="text-[10px] text-muted-foreground">$
+                          {(acc.balance / rate.vesPerUsd).toFixed(2)} USD
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="transferAmount">Amount</Label>
+          <Input
+            id="transferAmount"
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            value={transferAmount}
+            onChange={(e) => setTransferAmount(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="commission">Commission (optional)</Label>
+          <Input
+            id="commission"
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            value={commission}
+            onChange={(e) => setCommission(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                )}
+                type="button"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {transferDate ? dayjs(transferDate).format('YYYY-MM-DD') : <span>Pick a date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2" align="start">
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DateCalendar
+                  value={transferDate ? dayjs(transferDate) : null}
+                  onChange={(d:any) => {
+                    if (d) {
+                      const iso = d.format('YYYY-MM-DD');
+                      setTransferDate(iso);
+                    }
+                  }}
+                />
+              </LocalizationProvider>
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="concept">Concept (optional)</Label>
+        <Input
+          id="concept"
+          type="text"
+          placeholder="Add a note..."
+          value={concept}
+          onChange={(e) => setConcept(e.target.value)}
+        />
+      </div>
+      <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={submittingTransfer} aria-busy={submittingTransfer}>
+        {submittingTransfer ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Creating...
+          </>
+        ) : (
+          <>
+            <PlusCircle className="w-4 h-4 mr-2" />
+            Create Transfer
+          </>
+        )}
+      </Button>
+    </form>
+  );
+
+  const content = (
+    <Tabs defaultValue="single" className="w-full">
+      <TabsList className="mb-4 grid grid-cols-2 w-full">
+        <TabsTrigger value="single">Income / Expense</TabsTrigger>
+        <TabsTrigger value="transfer">Transfer</TabsTrigger>
+      </TabsList>
+      <TabsContent value="single">{singleFormEl}</TabsContent>
+      <TabsContent value="transfer">{transferFormEl}</TabsContent>
+    </Tabs>
+  );
+
   if (asModalContent) {
-    return formEl;
+    return content;
   }
 
   return (
     <Card className="p-6 shadow-md border-0">
       <h3 className="text-xl font-semibold text-foreground mb-6">Add Transaction</h3>
-      {formEl}
+      {content}
     </Card>
   );
 };
