@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -38,6 +39,7 @@ export const CategoryManager = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [formData, setFormData] = useState<CategoryEditorValue>({
@@ -45,6 +47,11 @@ export const CategoryManager = () => {
     type: "expense",
     colorName: "Mint Green",
   });
+  // Bulk include/exclude modal state
+  const [bulkOpen, setBulkOpen] = useState<null | 'enable' | 'disable'>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkOptions, setBulkOptions] = useState<Category[]>([]);
+  const [bulkSelected, setBulkSelected] = useState<string[]>([]);
 
   const handleCreateOrUpdate = async () => {
     if (!formData.name.trim()) {
@@ -131,14 +138,58 @@ export const CategoryManager = () => {
             <CardTitle>Category Management</CardTitle>
             <CardDescription>Create and manage your custom categories</CardDescription>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                New Category
-              </Button>
-            </DialogTrigger>
-          </Dialog>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                setBulkOpen('enable');
+                setBulkLoading(true);
+                setBulkSelected([]);
+                try {
+                  const opts = await CategoriesStore.fetchByIncludeInStats(false);
+                  setBulkOptions(opts);
+                } catch (e) {
+                  toast({ title: 'Error loading categories', description: String(e), variant: 'destructive' });
+                  setBulkOpen(null);
+                } finally {
+                  setBulkLoading(false);
+                }
+              }}
+              disabled={isSubmitting}
+            >
+              Include in stats
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                setBulkOpen('disable');
+                setBulkLoading(true);
+                setBulkSelected([]);
+                try {
+                  const opts = await CategoriesStore.fetchByIncludeInStats(true);
+                  setBulkOptions(opts);
+                } catch (e) {
+                  toast({ title: 'Error loading categories', description: String(e), variant: 'destructive' });
+                  setBulkOpen(null);
+                } finally {
+                  setBulkLoading(false);
+                }
+              }}
+              disabled={isSubmitting}
+            >
+              Exclude from stats
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  New Category
+                </Button>
+              </DialogTrigger>
+            </Dialog>
+          </div>
           <CategoryEditorDialog
             open={isDialogOpen}
             onOpenChange={setIsDialogOpen}
@@ -157,45 +208,60 @@ export const CategoryManager = () => {
         <div>
           <h3 className="text-sm font-semibold text-muted-foreground mb-3">EXPENSE CATEGORIES</h3>
           <div className="space-y-2">
-            {expenseCategories.map((category) => (
-              <div
-                key={category.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border hover:bg-muted/50 transition-colors"
-              >
+            {expenseCategories.map((category) => {
+              const selected = selectedIds.includes(category.id);
+              return (
                 <div
-                  className="w-8 h-8 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: category.color }}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{category.name}</p>
-                  <p className="text-xs text-muted-foreground">{category.colorName}</p>
+                  key={category.id}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border hover:bg-muted/50 transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedIds(prev => [...prev, category.id]);
+                      else setSelectedIds(prev => prev.filter(id => id !== category.id));
+                    }}
+                    className="h-4 w-4"
+                  />
+                  <div
+                    className="w-8 h-8 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: category.color }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate">{category.name}</p>
+                    <p className="text-xs text-muted-foreground">{category.colorName}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {category.includeInStats ? <Badge variant="outline" className="text-xs">In stats</Badge> : null}
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(category)}
+                        className="h-8 w-8 p-0"
+                        disabled={deletingId === category.id}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirmDeleteId(category.id)}
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        disabled={deletingId === category.id}
+                      >
+                        {deletingId === category.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(category)}
-                    className="h-8 w-8 p-0"
-                    disabled={deletingId === category.id}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setConfirmDeleteId(category.id)}
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                    disabled={deletingId === category.id}
-                  >
-                    {deletingId === category.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -203,47 +269,125 @@ export const CategoryManager = () => {
         <div>
           <h3 className="text-sm font-semibold text-muted-foreground mb-3">INCOME CATEGORIES</h3>
           <div className="space-y-2">
-            {incomeCategories.map((category) => (
-              <div
-                key={category.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border hover:bg-muted/50 transition-colors"
-              >
+            {incomeCategories.map((category) => {
+              const selected = selectedIds.includes(category.id);
+              return (
                 <div
-                  className="w-8 h-8 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: category.color }}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{category.name}</p>
-                  <p className="text-xs text-muted-foreground">{category.colorName}</p>
+                  key={category.id}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border hover:bg-muted/50 transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedIds(prev => [...prev, category.id]);
+                      else setSelectedIds(prev => prev.filter(id => id !== category.id));
+                    }}
+                    className="h-4 w-4"
+                  />
+                  <div
+                    className="w-8 h-8 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: category.color }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate">{category.name}</p>
+                    <p className="text-xs text-muted-foreground">{category.colorName}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {category.includeInStats ? <Badge variant="outline" className="text-xs">In stats</Badge> : null}
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(category)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirmDeleteId(category.id)}
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        disabled={deletingId === category.id}
+                      >
+                        {deletingId === category.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(category)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setConfirmDeleteId(category.id)}
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                    disabled={deletingId === category.id}
-                  >
-                    {deletingId === category.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </CardContent>
+      {/* Bulk include/exclude dialog */}
+      <Dialog open={!!bulkOpen} onOpenChange={(open) => { if (!open) { setBulkOpen(null); setBulkOptions([]); setBulkSelected([]); } }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{bulkOpen === 'enable' ? 'Include categories in stats' : 'Exclude categories from stats'}</DialogTitle>
+            <DialogDescription>
+              {bulkOpen === 'enable'
+                ? 'Select one or more categories to include in stats.'
+                : 'Select one or more categories to exclude from stats.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            {bulkLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
+            ) : bulkOptions.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No categories available.</div>
+            ) : (
+              bulkOptions.map(cat => {
+                const checked = bulkSelected.includes(cat.id);
+                return (
+                  <label key={cat.id} className="flex items-center gap-3 p-2 rounded-md border hover:bg-muted/50">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={checked}
+                      onChange={(e) => {
+                        if (e.target.checked) setBulkSelected(prev => [...prev, cat.id]);
+                        else setBulkSelected(prev => prev.filter(id => id !== cat.id));
+                      }}
+                    />
+                    <span className="w-4 h-4 rounded-full inline-block" style={{ backgroundColor: cat.color }} />
+                    <span className="flex-1 min-w-0 truncate">{cat.name} <span className="ml-1 text-xs text-muted-foreground">({cat.type})</span></span>
+                    {cat.includeInStats ? <Badge variant="outline" className="text-xs">In stats</Badge> : null}
+                  </label>
+                );
+              })
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setBulkOpen(null); setBulkOptions([]); setBulkSelected([]); }} disabled={isSubmitting}>Cancel</Button>
+            <Button
+              onClick={async () => {
+                if (!bulkOpen || bulkSelected.length === 0) return;
+                try {
+                  setIsSubmitting(true);
+                  await CategoriesStore.bulkSetIncludeInStats(bulkSelected, bulkOpen === 'enable');
+                  toast({ title: 'Updated', description: `${bulkOpen === 'enable' ? 'Included' : 'Excluded'} ${bulkSelected.length} categories.` });
+                  setBulkOpen(null);
+                  setBulkOptions([]);
+                  setBulkSelected([]);
+                } catch (e) {
+                  toast({ title: 'Error', description: String(e), variant: 'destructive' });
+                } finally {
+                  setIsSubmitting(false);
+                }
+              }}
+              disabled={bulkSelected.length === 0 || isSubmitting}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Confirm delete dialog */}
       <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => setConfirmDeleteId(open ? confirmDeleteId : null)}>
         <AlertDialogContent>

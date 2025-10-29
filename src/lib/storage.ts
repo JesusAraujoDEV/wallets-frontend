@@ -81,6 +81,7 @@ export const CategoriesStore = {
       icon: c.icon ?? null,
       color: c.color || "hsl(var(--chart-6))",
       colorName: c.colorName || "",
+      includeInStats: !!(c.include_in_stats ?? c.includeInStats ?? false),
     }));
     emit();
   },
@@ -103,6 +104,25 @@ export const CategoriesStore = {
   async remove(id: string): Promise<void> {
     await fetchJSON(`categories?id=${encodeURIComponent(id)}`, { method: "DELETE" });
     await this.refresh();
+  },
+  async bulkSetIncludeInStats(ids: string[], enabled: boolean): Promise<void> {
+    if (!ids || ids.length === 0) return;
+    const path = `categories/include-in-stats/${enabled ? 'enable' : 'disable'}`;
+    const payload = { ids: ids.map((i) => Number(i)) };
+    await fetchJSON(path, { method: 'POST', body: JSON.stringify(payload) });
+    await this.refresh();
+  },
+  async fetchByIncludeInStats(flag: boolean): Promise<Category[]> {
+    const list = await fetchJSON<any[]>(`categories?includeInStats=${flag ? 'true' : 'false'}`);
+    return (list || []).map((c) => ({
+      id: String(c.id),
+      name: String(c.name),
+      type: (c.type === "ingreso" || c.type === "income") ? "income" : (c.type === "expense" || c.type === "gasto") ? "expense" : (c.type as any) || "expense",
+      icon: c.icon ?? null,
+      color: c.color || "hsl(var(--chart-6))",
+      colorName: c.colorName || "",
+      includeInStats: !!(c.include_in_stats ?? c.includeInStats ?? flag),
+    }));
   },
 };
 

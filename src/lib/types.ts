@@ -12,6 +12,7 @@ export interface Category {
   icon?: string | null;
   color: string; // CSS color value
   colorName: string;
+  includeInStats?: boolean;
 }
 
 export interface Transaction {
