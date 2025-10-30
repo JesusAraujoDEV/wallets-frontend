@@ -150,7 +150,7 @@ const Index = () => {
     let alive = true;
     const dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
     const dateTo = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10);
-    const include = statsScope === 'only' ? true : statsScope === 'exclude' ? false : undefined;
+    const include: true = true;
     const accountIds = selectedAccount !== 'all' ? [selectedAccount] : undefined;
     (async () => {
       try {
@@ -318,13 +318,13 @@ const Index = () => {
                 className="h-8 rounded-md border bg-background px-2 text-sm"
                 value={statsScope}
                 onChange={(e) => setStatsScope(e.target.value as any)}
-                title="Filter KPIs by include_in_stats"
+                title="Filter charts by include_in_stats"
               >
                 <option value="all">All categories</option>
                 <option value="only">Only included in stats</option>
                 <option value="exclude">Only excluded from stats</option>
               </select>
-              <span className="text-sm text-muted-foreground">(affects KPI income/expenses/net)</span>
+              <span className="text-sm text-muted-foreground">(affects charts; KPIs use includeInStats=1)</span>
             </div>
             
             {selectedAccount === "all" ? (
