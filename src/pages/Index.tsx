@@ -16,6 +16,7 @@ import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from 
 import { AuthApi, type AuthUser } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
 import { useVESExchangeRate, convertToUSD } from "@/lib/rates";
+import { fetchIncomeSummary, fetchExpenseSummary, fetchBalanceSummary, fetchGlobalBalance } from "@/lib/summary";
 import { isBalanceAdjustmentCategory, isBalanceAdjustmentPlus } from "@/lib/utils";
 import type { Account, Category, Transaction } from "@/lib/types";
 
@@ -30,6 +31,11 @@ const Index = () => {
   const [selectedIncomeCats, setSelectedIncomeCats] = useState<string[]>([]);
   const [selectedExpenseCats, setSelectedExpenseCats] = useState<string[]>([]);
   const { rate } = useVESExchangeRate();
+  const [statsScope, setStatsScope] = useState<"all" | "only" | "exclude">("all");
+  const [kpiIncome, setKpiIncome] = useState<number>(0);
+  const [kpiExpenses, setKpiExpenses] = useState<number>(0);
+  const [kpiNet, setKpiNet] = useState<number>(0);
+  const [totalBalanceUsd, setTotalBalanceUsd] = useState<number>(0);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -102,20 +108,21 @@ const Index = () => {
     return () => { alive = false; };
   }, []);
   
-  // KPIs derived from data
-  const totalBalance = useMemo(() => {
-    if (selectedAccount === "all") {
-      // Sum all accounts in USD
-      return accounts.reduce((sum, a) => {
-        const usd = convertToUSD(a.balance || 0, a.currency, rate || null);
-        return sum + (usd ?? 0);
-      }, 0);
-    }
-    const acc = accounts.find(a => a.id === selectedAccount);
-    if (!acc) return 0;
-    const usd = convertToUSD(acc.balance || 0, acc.currency, rate || null);
-    return usd ?? 0;
-  }, [accounts, selectedAccount, rate]);
+  // Fetch Total Balance from API (global accounts total in USD)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const b = await fetchGlobalBalance();
+        if (!alive) return;
+        setTotalBalanceUsd(b.accounts_total_usd ?? 0);
+      } catch {
+        if (!alive) return;
+        setTotalBalanceUsd(0);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const now = new Date();
   const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -132,28 +139,37 @@ const Index = () => {
   const incomeCategories = useMemo(() => categories.filter(c => c.type === "income"), [categories]);
   const expenseCategories = useMemo(() => categories.filter(c => c.type === "expense"), [categories]);
 
-  const { totalIncome, totalExpenses } = useMemo(() => {
-    const monthTx = txByAccount.filter(t => isCurrentMonth(t.date));
-    let inc = 0, exp = 0;
-    for (const t of monthTx) {
-      const acc = accounts.find(a => a.id === t.accountId);
-      const cur = acc?.currency ?? "USD";
-      const usdAmount = convertToUSD(t.amount, cur as any, rate || null) ?? 0;
-      const cat = categories.find(c => c.id === t.categoryId);
-      if (t.type === "income") {
-        // Apply income category filter when set
-        if (selectedIncomeCats.length > 0 && !incomeFilterSet.has(t.categoryId)) continue;
-        // Excluir ajustes de balance del total de ingresos
-        if (!isBalanceAdjustmentPlus(cat?.name)) inc += usdAmount;
-      } else {
-        // Apply expense category filter when set
-        if (selectedExpenseCats.length > 0 && !expenseFilterSet.has(t.categoryId)) continue;
-        // Excluir ajustes de balance del total de gastos
-        if (!isBalanceAdjustmentCategory(cat?.name)) exp += usdAmount;
+  // Current month range and month key
+  const monthKey = useMemo(() => {
+    const y = now.getFullYear();
+    const m = `${now.getMonth() + 1}`.padStart(2, '0');
+    return `${y}-${m}`;
+  }, [now]);
+
+  useEffect(() => {
+    let alive = true;
+    const dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+    const dateTo = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10);
+    const include = statsScope === 'only' ? true : statsScope === 'exclude' ? false : undefined;
+    const accountIds = selectedAccount !== 'all' ? [selectedAccount] : undefined;
+    (async () => {
+      try {
+        const [inc, exp, net] = await Promise.all([
+          fetchIncomeSummary({ month: monthKey, includeInStats: include, accountIds }),
+          fetchExpenseSummary({ month: monthKey, includeInStats: include, accountIds }),
+          fetchBalanceSummary({ month: monthKey, includeInStats: include, accountIds })
+        ]);
+        if (!alive) return;
+        setKpiIncome(inc || 0);
+        setKpiExpenses(exp || 0);
+        setKpiNet(net || (inc || 0) - (exp || 0));
+      } catch (e) {
+        if (!alive) return;
+        setKpiIncome(0); setKpiExpenses(0); setKpiNet(0);
       }
-    }
-    return { totalIncome: inc, totalExpenses: exp };
-  }, [txByAccount, accounts, rate, categories, incomeFilterSet, expenseFilterSet, selectedIncomeCats.length, selectedExpenseCats.length]);
+    })();
+    return () => { alive = false; };
+  }, [now, monthKey, statsScope, selectedAccount]);
 
   // Charts
   const expensePieData = useMemo(() => {
@@ -251,21 +267,21 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <KPICard
             title="Total Balance (USD)"
-            value={`$${totalBalance.toFixed(2)}`}
+            value={`$${totalBalanceUsd.toFixed(2)}`}
             icon={Wallet}
             trend={{ value: "", isPositive: true }}
             colorScheme="primary"
           />
           <KPICard
             title="Monthly Income (USD)"
-            value={`$${totalIncome.toFixed(2)}`}
+            value={`$${kpiIncome.toFixed(2)}`}
             icon={TrendingUp}
             trend={{ value: "", isPositive: true }}
             colorScheme="secondary"
           />
           <KPICard
             title="Monthly Expenses (USD)"
-            value={`$${totalExpenses.toFixed(2)}`}
+            value={`$${kpiExpenses.toFixed(2)}`}
             icon={TrendingDown}
             trend={{ value: "", isPositive: false }}
             colorScheme="accent"
@@ -296,6 +312,20 @@ const Index = () => {
               selectedAccount={selectedAccount}
               onAccountChange={setSelectedAccount}
             />
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm text-muted-foreground">Stats filter:</span>
+              <select
+                className="h-8 rounded-md border bg-background px-2 text-sm"
+                value={statsScope}
+                onChange={(e) => setStatsScope(e.target.value as any)}
+                title="Filter KPIs by include_in_stats"
+              >
+                <option value="all">All categories</option>
+                <option value="only">Only included in stats</option>
+                <option value="exclude">Only excluded from stats</option>
+              </select>
+              <span className="text-sm text-muted-foreground">(affects KPI income/expenses/net)</span>
+            </div>
             
             {selectedAccount === "all" ? (
               <div className="mb-4 p-4 bg-primary-light/30 rounded-lg border border-primary/20">
