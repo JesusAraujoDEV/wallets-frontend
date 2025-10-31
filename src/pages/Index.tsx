@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import { KPICard } from "@/components/KPICard";
 import { ExpensePieChart } from "@/components/ExpensePieChart";
+import { NetCashFlowChart } from "@/components/NetCashFlowChart";
+import { SpendingHeatmap } from "@/components/SpendingHeatmap";
+import { ExpenseVolatilityBoxPlot } from "@/components/ExpenseVolatilityBoxPlot";
+import { ComparativeMoM } from "@/components/ComparativeMoM";
+import { MonthlyForecastGauge } from "@/components/MonthlyForecastGauge";
 import { TrendLineChart } from "@/components/TrendLineChart";
 import { BudgetComparisonChart } from "@/components/BudgetComparisonChart";
 import { TransactionsList } from "@/components/TransactionsList";
@@ -19,6 +24,7 @@ import { useVESExchangeRate, convertToUSD } from "@/lib/rates";
 import { fetchIncomeSummary, fetchExpenseSummary, fetchBalanceSummary, fetchGlobalBalance, fetchIncomeMonthly, fetchExpenseMonthly } from "@/lib/summary";
 import { isBalanceAdjustmentCategory, isBalanceAdjustmentPlus } from "@/lib/utils";
 import type { Account, Category, Transaction } from "@/lib/types";
+import { fetchNetCashFlow, fetchSpendingHeatmap, fetchExpenseVolatility, fetchComparativeMoM, fetchMonthlyForecast } from "@/lib/stats";
 
 // Dashboard data is derived from localStorage (JSON DB)
 
@@ -38,6 +44,12 @@ const Index = () => {
   const [totalBalanceUsd, setTotalBalanceUsd] = useState<number>(0);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  // New stats datasets
+  const [netFlowData, setNetFlowData] = useState<{ summary?: any; series: any[] }>({ summary: undefined, series: [] });
+  const [heatmapData, setHeatmapData] = useState<{ categories: string[]; weekdays: string[]; data_points: any[] }>({ categories: [], weekdays: [], data_points: [] });
+  const [volatilityData, setVolatilityData] = useState<any[]>([]);
+  const [momData, setMomData] = useState<{ summary: any; categories: any[] }>({ summary: { current_total: 0, total_delta_percent: 0, total_delta_usd: 0 }, categories: [] });
+  const [forecastData, setForecastData] = useState<{ budget_total: number; current_spending_mtd: number; projected_total_spending: number; projected_over_under: number }>({ budget_total: 0, current_spending_mtd: 0, projected_total_spending: 0, projected_over_under: 0 });
 
   const allowedPages = useMemo(() => new Set(["dashboard", "transactions", "categories", "accounts"]), []);
   const pageFromUrl = searchParams.get("page") || "";
@@ -268,6 +280,39 @@ const Index = () => {
     return () => { alive = false; };
   }, [selectedAccount, selectedIncomeCats.join(','), selectedExpenseCats.join(','), visibleIncomeCategories.length, visibleExpenseCategories.length, statsScope]);
 
+  // Fetch new stats datasets
+  useEffect(() => {
+    let alive = true;
+    const includeParam = statsScope === 'only' ? true : statsScope === 'exclude' ? false : undefined;
+    const accountId = selectedAccount !== 'all' ? selectedAccount : undefined;
+    // last 6 months range
+    const end = new Date(now.getFullYear(), now.getMonth(), 1);
+    const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const fromMonth = fmt(start);
+    const toMonth = fmt(end);
+    (async () => {
+      try {
+        const [net, heat, vol, mom, fc] = await Promise.all([
+          fetchNetCashFlow({ includeInStats: includeParam, accountId, fromMonth, toMonth }),
+          fetchSpendingHeatmap({ includeInStats: includeParam, accountId }),
+          fetchExpenseVolatility({ includeInStats: includeParam, accountId }),
+          fetchComparativeMoM({ includeInStats: includeParam, accountId, fromMonth, toMonth }),
+          fetchMonthlyForecast({ includeInStats: includeParam, accountId, month: monthKey }),
+        ]);
+        if (!alive) return;
+        setNetFlowData({ summary: net.summary, series: net.time_series || [] });
+        setHeatmapData({ categories: heat.categories || [], weekdays: heat.weekdays || [], data_points: heat.data_points || [] });
+        setVolatilityData(vol.categories_data || []);
+        setMomData({ summary: mom.summary, categories: mom.categories_comparison || [] });
+        setForecastData(fc);
+      } catch {
+        if (!alive) return;
+      }
+    })();
+    return () => { alive = false; };
+  }, [statsScope, selectedAccount, monthKey]);
+
   const budgetData = useMemo(() => {
     // Placeholder budgets (0) with actual monthly expenses per category
     const expTx = txByAccount
@@ -427,6 +472,21 @@ const Index = () => {
             </div>
             <div>
               <BudgetComparisonChart data={budgetData} />
+            </div>
+
+            {/* New Advanced Stats section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <NetCashFlowChart summary={netFlowData.summary} data={netFlowData.series} />
+              <MonthlyForecastGauge {...forecastData} />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <SpendingHeatmap {...heatmapData} />
+              <ExpenseVolatilityBoxPlot categories={volatilityData} />
+            </div>
+            <div>
+              {momData?.summary ? (
+                <ComparativeMoM summary={momData.summary} categories={momData.categories} />
+              ) : null}
             </div>
           </TabsContent>
 
