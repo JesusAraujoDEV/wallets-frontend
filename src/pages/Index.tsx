@@ -238,6 +238,7 @@ const Index = () => {
       return d.toLocaleString(undefined, { month: 'short' });
     };
     const accountIds = selectedAccount !== 'all' ? [selectedAccount] : undefined;
+    const includeParam = statsScope === 'only' ? true : statsScope === 'exclude' ? false : undefined;
     const visibleIncomeSet = new Set(visibleIncomeCategories.map(c => c.id));
     const visibleExpenseSet = new Set(visibleExpenseCategories.map(c => c.id));
     const incomeCategoryIds = (selectedIncomeCats && selectedIncomeCats.length)
@@ -249,8 +250,8 @@ const Index = () => {
     (async () => {
       try {
         const [incSeries, expSeries] = await Promise.all([
-          fetchIncomeMonthly({ fromMonth, toMonth, includeInStats: true, accountIds, categoryIds: incomeCategoryIds }),
-          fetchExpenseMonthly({ fromMonth, toMonth, includeInStats: true, accountIds, categoryIds: expenseCategoryIds }),
+          fetchIncomeMonthly({ fromMonth, toMonth, includeInStats: includeParam, accountIds, categoryIds: incomeCategoryIds }),
+          fetchExpenseMonthly({ fromMonth, toMonth, includeInStats: includeParam, accountIds, categoryIds: expenseCategoryIds }),
         ]);
         if (!alive) return;
         const data = monthsKeys.map((k) => ({
@@ -265,7 +266,7 @@ const Index = () => {
       }
     })();
     return () => { alive = false; };
-  }, [selectedAccount, selectedIncomeCats.join(','), selectedExpenseCats.join(','), visibleIncomeCategories.length, visibleExpenseCategories.length]);
+  }, [selectedAccount, selectedIncomeCats.join(','), selectedExpenseCats.join(','), visibleIncomeCategories.length, visibleExpenseCategories.length, statsScope]);
 
   const budgetData = useMemo(() => {
     // Placeholder budgets (0) with actual monthly expenses per category
@@ -371,7 +372,7 @@ const Index = () => {
                   <TabsTrigger value="exclude">Only excluded in stats</TabsTrigger>
                 </TabsList>
               </Tabs>
-              <p className="text-xs text-muted-foreground mt-2">Tabs filter Pie and Budget charts. Trends uses includeInStats=1 from the API.</p>
+              <p className="text-xs text-muted-foreground mt-2">Tabs filter Pie, Budget, and Trends. Trends calls the API with includeInStats per the selected tab.</p>
             </div>
             
             {selectedAccount === "all" ? (
