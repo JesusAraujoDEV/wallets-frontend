@@ -10,8 +10,12 @@ export interface MonthlyForecastGaugeProps {
 export function MonthlyForecastGauge({ budget_total, current_spending_mtd, projected_total_spending, projected_over_under }: MonthlyForecastGaugeProps) {
   const width = 360; const height = 220; const cx = width/2; const cy = height - 10; const r = Math.min(width, height) * 0.45;
   const startAngle = Math.PI; const endAngle = 0; // semi circle
-  const pct = Math.max(0, Math.min(1, (budget_total > 0 ? current_spending_mtd / budget_total : 0)));
-  const projPct = Math.max(0, Math.min(1, (budget_total > 0 ? projected_total_spending / budget_total : 0)));
+  const safeBudget = Number(budget_total || 0);
+  const safeCurrent = Number(current_spending_mtd || 0);
+  const safeProjected = Number(projected_total_spending || 0);
+  const safeOverUnder = Number(projected_over_under || 0);
+  const pct = Math.max(0, Math.min(1, (safeBudget > 0 ? safeCurrent / safeBudget : 0)));
+  const projPct = Math.max(0, Math.min(1, (safeBudget > 0 ? safeProjected / safeBudget : 0)));
 
   const arc = (p: number, color: string, strokeWidth = 12) => {
     const ang = startAngle + (endAngle - startAngle) * p;
@@ -21,7 +25,7 @@ export function MonthlyForecastGauge({ budget_total, current_spending_mtd, proje
     return <path d={path} stroke={color} strokeWidth={strokeWidth} fill="none" strokeLinecap="round" />;
   };
 
-  const projColor = projected_over_under > 0 ? '#ef4444' : '#10b981';
+  const projColor = safeOverUnder > 0 ? '#ef4444' : '#10b981';
 
   return (
     <Card className="p-6 shadow-md border-0">
@@ -35,14 +39,14 @@ export function MonthlyForecastGauge({ budget_total, current_spending_mtd, proje
         {arc(projPct, projColor, 3)}
         {/* ticks text */}
         <text x={cx - r} y={cy + 16} textAnchor="start" fontSize={10} fill="hsl(var(--muted-foreground))">0</text>
-        <text x={cx} y={cy + 16} textAnchor="middle" fontSize={10} fill="hsl(var(--muted-foreground))">{`$${Math.round(budget_total/2).toString()}`}</text>
-        <text x={cx + r} y={cy + 16} textAnchor="end" fontSize={10} fill="hsl(var(--muted-foreground))">${budget_total.toFixed(0)}</text>
+        <text x={cx} y={cy + 16} textAnchor="middle" fontSize={10} fill="hsl(var(--muted-foreground))">{`$${Math.round(safeBudget/2).toString()}`}</text>
+        <text x={cx + r} y={cy + 16} textAnchor="end" fontSize={10} fill="hsl(var(--muted-foreground))">${safeBudget.toFixed(0)}</text>
       </svg>
       <div className="text-center mt-2">
         <div className="text-sm text-muted-foreground">Proyección</div>
-        <div className="text-2xl font-bold">${projected_total_spending.toFixed(2)}</div>
-        <div className={`text-sm ${projected_over_under > 0 ? 'text-red-600' : 'text-green-600'}`}>
-          {projected_over_under >= 0 ? '+' : ''}${projected_over_under.toFixed(2)} vs presupuesto
+        <div className="text-2xl font-bold">${safeProjected.toFixed(2)}</div>
+        <div className={`text-sm ${safeOverUnder > 0 ? 'text-red-600' : 'text-green-600'}`}>
+          {safeOverUnder >= 0 ? '+' : ''}${safeOverUnder.toFixed(2)} vs presupuesto
         </div>
       </div>
     </Card>

@@ -285,29 +285,32 @@ const Index = () => {
     let alive = true;
     const includeParam = statsScope === 'only' ? true : statsScope === 'exclude' ? false : undefined;
     const accountId = selectedAccount !== 'all' ? selectedAccount : undefined;
-    // last 6 months range
-    const end = new Date(now.getFullYear(), now.getMonth(), 1);
-    const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const fromMonth = fmt(start);
-    const toMonth = fmt(end);
+    // last 6 months range -> convert to from_date/to_date (YYYY-MM-DD)
+    const endMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startMonth = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const firstOfStart = new Date(startMonth.getFullYear(), startMonth.getMonth(), 1);
+    const lastOfEnd = new Date(endMonth.getFullYear(), endMonth.getMonth() + 1, 0);
+    const fromDate = firstOfStart.toISOString().slice(0, 10);
+    const toDate = lastOfEnd.toISOString().slice(0, 10);
     (async () => {
       try {
         const [net, heat, vol, mom, fc] = await Promise.all([
-          fetchNetCashFlow({ includeInStats: includeParam, accountId, fromMonth, toMonth }),
-          fetchSpendingHeatmap({ includeInStats: includeParam, accountId }),
-          fetchExpenseVolatility({ includeInStats: includeParam, accountId }),
-          fetchComparativeMoM({ includeInStats: includeParam, accountId, fromMonth, toMonth }),
-          fetchMonthlyForecast({ includeInStats: includeParam, accountId, month: monthKey }),
+          fetchNetCashFlow({ includeInStats: includeParam, accountId, fromDate, toDate, timeUnit: 'month' }),
+          fetchSpendingHeatmap({ includeInStats: includeParam, accountId, fromDate, toDate }),
+          fetchExpenseVolatility({ includeInStats: includeParam, accountId, fromDate, toDate, topN: 8 }),
+          fetchComparativeMoM({ includeInStats: includeParam, accountId, date: toDate }),
+          fetchMonthlyForecast({ includeInStats: includeParam, accountId, date: now.toISOString().slice(0,10) }),
         ]);
         if (!alive) return;
-        setNetFlowData({ summary: net.summary, series: net.time_series || [] });
-        setHeatmapData({ categories: heat.categories || [], weekdays: heat.weekdays || [], data_points: heat.data_points || [] });
-        setVolatilityData(vol.categories_data || []);
-        setMomData({ summary: mom.summary, categories: mom.categories_comparison || [] });
-        setForecastData(fc);
-      } catch {
+  setNetFlowData({ summary: net?.summary, series: net?.time_series || [] });
+  setHeatmapData({ categories: heat?.categories || [], weekdays: heat?.weekdays || [], data_points: heat?.data_points || [] });
+  setVolatilityData(vol?.categories_data || []);
+  setMomData({ summary: mom?.summary || { current_total: 0, total_delta_percent: 0, total_delta_usd: 0 }, categories: mom?.categories_comparison || [] });
+  setForecastData(fc || { budget_total: 0, current_spending_mtd: 0, projected_total_spending: 0, projected_over_under: 0 });
+      } catch (err) {
+        // swallow but keep alive check
         if (!alive) return;
+        console.warn('stats fetch failed', err);
       }
     })();
     return () => { alive = false; };

@@ -17,15 +17,17 @@ export interface NetCashFlowResponse {
   };
   time_series: NetCashFlowPoint[];
 }
-export async function fetchNetCashFlow(params?: { includeInStats?: boolean; accountId?: string; fromMonth?: string; toMonth?: string; }): Promise<NetCashFlowResponse> {
+export async function fetchNetCashFlow(params?: { includeInStats?: boolean; accountId?: string; fromDate?: string; toDate?: string; timeUnit?: string; }): Promise<NetCashFlowResponse> {
+  // API expects from_date and to_date (YYYY-MM-DD) and optional time_unit (e.g. 'month')
   const sp = new URLSearchParams();
   if (params?.includeInStats === true) sp.set("includeInStats", "1");
   if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
-  if (params?.fromMonth) sp.set("from_month", params.fromMonth);
-  if (params?.toMonth) sp.set("to_month", params.toMonth);
+  if (params?.fromDate) sp.set("from_date", params.fromDate);
+  if (params?.toDate) sp.set("to_date", params.toDate);
+  if (params?.timeUnit) sp.set("time_unit", params.timeUnit);
   const qs = sp.toString();
-  return apiFetch<NetCashFlowResponse>(`api/stats/net-cash-flow${qs ? `?${qs}` : ""}`);
+  return apiFetch<NetCashFlowResponse>(`stats/net-cash-flow${qs ? `?${qs}` : ""}`);
 }
 
 // 2) Spending heatmap
@@ -34,13 +36,16 @@ export interface SpendingHeatmapResponse {
   weekdays: string[];   // x axis labels
   data_points: Array<{ category_idx: number; day_idx: number; amount: number }>;
 }
-export async function fetchSpendingHeatmap(params?: { includeInStats?: boolean; accountId?: string; }): Promise<SpendingHeatmapResponse> {
+export async function fetchSpendingHeatmap(params?: { includeInStats?: boolean; accountId?: string; fromDate?: string; toDate?: string; }): Promise<SpendingHeatmapResponse> {
+  // API expects from_date and to_date (YYYY-MM-DD)
   const sp = new URLSearchParams();
   if (params?.includeInStats === true) sp.set("includeInStats", "1");
   if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
+  if (params?.fromDate) sp.set("from_date", params.fromDate);
+  if (params?.toDate) sp.set("to_date", params.toDate);
   const qs = sp.toString();
-  return apiFetch<SpendingHeatmapResponse>(`api/stats/spending-heatmap${qs ? `?${qs}` : ""}`);
+  return apiFetch<SpendingHeatmapResponse>(`stats/spending-heatmap${qs ? `?${qs}` : ""}`);
 }
 
 // 3) Expense volatility (box plot)
@@ -53,13 +58,17 @@ export interface ExpenseVolatilityCategory {
 export interface ExpenseVolatilityResponse {
   categories_data: ExpenseVolatilityCategory[];
 }
-export async function fetchExpenseVolatility(params?: { includeInStats?: boolean; accountId?: string; }): Promise<ExpenseVolatilityResponse> {
+export async function fetchExpenseVolatility(params?: { includeInStats?: boolean; accountId?: string; fromDate?: string; toDate?: string; topN?: number; }): Promise<ExpenseVolatilityResponse> {
+  // API expects from_date and to_date (YYYY-MM-DD) and optional top_n_categories
   const sp = new URLSearchParams();
   if (params?.includeInStats === true) sp.set("includeInStats", "1");
   if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
+  if (params?.fromDate) sp.set("from_date", params.fromDate);
+  if (params?.toDate) sp.set("to_date", params.toDate);
+  if (typeof params?.topN === 'number') sp.set("top_n_categories", String(params.topN));
   const qs = sp.toString();
-  return apiFetch<ExpenseVolatilityResponse>(`api/stats/expense-volatility${qs ? `?${qs}` : ""}`);
+  return apiFetch<ExpenseVolatilityResponse>(`stats/expense-volatility${qs ? `?${qs}` : ""}`);
 }
 
 // 4) Comparative month-over-month
@@ -78,15 +87,15 @@ export interface ComparativeMoMResponse {
     delta_percent: number; // positive means spent more
   }>;
 }
-export async function fetchComparativeMoM(params?: { includeInStats?: boolean; accountId?: string; fromMonth?: string; toMonth?: string; }): Promise<ComparativeMoMResponse> {
+export async function fetchComparativeMoM(params?: { includeInStats?: boolean; accountId?: string; date?: string; }): Promise<ComparativeMoMResponse> {
+  // API expects a reference date (YYYY-MM-DD)
   const sp = new URLSearchParams();
   if (params?.includeInStats === true) sp.set("includeInStats", "1");
   if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
-  if (params?.fromMonth) sp.set("from_month", params.fromMonth);
-  if (params?.toMonth) sp.set("to_month", params.toMonth);
+  if (params?.date) sp.set("date", params.date);
   const qs = sp.toString();
-  return apiFetch<ComparativeMoMResponse>(`api/stats/comparative-mom${qs ? `?${qs}` : ""}`);
+  return apiFetch<ComparativeMoMResponse>(`stats/comparative-mom${qs ? `?${qs}` : ""}`);
 }
 
 // 5) Monthly forecast
@@ -96,12 +105,14 @@ export interface MonthlyForecastResponse {
   projected_total_spending: number;
   projected_over_under: number; // positive if over
 }
-export async function fetchMonthlyForecast(params?: { includeInStats?: boolean; accountId?: string; month?: string; }): Promise<MonthlyForecastResponse> {
+export async function fetchMonthlyForecast(params?: { includeInStats?: boolean; accountId?: string; date?: string; budget_total?: number; }): Promise<MonthlyForecastResponse> {
+  // API expects a date (YYYY-MM-DD) and optional budget_total
   const sp = new URLSearchParams();
   if (params?.includeInStats === true) sp.set("includeInStats", "1");
   if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
-  if (params?.month) sp.set("month", params.month);
+  if (params?.date) sp.set("date", params.date);
+  if (typeof params?.budget_total === 'number') sp.set("budget_total", String(params.budget_total));
   const qs = sp.toString();
-  return apiFetch<MonthlyForecastResponse>(`api/stats/monthly-forecast${qs ? `?${qs}` : ""}`);
+  return apiFetch<MonthlyForecastResponse>(`stats/monthly-forecast${qs ? `?${qs}` : ""}`);
 }
