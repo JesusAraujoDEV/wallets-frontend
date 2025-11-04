@@ -26,6 +26,7 @@ import AccountMultiSelect from "@/components/AccountMultiSelect";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { TransactionFilters } from "@/components/TransactionFilters";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,6 +73,7 @@ export const TransactionsList = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exporting, setExporting] = useState<false | "pdf" | "xlsx">(false);
+  const [includeCommission, setIncludeCommission] = useState<boolean>(false);
   const [advOpen, setAdvOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [saving, setSaving] = useState(false);
@@ -590,6 +592,10 @@ export const TransactionsList = () => {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Choose a format to download your transactions. PDF uses all items currently loaded (including those from "Load more").</p>
+            <div className="flex items-center gap-3 py-1">
+              <Switch id="include-commission" checked={includeCommission} onCheckedChange={setIncludeCommission} />
+              <Label htmlFor="include-commission" className="text-sm">Include commission</Label>
+            </div>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -630,15 +636,34 @@ export const TransactionsList = () => {
                 type="button"
                 variant="secondary"
                 className="flex-1"
-                disabled={true}
+                disabled={exporting === "xlsx"}
                 aria-busy={exporting === "xlsx"}
                 onClick={async () => {
                   try {
-                    // Placeholder for future XLSX export with payload support
-                    // setExporting("xlsx");
-                    // await exportTransactionsFromData({ format: "xlsx", data: { items, accounts, categories } });
-                    // toast({ title: "Export ready", description: "Your Excel download has started." });
-                    // setIsExportOpen(false);
+                    setExporting("xlsx");
+                    // Map current filters to backend query params
+                    let fromDate: string | undefined;
+                    let toDate: string | undefined;
+                    if (dateMode === 'day' && filterDate) {
+                      fromDate = filterDate; toDate = filterDate;
+                    } else if (dateMode === 'range') {
+                      fromDate = filterDateFrom || undefined; toDate = filterDateTo || undefined;
+                    } else if (dateMode === 'month' && filterMonth) {
+                      const first = dayjs(filterMonth + '-01');
+                      fromDate = first.format('YYYY-MM-DD');
+                      toDate = first.endOf('month').format('YYYY-MM-DD');
+                    }
+                    const accountId = filterAccounts.length === 1 ? filterAccounts[0] : undefined;
+                    await exportTransfers({
+                      format: "xlsx",
+                      method: "GET",
+                      fromDate,
+                      toDate,
+                      accountId,
+                      includeCommission,
+                    });
+                    toast({ title: "Export ready", description: "Your Excel download has started." });
+                    setIsExportOpen(false);
                   } catch (err: any) {
                     toast({ title: "Export failed", description: String(err?.message || err) });
                   } finally {
@@ -646,10 +671,10 @@ export const TransactionsList = () => {
                   }
                 }}
               >
-                {exporting === "xlsx" ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Excel</>) : "Excel (soon)"}
+                {exporting === "xlsx" ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Excel</>) : "Excel"}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Note: PDF export uses the current filters and all results currently loaded in the list. Excel is coming soon.</p>
+            <p className="text-xs text-muted-foreground">Note: PDF export usa los ítems cargados (incluye "Load more"). Excel usa filtros (fecha y cuenta) y se genera desde el servidor.</p>
           </div>
         </DialogContent>
       </Dialog>
