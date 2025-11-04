@@ -153,8 +153,8 @@ export async function exportTransactionsFromData(args: {
   format: TransferExportFormat;
   data: {
     items: any[];
-    accounts: any[];
-    categories: any[];
+    accounts?: any[];
+    categories?: any[];
     title?: string;
     createdBy?: string;
   };

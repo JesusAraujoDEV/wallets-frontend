@@ -596,10 +596,10 @@ export const TransactionsList = () => {
               <Switch id="include-commission" checked={includeCommission} onCheckedChange={setIncludeCommission} />
               <Label htmlFor="include-commission" className="text-sm">Include commission</Label>
             </div>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <Button
                 type="button"
-                className="flex-1"
+                className="w-full"
                 disabled={exporting === "pdf"}
                 aria-busy={exporting === "pdf"}
                 onClick={async () => {
@@ -635,7 +635,7 @@ export const TransactionsList = () => {
               <Button
                 type="button"
                 variant="secondary"
-                className="flex-1"
+                className="w-full"
                 disabled={exporting === "xlsx"}
                 aria-busy={exporting === "xlsx"}
                 onClick={async () => {
@@ -673,8 +673,44 @@ export const TransactionsList = () => {
               >
                 {exporting === "xlsx" ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Excel</>) : "Excel"}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={exporting === "xlsx"}
+                aria-busy={exporting === "xlsx"}
+                onClick={async () => {
+                  try {
+                    setExporting("xlsx");
+                    // EPIC XLSX from current loaded items (like PDF EPIC)
+                    const items = rawItems;
+                    const [rawAccounts, rawCategories] = await Promise.all([
+                      apiFetch<any[]>(`accounts`).catch(() => []),
+                      apiFetch<any[]>(`categories`).catch(() => []),
+                    ]);
+                    await exportTransactionsFromData({
+                      format: "xlsx",
+                      data: {
+                        items,
+                        accounts: rawAccounts,
+                        categories: rawCategories,
+                        title: "Mis movimientos",
+                        createdBy: undefined,
+                      },
+                    });
+                    toast({ title: "Export ready", description: "Your Excel (EPIC) download has started." });
+                    setIsExportOpen(false);
+                  } catch (err: any) {
+                    toast({ title: "Export failed", description: String(err?.message || err) });
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+              >
+                {exporting === "xlsx" ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Excel (EPIC)</>) : "Excel (EPIC)"}
+              </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Note: PDF export usa los ítems cargados (incluye "Load more"). Excel usa filtros (fecha y cuenta) y se genera desde el servidor.</p>
+            <p className="text-xs text-muted-foreground">Nota: PDF y Excel (EPIC) usan los ítems cargados (incluye "Load more"). Excel (servidor) usa filtros de fecha/cuenta y se genera directo en backend.</p>
           </div>
         </DialogContent>
       </Dialog>
