@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar as CalendarIcon, PlusCircle, Loader2 } from "lucide-react";
+import { Calendar as CalendarIcon, PlusCircle, Loader2, Download } from "lucide-react";
 import * as Icons from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AccountsStore, CategoriesStore, TransactionsStore, TransfersStore, newId, onDataChange } from "@/lib/storage";
@@ -19,6 +19,7 @@ import { cn, isBalanceAdjustmentCategory } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getIconOptionsForType } from "@/lib/categoryIcons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { exportTransfers } from "@/lib/exports";
 
 export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asModalContent?: boolean; onSubmitted?: () => void }) => {
   const [account, setAccount] = useState("");
@@ -40,6 +41,8 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
   const [transferDate, setTransferDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [concept, setConcept] = useState("");
   const [submittingTransfer, setSubmittingTransfer] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState<false | "pdf" | "xlsx">(false);
   const filteredCategories = categories.filter((c) => c.type === type);
   const [isCatPickerOpen, setIsCatPickerOpen] = useState(false);
   const [newCatName, setNewCatName] = useState("");
@@ -574,19 +577,79 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
           onChange={(e) => setConcept(e.target.value)}
         />
       </div>
-      <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={submittingTransfer} aria-busy={submittingTransfer}>
-        {submittingTransfer ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Creating...
-          </>
-        ) : (
-          <>
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Create Transfer
-          </>
-        )}
-      </Button>
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+        <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={submittingTransfer} aria-busy={submittingTransfer}>
+          {submittingTransfer ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Creating...
+            </>
+          ) : (
+            <>
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Create Transfer
+            </>
+          )}
+        </Button>
+        <Button type="button" variant="outline" className="w-full md:w-auto" onClick={() => setExportOpen(true)}>
+          <Download className="w-4 h-4 mr-2" />
+          Download
+        </Button>
+      </div>
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Export Transfers</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Choose a format to download your transfers.</p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                className="flex-1"
+                disabled={exporting === "pdf"}
+                aria-busy={exporting === "pdf"}
+                onClick={async () => {
+                  try {
+                    setExporting("pdf");
+                    await exportTransfers("pdf");
+                    toast({ title: "Export started", description: "Your PDF download should begin shortly." });
+                    setExportOpen(false);
+                  } catch (err: any) {
+                    toast({ title: "Export failed", description: String(err?.message || err) });
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+              >
+                {exporting === "pdf" ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />PDF</>) : "PDF"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="flex-1"
+                disabled={exporting === "xlsx"}
+                aria-busy={exporting === "xlsx"}
+                onClick={async () => {
+                  try {
+                    setExporting("xlsx");
+                    await exportTransfers("xlsx");
+                    toast({ title: "Export started", description: "Your Excel download should begin shortly." });
+                    setExportOpen(false);
+                  } catch (err: any) {
+                    toast({ title: "Export failed", description: String(err?.message || err) });
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+              >
+                {exporting === "xlsx" ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Excel</>) : "Excel"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Note: If the download doesn’t start, please ensure the backend export endpoint is available.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 

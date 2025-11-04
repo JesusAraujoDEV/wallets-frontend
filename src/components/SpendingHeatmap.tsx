@@ -47,7 +47,7 @@ export function SpendingHeatmap({ categories, weekdays, data_points }: SpendingH
                       <TooltipTrigger asChild>
                         <div className="h-8 w-10 md:w-14 border rounded-sm" style={{ backgroundColor: colorFor(v), borderColor: 'hsl(var(--border))' }} />
                       </TooltipTrigger>
-                      <TooltipContent> Total gastado: ${v.toFixed(2)} </TooltipContent>
+                      <TooltipContent>Total spent: ${v.toFixed(2)}</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 );

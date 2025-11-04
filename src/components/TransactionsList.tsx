@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2, Plus } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2, Plus, Download } from "lucide-react";
 import * as Icons from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
@@ -20,6 +20,7 @@ import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import dayjs from 'dayjs';
 import { cn, isBalanceAdjustmentCategory } from "@/lib/utils";
 import { TransactionForm } from "@/components/TransactionForm";
+import { exportTransfers } from "@/lib/exports";
 import CategoryMultiSelect from "@/components/CategoryMultiSelect";
 import AccountMultiSelect from "@/components/AccountMultiSelect";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -69,6 +70,8 @@ export const TransactionsList = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [exporting, setExporting] = useState<false | "pdf" | "xlsx">(false);
   const [advOpen, setAdvOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [saving, setSaving] = useState(false);
@@ -311,18 +314,24 @@ export const TransactionsList = () => {
             <CardTitle>Transaction Log</CardTitle>
             <CardDescription>View and filter your daily transactions</CardDescription>
           </div>
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <Button onClick={() => setIsAddOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              New Transaction
+          <div className="flex items-center gap-2">
+            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+              <Button onClick={() => setIsAddOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                New Transaction
+              </Button>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Add Transaction</DialogTitle>
+                </DialogHeader>
+                <TransactionForm asModalContent onSubmitted={async () => { setIsAddOpen(false); await refetch(); }} />
+              </DialogContent>
+            </Dialog>
+            <Button variant="outline" className="gap-2" onClick={() => setIsExportOpen(true)}>
+              <Download className="h-4 w-4" />
+              Download Transfers
             </Button>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Add Transaction</DialogTitle>
-              </DialogHeader>
-              <TransactionForm asModalContent onSubmitted={async () => { setIsAddOpen(false); await refetch(); }} />
-            </DialogContent>
-          </Dialog>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -572,6 +581,60 @@ export const TransactionsList = () => {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Export Transfers</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Choose a format to download your transfers.</p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                className="flex-1"
+                disabled={exporting === "pdf"}
+                aria-busy={exporting === "pdf"}
+                onClick={async () => {
+                  try {
+                    setExporting("pdf");
+                    await exportTransfers("pdf");
+                    toast({ title: "Export started", description: "Your PDF download should begin shortly." });
+                    setIsExportOpen(false);
+                  } catch (err: any) {
+                    toast({ title: "Export failed", description: String(err?.message || err) });
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+              >
+                {exporting === "pdf" ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />PDF</>) : "PDF"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="flex-1"
+                disabled={exporting === "xlsx"}
+                aria-busy={exporting === "xlsx"}
+                onClick={async () => {
+                  try {
+                    setExporting("xlsx");
+                    await exportTransfers("xlsx");
+                    toast({ title: "Export started", description: "Your Excel download should begin shortly." });
+                    setIsExportOpen(false);
+                  } catch (err: any) {
+                    toast({ title: "Export failed", description: String(err?.message || err) });
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+              >
+                {exporting === "xlsx" ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Excel</>) : "Excel"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Note: If the download doesn’t start, please ensure the backend export endpoint is available.</p>
+          </div>
         </DialogContent>
       </Dialog>
       <TransactionsDeleteConfirm
