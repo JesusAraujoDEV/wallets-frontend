@@ -192,3 +192,86 @@ export async function exportTransactionsFromData(args: {
     setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
   }
 }
+
+// Export ALL transactions via server endpoint with filters (GET /transactions/export)
+export type TransactionsExportFilters = {
+  searchQuery?: string;
+  filterType?: "all" | "income" | "expense";
+  filterIncomeCategories?: string[];
+  filterExpenseCategories?: string[];
+  filterAccounts?: string[];
+  dateMode?: "none" | "day" | "range" | "month";
+  filterDate?: string; // YYYY-MM-DD
+  filterDateFrom?: string; // YYYY-MM-DD
+  filterDateTo?: string; // YYYY-MM-DD
+  filterMonth?: string; // YYYY-MM
+};
+
+export async function exportAllTransactions(params: {
+  format: TransferExportFormat;
+  includeInStats?: boolean; // default true
+  filters?: TransactionsExportFilters;
+}): Promise<void> {
+  const { format, filters } = params;
+  const includeInStatsFlag = params.includeInStats === false ? "0" : "1";
+  const qp = new URLSearchParams();
+  qp.set("format", format);
+  qp.set("includeInStats", includeInStatsFlag);
+  if (filters) {
+    const {
+      searchQuery,
+      filterType,
+      filterIncomeCategories,
+      filterExpenseCategories,
+      filterAccounts,
+      dateMode,
+      filterDate,
+      filterDateFrom,
+      filterDateTo,
+      filterMonth,
+    } = filters;
+    if (searchQuery && searchQuery.trim()) qp.set("q", searchQuery.trim());
+    if (filterType && filterType !== "all") qp.set("type", filterType);
+    const cats = [
+      ...(filterIncomeCategories || []),
+      ...(filterExpenseCategories || []),
+    ];
+    if (cats.length > 0) qp.set("categoryId", cats.join(","));
+    if (filterAccounts && filterAccounts.length > 0) qp.set("accountId", filterAccounts.join(","));
+    if (dateMode === "day" && filterDate) qp.set("date", filterDate);
+    else if (dateMode === "range") {
+      if (filterDateFrom) qp.set("dateFrom", filterDateFrom);
+      if (filterDateTo) qp.set("dateTo", filterDateTo);
+    } else if (dateMode === "month" && filterMonth) qp.set("month", filterMonth);
+  }
+
+  const url = buildApiUrl(`transactions/export?${qp.toString()}`);
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers["authorization"] = `Bearer ${token}`;
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    let message = `HTTP ${res.status}`;
+    try { message = await res.text(); } catch {}
+    throw new Error(message || `HTTP ${res.status}`);
+  }
+  const blob = await res.blob();
+  const contentDisposition = res.headers.get("content-disposition") || "";
+  let filename = `transactions_${new Date().toISOString().slice(0,10)}.${format === "xlsx" ? "xlsx" : "pdf"}`;
+  const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(contentDisposition || "");
+  const encName = match?.[1] || match?.[2];
+  if (encName) {
+    try { filename = decodeURIComponent(encName); } catch { filename = encName; }
+  }
+  const blobUrl = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  }
+}

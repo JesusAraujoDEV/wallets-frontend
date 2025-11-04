@@ -20,7 +20,7 @@ import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import dayjs from 'dayjs';
 import { cn, isBalanceAdjustmentCategory } from "@/lib/utils";
 import { TransactionForm } from "@/components/TransactionForm";
-import { exportTransactionsFromData } from "@/lib/exports";
+import { exportTransactionsFromData, exportAllTransactions } from "@/lib/exports";
 import CategoryMultiSelect from "@/components/CategoryMultiSelect";
 import AccountMultiSelect from "@/components/AccountMultiSelect";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -72,6 +72,7 @@ export const TransactionsList = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exporting, setExporting] = useState<false | "pdf" | "xlsx">(false);
+  const [exportAll, setExportAll] = useState(false);
   const [advOpen, setAdvOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [saving, setSaving] = useState(false);
@@ -589,7 +590,11 @@ export const TransactionsList = () => {
             <DialogTitle>Export Transfers</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Choose a format to download your transactions. Both PDF and Excel use the items currently loaded (including those from "Load more").</p>
+            <p className="text-sm text-muted-foreground">Choose a format to download your transactions.</p>
+            <div className="flex items-center gap-2">
+              <input id="export-all" type="checkbox" checked={exportAll} onChange={(e) => setExportAll(e.target.checked)} />
+              <Label htmlFor="export-all" className="text-sm">Export ALL transactions (server-side) instead of only the loaded items</Label>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Button
                 type="button"
@@ -599,22 +604,41 @@ export const TransactionsList = () => {
                 onClick={async () => {
                   try {
                     setExporting("pdf");
-                    // Use currently loaded raw items (includes pages added via "Load more")
-                    const items = rawItems;
-                    const [rawAccounts, rawCategories] = await Promise.all([
-                      apiFetch<any[]>(`accounts`).catch(() => []),
-                      apiFetch<any[]>(`categories`).catch(() => []),
-                    ]);
-                    await exportTransactionsFromData({
-                      format: "pdf",
-                      data: {
-                        items,
-                        accounts: rawAccounts,
-                        categories: rawCategories,
-                        title: "Mis movimientos",
-                        createdBy: undefined,
-                      },
-                    });
+                    if (exportAll) {
+                      await exportAllTransactions({
+                        format: "pdf",
+                        includeInStats: true, // default to included-in-stats
+                        filters: {
+                          searchQuery,
+                          filterType,
+                          filterIncomeCategories,
+                          filterExpenseCategories,
+                          filterAccounts,
+                          dateMode,
+                          filterDate,
+                          filterDateFrom,
+                          filterDateTo,
+                          filterMonth,
+                        },
+                      });
+                    } else {
+                      // Use currently loaded raw items (includes pages added via "Load more")
+                      const items = rawItems;
+                      const [rawAccounts, rawCategories] = await Promise.all([
+                        apiFetch<any[]>(`accounts`).catch(() => []),
+                        apiFetch<any[]>(`categories`).catch(() => []),
+                      ]);
+                      await exportTransactionsFromData({
+                        format: "pdf",
+                        data: {
+                          items,
+                          accounts: rawAccounts,
+                          categories: rawCategories,
+                          title: "Mis movimientos",
+                          createdBy: undefined,
+                        },
+                      });
+                    }
                     toast({ title: "Export ready", description: "Your PDF download has started." });
                     setIsExportOpen(false);
                   } catch (err: any) {
@@ -635,22 +659,41 @@ export const TransactionsList = () => {
                 onClick={async () => {
                   try {
                     setExporting("xlsx");
-                    // EPIC XLSX from current loaded items
-                    const items = rawItems;
-                    const [rawAccounts, rawCategories] = await Promise.all([
-                      apiFetch<any[]>(`accounts`).catch(() => []),
-                      apiFetch<any[]>(`categories`).catch(() => []),
-                    ]);
-                    await exportTransactionsFromData({
-                      format: "xlsx",
-                      data: {
-                        items,
-                        accounts: rawAccounts,
-                        categories: rawCategories,
-                        title: "Mis movimientos",
-                        createdBy: undefined,
-                      },
-                    });
+                    if (exportAll) {
+                      await exportAllTransactions({
+                        format: "xlsx",
+                        includeInStats: true,
+                        filters: {
+                          searchQuery,
+                          filterType,
+                          filterIncomeCategories,
+                          filterExpenseCategories,
+                          filterAccounts,
+                          dateMode,
+                          filterDate,
+                          filterDateFrom,
+                          filterDateTo,
+                          filterMonth,
+                        },
+                      });
+                    } else {
+                      // EPIC XLSX from current loaded items
+                      const items = rawItems;
+                      const [rawAccounts, rawCategories] = await Promise.all([
+                        apiFetch<any[]>(`accounts`).catch(() => []),
+                        apiFetch<any[]>(`categories`).catch(() => []),
+                      ]);
+                      await exportTransactionsFromData({
+                        format: "xlsx",
+                        data: {
+                          items,
+                          accounts: rawAccounts,
+                          categories: rawCategories,
+                          title: "Mis movimientos",
+                          createdBy: undefined,
+                        },
+                      });
+                    }
                     toast({ title: "Export ready", description: "Your Excel download has started." });
                     setIsExportOpen(false);
                   } catch (err: any) {
@@ -663,7 +706,7 @@ export const TransactionsList = () => {
                 {exporting === "xlsx" ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Excel</>) : "Excel"}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Nota: PDF y Excel usan los ítems cargados (incluye "Load more").</p>
+            <p className="text-xs text-muted-foreground">Nota: si marcas "Export ALL", se descargan todas las transacciones (vía servidor) respetando filtros. Si no, solo las cargadas actualmente.</p>
           </div>
         </DialogContent>
       </Dialog>
