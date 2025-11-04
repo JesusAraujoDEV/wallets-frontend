@@ -20,7 +20,7 @@ import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import dayjs from 'dayjs';
 import { cn, isBalanceAdjustmentCategory } from "@/lib/utils";
 import { TransactionForm } from "@/components/TransactionForm";
-import { exportTransfers } from "@/lib/exports";
+import { exportTransfers, exportTransactionsFromData } from "@/lib/exports";
 import CategoryMultiSelect from "@/components/CategoryMultiSelect";
 import AccountMultiSelect from "@/components/AccountMultiSelect";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -89,7 +89,7 @@ export const TransactionsList = () => {
   const [groupTotals, setGroupTotals] = useState<Record<string, { income: number; expenses: number; balance: number }>>({});
   const PAGE_SIZE = PAGE_SIZE_DEFAULT;
 
-  const { transactions, pageLoading, hasMore, fetchNextPage, refetch, firstReloadTick } = useTransactionsQuery({
+  const { transactions, rawItems, pageLoading, hasMore, fetchNextPage, refetch, firstReloadTick } = useTransactionsQuery({
     filters: filtersPack,
     pageSize: PAGE_SIZE,
   });
@@ -589,7 +589,7 @@ export const TransactionsList = () => {
             <DialogTitle>Export Transfers</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Choose a format to download your transfers.</p>
+            <p className="text-sm text-muted-foreground">Choose a format to download your transactions. PDF uses all items currently loaded (including those from "Load more").</p>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -599,8 +599,23 @@ export const TransactionsList = () => {
                 onClick={async () => {
                   try {
                     setExporting("pdf");
-                    await exportTransfers("pdf");
-                    toast({ title: "Export started", description: "Your PDF download should begin shortly." });
+                    // Use currently loaded raw items (includes pages added via "Load more")
+                    const items = rawItems;
+                    const [rawAccounts, rawCategories] = await Promise.all([
+                      apiFetch<any[]>(`accounts`).catch(() => []),
+                      apiFetch<any[]>(`categories`).catch(() => []),
+                    ]);
+                    await exportTransactionsFromData({
+                      format: "pdf",
+                      data: {
+                        items,
+                        accounts: rawAccounts,
+                        categories: rawCategories,
+                        title: "Mis movimientos",
+                        createdBy: undefined,
+                      },
+                    });
+                    toast({ title: "Export ready", description: "Your PDF download has started." });
                     setIsExportOpen(false);
                   } catch (err: any) {
                     toast({ title: "Export failed", description: String(err?.message || err) });
@@ -615,14 +630,15 @@ export const TransactionsList = () => {
                 type="button"
                 variant="secondary"
                 className="flex-1"
-                disabled={exporting === "xlsx"}
+                disabled={true}
                 aria-busy={exporting === "xlsx"}
                 onClick={async () => {
                   try {
-                    setExporting("xlsx");
-                    await exportTransfers("xlsx");
-                    toast({ title: "Export started", description: "Your Excel download should begin shortly." });
-                    setIsExportOpen(false);
+                    // Placeholder for future XLSX export with payload support
+                    // setExporting("xlsx");
+                    // await exportTransactionsFromData({ format: "xlsx", data: { items, accounts, categories } });
+                    // toast({ title: "Export ready", description: "Your Excel download has started." });
+                    // setIsExportOpen(false);
                   } catch (err: any) {
                     toast({ title: "Export failed", description: String(err?.message || err) });
                   } finally {
@@ -630,10 +646,10 @@ export const TransactionsList = () => {
                   }
                 }}
               >
-                {exporting === "xlsx" ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Excel</>) : "Excel"}
+                {exporting === "xlsx" ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Excel</>) : "Excel (soon)"}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Note: If the download doesn’t start, please ensure the backend export endpoint is available.</p>
+            <p className="text-xs text-muted-foreground">Note: PDF export uses the current filters and all results currently loaded in the list. Excel is coming soon.</p>
           </div>
         </DialogContent>
       </Dialog>

@@ -21,6 +21,7 @@ export type UseTransactionsQueryArgs = {
 
 export function useTransactionsQuery({ filters, pageSize = PAGE_SIZE_DEFAULT }: UseTransactionsQueryArgs) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [rawItems, setRawItems] = useState<any[]>([]);
   const [nextCursorDate, setNextCursorDate] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState<boolean>(false);
   const [pageLoading, setPageLoading] = useState<boolean>(false);
@@ -35,6 +36,7 @@ export function useTransactionsQuery({ filters, pageSize = PAGE_SIZE_DEFAULT }: 
   const fetchLegacyAll = async (signal?: AbortSignal) => {
     const arr = await apiFetch<any[]>(`transactions`, { signal });
     setTransactions((arr || []).map(mapServerTransaction));
+    setRawItems(arr || []);
     setNextCursorDate(null);
     setHasMore(false);
     setFirstReloadTick((v) => v + 1);
@@ -52,10 +54,12 @@ export function useTransactionsQuery({ filters, pageSize = PAGE_SIZE_DEFAULT }: 
       if (myReqId !== reqIdRef.current) return;
       if (Array.isArray(data)) {
         setTransactions((data as any[]).map(mapServerTransaction));
+        setRawItems((data as any[]) || []);
         setNextCursorDate(null);
         setHasMore(false);
       } else {
         setTransactions(((data?.items as any[]) || []).map(mapServerTransaction));
+        setRawItems((data?.items as any[]) || []);
         setNextCursorDate((data?.nextCursorDate as string) || null);
         setHasMore(!!data?.hasMore);
       }
@@ -80,10 +84,12 @@ export function useTransactionsQuery({ filters, pageSize = PAGE_SIZE_DEFAULT }: 
       const data: any = await apiFetch<any>(path);
       if (Array.isArray(data)) {
         setTransactions(prev => [...prev, ...(data as any[]).map(mapServerTransaction)]);
+        setRawItems(prev => [...prev, ...((data as any[]) || [])]);
         setNextCursorDate(null);
         setHasMore(false);
       } else {
         setTransactions(prev => [...prev, ...(((data?.items as any[]) || []).map(mapServerTransaction))]);
+        setRawItems(prev => [...prev, ...(((data?.items as any[]) || []))]);
         setNextCursorDate((data?.nextCursorDate as string) || null);
         setHasMore(!!data?.hasMore);
       }
@@ -114,6 +120,7 @@ export function useTransactionsQuery({ filters, pageSize = PAGE_SIZE_DEFAULT }: 
 
   return {
     transactions,
+    rawItems,
     pageLoading,
     hasMore,
     fetchNextPage,

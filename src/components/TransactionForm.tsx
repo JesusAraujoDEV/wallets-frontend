@@ -19,7 +19,7 @@ import { cn, isBalanceAdjustmentCategory } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getIconOptionsForType } from "@/lib/categoryIcons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { exportTransfers } from "@/lib/exports";
+import { exportTransfers, exportTransfersEpicPdfAuto } from "@/lib/exports";
 
 export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asModalContent?: boolean; onSubmitted?: () => void }) => {
   const [account, setAccount] = useState("");
@@ -603,17 +603,17 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Choose a format to download your transfers.</p>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <Button
                 type="button"
-                className="flex-1"
+                className="w-full"
                 disabled={exporting === "pdf"}
                 aria-busy={exporting === "pdf"}
                 onClick={async () => {
                   try {
                     setExporting("pdf");
-                    await exportTransfers("pdf");
-                    toast({ title: "Export started", description: "Your PDF download should begin shortly." });
+                    await exportTransfers("pdf"); // classic backend flow
+                    toast({ title: "Export started", description: "Your PDF (classic) download should begin shortly." });
                     setExportOpen(false);
                   } catch (err: any) {
                     toast({ title: "Export failed", description: String(err?.message || err) });
@@ -622,12 +622,33 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                   }
                 }}
               >
-                {exporting === "pdf" ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />PDF</>) : "PDF"}
+                {exporting === "pdf" ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />PDF (classic)</>) : "PDF (classic)"}
               </Button>
               <Button
                 type="button"
                 variant="secondary"
-                className="flex-1"
+                className="w-full"
+                disabled={exporting === "pdf"}
+                aria-busy={exporting === "pdf"}
+                onClick={async () => {
+                  try {
+                    setExporting("pdf");
+                    await exportTransfersEpicPdfAuto({ title: "Transfers Report" }); // EPIC template flow
+                    toast({ title: "Export started", description: "Your EPIC PDF download should begin shortly." });
+                    setExportOpen(false);
+                  } catch (err: any) {
+                    toast({ title: "Export failed", description: String(err?.message || err) });
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+              >
+                {exporting === "pdf" ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />PDF (EPIC)</>) : "PDF (EPIC)"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
                 disabled={exporting === "xlsx"}
                 aria-busy={exporting === "xlsx"}
                 onClick={async () => {

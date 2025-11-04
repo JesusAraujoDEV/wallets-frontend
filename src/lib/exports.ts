@@ -1,4 +1,4 @@
-import { buildApiUrl, getToken } from "@/lib/http";
+import { buildApiUrl, getToken, apiFetch } from "@/lib/http";
 
 export type TransferExportFormat = "pdf" | "xlsx";
 
@@ -37,12 +37,20 @@ export async function exportTransfers(options: TransferExportFormat | TransferEx
   const method = opts.method || "GET";
   let res: Response;
   if (method === "GET") {
-    const url = buildApiUrl(`${basePath}?${toQueryParams().toString()}`);
+    const qp = toQueryParams();
+    // Backend expects accountId in GET (camelCase), but account_id in POST.
+    if (opts.accountId != null) {
+      qp.delete("account_id");
+      qp.set("accountId", String(opts.accountId));
+    }
+    const url = buildApiUrl(`${basePath}?${qp.toString()}`);
     res = await fetch(url, { headers });
   } else {
-    const url = buildApiUrl(basePath);
+    // Send format in query as per backend contract, body carries filters if any
+    const qp = new URLSearchParams();
+    qp.set("format", opts.format);
+    const url = buildApiUrl(`${basePath}?${qp.toString()}`);
     const body: Record<string, any> = {
-      format: opts.format,
       ...(opts.fromDate ? { from_date: opts.fromDate } : {}),
       ...(opts.toDate ? { to_date: opts.toDate } : {}),
       ...(opts.accountId != null ? { account_id: opts.accountId } : {}),
@@ -61,6 +69,112 @@ export async function exportTransfers(options: TransferExportFormat | TransferEx
   const blob = await res.blob();
   const contentDisposition = res.headers.get("content-disposition") || "";
   let filename = `transfers_${new Date().toISOString().slice(0,10)}.${opts.format === "xlsx" ? "xlsx" : "pdf"}`;
+  const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(contentDisposition || "");
+  const encName = match?.[1] || match?.[2];
+  if (encName) {
+    try { filename = decodeURIComponent(encName); } catch { filename = encName; }
+  }
+  const blobUrl = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  }
+}
+
+// New: EPIC PDF export (POST /transactions/transfer/export?format=pdf) with JSON body
+export async function exportTransfersEpicPdf(body: {
+  items: any[];
+  accounts: any[];
+  categories: any[];
+  title?: string;
+  createdBy?: string;
+}): Promise<void> {
+  const url = buildApiUrl(`transactions/transfer/export?format=pdf`);
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  const token = getToken();
+  if (token) headers["authorization"] = `Bearer ${token}`;
+  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+  if (!res.ok) {
+    let message = `HTTP ${res.status}`;
+    try { message = await res.text(); } catch {}
+    throw new Error(message || `HTTP ${res.status}`);
+  }
+  const blob = await res.blob();
+  const contentDisposition = res.headers.get("content-disposition") || "";
+  let filename = body.title ? `${body.title}.pdf` : `transfers_${new Date().toISOString().slice(0,10)}.pdf`;
+  const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(contentDisposition || "");
+  const encName = match?.[1] || match?.[2];
+  if (encName) {
+    try { filename = decodeURIComponent(encName); } catch { filename = encName; }
+  }
+  const blobUrl = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  }
+}
+
+// Convenience: auto-fetch items/accounts/categories and export EPIC PDF
+export async function exportTransfersEpicPdfAuto(options?: {
+  title?: string;
+  createdBy?: string;
+  pageSize?: number; // default 50
+}): Promise<void> {
+  const pageSize = options?.pageSize ?? 50;
+  // Fetch in parallel
+  const [txns, accounts, categories] = await Promise.all([
+    apiFetch<any>(`transactions?grouped=1&pageSize=${pageSize}`),
+    apiFetch<any[]>(`accounts`),
+    apiFetch<any[]>(`categories`),
+  ]);
+  const items = Array.isArray(txns?.items) ? txns.items : (Array.isArray(txns) ? txns : []);
+  return exportTransfersEpicPdf({
+    items,
+    accounts: accounts || [],
+    categories: categories || [],
+    title: options?.title,
+    createdBy: options?.createdBy,
+  });
+}
+
+export async function exportTransactionsFromData(args: {
+  format: TransferExportFormat;
+  data: {
+    items: any[];
+    accounts: any[];
+    categories: any[];
+    title?: string;
+    createdBy?: string;
+  };
+}): Promise<void> {
+  const token = getToken();
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (token) headers["authorization"] = `Bearer ${token}`;
+
+  const qp = new URLSearchParams();
+  qp.set("format", args.format);
+  const url = buildApiUrl(`transactions/transfer/export?${qp.toString()}`);
+  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(args.data) });
+  if (!res.ok) {
+    let message = `HTTP ${res.status}`;
+    try { message = await res.text(); } catch {}
+    throw new Error(message || `HTTP ${res.status}`);
+  }
+  const blob = await res.blob();
+  const contentDisposition = res.headers.get("content-disposition") || "";
+  let filename = `transfers_${new Date().toISOString().slice(0,10)}.${args.format === "xlsx" ? "xlsx" : "pdf"}`;
   const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(contentDisposition || "");
   const encName = match?.[1] || match?.[2];
   if (encName) {
