@@ -140,7 +140,12 @@ export const TransactionsStore = {
       const categoryId = String(t.categoryId ?? t.category_id);
       const accountId = String(t.accountId ?? t.account_id);
       const cat = categoriesCache.find(c => c.id === categoryId);
-      const type = (t.type === "income" || t.type === "expense") ? t.type : (cat?.type ?? "expense");
+      const rawType = String(t.type ?? '').toLowerCase();
+      const type = (rawType === 'income' || rawType === 'ingreso')
+        ? 'income'
+        : (rawType === 'expense' || rawType === 'gasto')
+          ? 'expense'
+          : (cat?.type ?? 'expense');
       return {
         id: String(t.id),
         date: String(t.date),
