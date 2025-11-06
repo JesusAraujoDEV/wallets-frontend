@@ -116,3 +116,71 @@ export async function fetchMonthlyForecast(params?: { includeInStats?: boolean; 
   const qs = sp.toString();
   return apiFetch<MonthlyForecastResponse>(`stats/monthly-forecast${qs ? `?${qs}` : ""}`);
 }
+
+// Income-focused endpoints
+
+// A) Income heatmap
+export interface IncomeHeatmapResponse {
+  categories: string[];
+  weekdays: string[];
+  data_points: Array<{ category_idx: number; day_idx: number; amount: number }>;
+  summary?: { peak_category?: string; peak_day?: string };
+}
+export async function fetchIncomeHeatmap(params?: { includeInStats?: boolean; accountId?: string; fromDate?: string; toDate?: string; }): Promise<IncomeHeatmapResponse> {
+  const sp = new URLSearchParams();
+  if (params?.includeInStats === true) sp.set("includeInStats", "1");
+  if (params?.includeInStats === false) sp.set("includeInStats", "0");
+  if (params?.accountId) sp.set("accountId", params.accountId);
+  if (params?.fromDate) sp.set("from_date", params.fromDate);
+  if (params?.toDate) sp.set("to_date", params.toDate);
+  const qs = sp.toString();
+  return apiFetch<IncomeHeatmapResponse>(`stats/income-heatmap${qs ? `?${qs}` : ""}`);
+}
+
+// B) Income volatility
+export interface IncomeVolatilityCategory {
+  category: string;
+  min: number; q1: number; median: number; q3: number; max: number;
+  outliers?: number[];
+  count?: number;
+}
+export interface IncomeVolatilityResponse {
+  categories_data: IncomeVolatilityCategory[];
+}
+export async function fetchIncomeVolatility(params?: { includeInStats?: boolean; accountId?: string; fromDate?: string; toDate?: string; topN?: number; }): Promise<IncomeVolatilityResponse> {
+  const sp = new URLSearchParams();
+  if (params?.includeInStats === true) sp.set("includeInStats", "1");
+  if (params?.includeInStats === false) sp.set("includeInStats", "0");
+  if (params?.accountId) sp.set("accountId", params.accountId);
+  if (params?.fromDate) sp.set("from_date", params.fromDate);
+  if (params?.toDate) sp.set("to_date", params.toDate);
+  if (typeof params?.topN === 'number') sp.set("top_n_categories", String(params.topN));
+  const qs = sp.toString();
+  return apiFetch<IncomeVolatilityResponse>(`stats/income-volatility${qs ? `?${qs}` : ""}`);
+}
+
+// C) Comparative MoM income
+export interface ComparativeMoMIncomeResponse {
+  summary: {
+    current_total: number;
+    total_delta_percent: number;
+    total_delta_usd: number;
+    current_period_name?: string;
+    previous_period_name?: string;
+  };
+  categories_comparison: Array<{
+    category: string;
+    current: number; // or current_amount
+    previous: number; // or previous_amount
+    delta_percent: number;
+  }>;
+}
+export async function fetchComparativeMoMIncome(params?: { includeInStats?: boolean; accountId?: string; date?: string; }): Promise<ComparativeMoMIncomeResponse> {
+  const sp = new URLSearchParams();
+  if (params?.includeInStats === true) sp.set("includeInStats", "1");
+  if (params?.includeInStats === false) sp.set("includeInStats", "0");
+  if (params?.accountId) sp.set("accountId", params.accountId);
+  if (params?.date) sp.set("date", params.date);
+  const qs = sp.toString();
+  return apiFetch<ComparativeMoMIncomeResponse>(`stats/comparative-mom-income${qs ? `?${qs}` : ""}`);
+}

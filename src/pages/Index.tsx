@@ -4,8 +4,11 @@ import { KPICard } from "@/components/KPICard";
 import { ExpensePieChart } from "@/components/ExpensePieChart";
 import { NetCashFlowChart } from "@/components/NetCashFlowChart";
 import { SpendingHeatmap } from "@/components/SpendingHeatmap";
+import { IncomeHeatmap } from "@/components/IncomeHeatmap";
 import { ExpenseVolatilityBoxPlot } from "@/components/ExpenseVolatilityBoxPlot";
+import { IncomeVolatilityBoxPlot } from "@/components/IncomeVolatilityBoxPlot";
 import { ComparativeMoM } from "@/components/ComparativeMoM";
+import { ComparativeMoMIncome } from "@/components/ComparativeMoMIncome";
 import { MonthlyForecastGauge } from "@/components/MonthlyForecastGauge";
 import { TrendLineChart } from "@/components/TrendLineChart";
 import { BudgetComparisonChart } from "@/components/BudgetComparisonChart";
@@ -24,7 +27,7 @@ import { useVESExchangeRate, convertToUSD } from "@/lib/rates";
 import { fetchIncomeSummary, fetchExpenseSummary, fetchBalanceSummary, fetchGlobalBalance, fetchIncomeMonthly, fetchExpenseMonthly } from "@/lib/summary";
 import { isBalanceAdjustmentCategory, isBalanceAdjustmentPlus } from "@/lib/utils";
 import type { Account, Category, Transaction } from "@/lib/types";
-import { fetchNetCashFlow, fetchSpendingHeatmap, fetchExpenseVolatility, fetchComparativeMoM, fetchMonthlyForecast } from "@/lib/stats";
+import { fetchNetCashFlow, fetchSpendingHeatmap, fetchExpenseVolatility, fetchComparativeMoM, fetchMonthlyForecast, fetchIncomeHeatmap, fetchIncomeVolatility, fetchComparativeMoMIncome } from "@/lib/stats";
 
 // Dashboard data is derived from localStorage (JSON DB)
 
@@ -49,6 +52,10 @@ const Index = () => {
   const [heatmapData, setHeatmapData] = useState<{ categories: string[]; weekdays: string[]; data_points: any[] }>({ categories: [], weekdays: [], data_points: [] });
   const [volatilityData, setVolatilityData] = useState<any[]>([]);
   const [momData, setMomData] = useState<{ summary: any; categories: any[] }>({ summary: { current_total: 0, total_delta_percent: 0, total_delta_usd: 0 }, categories: [] });
+  // Income counterparts
+  const [incomeHeatmapData, setIncomeHeatmapData] = useState<{ categories: string[]; weekdays: string[]; data_points: any[] }>({ categories: [], weekdays: [], data_points: [] });
+  const [incomeVolatilityData, setIncomeVolatilityData] = useState<any[]>([]);
+  const [incomeMomData, setIncomeMomData] = useState<{ summary: any; categories: any[] }>({ summary: { current_total: 0, total_delta_percent: 0, total_delta_usd: 0 }, categories: [] });
   const [forecastData, setForecastData] = useState<{ budget_total: number; current_spending_mtd: number; projected_total_spending: number; projected_over_under: number }>({ budget_total: 0, current_spending_mtd: 0, projected_total_spending: 0, projected_over_under: 0 });
 
   const allowedPages = useMemo(() => new Set(["dashboard", "transactions", "categories", "accounts"]), []);
@@ -165,6 +172,7 @@ const Index = () => {
     });
   }, [expenseCategories, statsScope]);
   const visibleExpenseCategoryNames = useMemo(() => new Set(visibleExpenseCategories.map(c => c.name)), [visibleExpenseCategories]);
+  const visibleIncomeCategoryNames = useMemo(() => new Set(visibleIncomeCategories.map(c => c.name)), [visibleIncomeCategories]);
   const selectedExpenseCategoryNames = useMemo(() => {
     if (!selectedExpenseCats.length) return new Set<string>();
     const names = categories
@@ -172,6 +180,13 @@ const Index = () => {
       .map(c => c.name);
     return new Set(names);
   }, [categories, selectedExpenseCats]);
+  const selectedIncomeCategoryNames = useMemo(() => {
+    if (!selectedIncomeCats.length) return new Set<string>();
+    const names = categories
+      .filter(c => c.type === 'income' && selectedIncomeCats.includes(c.id))
+      .map(c => c.name);
+    return new Set(names);
+  }, [categories, selectedIncomeCats]);
 
   // Current month range and month key
   const monthKey = useMemo(() => {
@@ -302,12 +317,15 @@ const Index = () => {
     const toDate = lastOfEnd.toISOString().slice(0, 10);
     (async () => {
       try {
-        const [net, heat, vol, mom, fc] = await Promise.all([
+        const [net, heat, vol, mom, fc, incHeat, incVol, incMom] = await Promise.all([
           fetchNetCashFlow({ includeInStats: includeParam, accountId, fromDate, toDate, timeUnit: 'month' }),
           fetchSpendingHeatmap({ includeInStats: includeParam, accountId, fromDate, toDate }),
           fetchExpenseVolatility({ includeInStats: includeParam, accountId, fromDate, toDate, topN: 8 }),
           fetchComparativeMoM({ includeInStats: includeParam, accountId, date: toDate }),
           fetchMonthlyForecast({ includeInStats: includeParam, accountId, date: now.toISOString().slice(0,10) }),
+          fetchIncomeHeatmap({ includeInStats: includeParam, accountId, fromDate, toDate }),
+          fetchIncomeVolatility({ includeInStats: includeParam, accountId, fromDate, toDate, topN: 8 }),
+          fetchComparativeMoMIncome({ includeInStats: includeParam, accountId, date: toDate }),
         ]);
         if (!alive) return;
         setNetFlowData({ summary: net?.summary, series: net?.time_series || [] });
@@ -349,6 +367,37 @@ const Index = () => {
         setMomData({ summary: rawMomSummary, categories: filteredMomCats });
 
         setForecastData(fc || { budget_total: 0, current_spending_mtd: 0, projected_total_spending: 0, projected_over_under: 0 });
+
+        // Income charts filtering
+        const rawIncHeatCategories = incHeat?.categories || [];
+        const rawIncHeatWeekdays = incHeat?.weekdays || [];
+        const rawIncHeatPoints = incHeat?.data_points || [];
+        const allowedIncome = (name: string) => {
+          if (statsScope !== 'all' && !visibleIncomeCategoryNames.has(name)) return false;
+          if (selectedIncomeCategoryNames.size > 0 && !selectedIncomeCategoryNames.has(name)) return false;
+          return true;
+        };
+        const incOldIdxToNew = new Map<number, number>();
+        const filteredIncHeatCategories: string[] = [];
+        rawIncHeatCategories.forEach((name, idx) => {
+          if (allowedIncome(name)) {
+            incOldIdxToNew.set(idx, filteredIncHeatCategories.length);
+            filteredIncHeatCategories.push(name);
+          }
+        });
+        const filteredIncHeatPoints = rawIncHeatPoints
+          .filter(p => incOldIdxToNew.has(p.category_idx))
+          .map(p => ({ ...p, category_idx: incOldIdxToNew.get(p.category_idx)! }));
+        setIncomeHeatmapData({ categories: filteredIncHeatCategories, weekdays: rawIncHeatWeekdays, data_points: filteredIncHeatPoints });
+
+        const rawIncVolCats = incVol?.categories_data || [];
+        const filteredIncVolCats = rawIncVolCats.filter(c => allowedIncome(c.category));
+        setIncomeVolatilityData(filteredIncVolCats);
+
+        const rawIncMomSummary = incMom?.summary || { current_total: 0, total_delta_percent: 0, total_delta_usd: 0 };
+        const rawIncMomCats = incMom?.categories_comparison || [];
+        const filteredIncMomCats = rawIncMomCats.filter(c => allowedIncome(c.category));
+        setIncomeMomData({ summary: rawIncMomSummary, categories: filteredIncMomCats });
       } catch (err) {
         // swallow but keep alive check
         if (!alive) return;
@@ -356,7 +405,7 @@ const Index = () => {
       }
     })();
     return () => { alive = false; };
-  }, [statsScope, selectedAccount, monthKey, visibleExpenseCategoryNames, selectedExpenseCats.join(','), categories.length]);
+  }, [statsScope, selectedAccount, monthKey, visibleExpenseCategoryNames, selectedExpenseCats.join(','), visibleIncomeCategoryNames, selectedIncomeCats.join(','), categories.length]);
 
   const budgetData = useMemo(() => {
     // Placeholder budgets (0) with actual monthly expenses per category
@@ -531,6 +580,16 @@ const Index = () => {
             <div>
               {momData?.summary ? (
                 <ComparativeMoM summary={momData.summary} categories={momData.categories} />
+              ) : null}
+            </div>
+            {/* Income-focused charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <IncomeHeatmap {...incomeHeatmapData} />
+              <IncomeVolatilityBoxPlot categories={incomeVolatilityData} />
+            </div>
+            <div>
+              {incomeMomData?.summary ? (
+                <ComparativeMoMIncome summary={incomeMomData.summary} categories={incomeMomData.categories} />
               ) : null}
             </div>
           </TabsContent>
