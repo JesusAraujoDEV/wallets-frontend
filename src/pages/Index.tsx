@@ -573,19 +573,21 @@ const Index = () => {
               <NetCashFlowChart summary={netFlowData.summary} data={netFlowData.series} />
               <MonthlyForecastGauge {...forecastData} />
             </div>
+            {/* Heatmaps side-by-side */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <SpendingHeatmap {...heatmapData} />
-              <ExpenseVolatilityBoxPlot categories={volatilityData} />
+              <IncomeHeatmap {...incomeHeatmapData} />
             </div>
+            {/* Volatility charts side-by-side */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ExpenseVolatilityBoxPlot categories={volatilityData} />
+              <IncomeVolatilityBoxPlot categories={incomeVolatilityData} />
+            </div>
+            {/* Comparative MoM (expense then income) */}
             <div>
               {momData?.summary ? (
                 <ComparativeMoM summary={momData.summary} categories={momData.categories} />
               ) : null}
-            </div>
-            {/* Income-focused charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <IncomeHeatmap {...incomeHeatmapData} />
-              <IncomeVolatilityBoxPlot categories={incomeVolatilityData} />
             </div>
             <div>
               {incomeMomData?.summary ? (
