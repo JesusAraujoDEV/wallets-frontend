@@ -164,6 +164,14 @@ const Index = () => {
       return true;
     });
   }, [expenseCategories, statsScope]);
+  const visibleExpenseCategoryNames = useMemo(() => new Set(visibleExpenseCategories.map(c => c.name)), [visibleExpenseCategories]);
+  const selectedExpenseCategoryNames = useMemo(() => {
+    if (!selectedExpenseCats.length) return new Set<string>();
+    const names = categories
+      .filter(c => c.type === 'expense' && selectedExpenseCats.includes(c.id))
+      .map(c => c.name);
+    return new Set(names);
+  }, [categories, selectedExpenseCats]);
 
   // Current month range and month key
   const monthKey = useMemo(() => {
@@ -302,11 +310,45 @@ const Index = () => {
           fetchMonthlyForecast({ includeInStats: includeParam, accountId, date: now.toISOString().slice(0,10) }),
         ]);
         if (!alive) return;
-  setNetFlowData({ summary: net?.summary, series: net?.time_series || [] });
-  setHeatmapData({ categories: heat?.categories || [], weekdays: heat?.weekdays || [], data_points: heat?.data_points || [] });
-  setVolatilityData(vol?.categories_data || []);
-  setMomData({ summary: mom?.summary || { current_total: 0, total_delta_percent: 0, total_delta_usd: 0 }, categories: mom?.categories_comparison || [] });
-  setForecastData(fc || { budget_total: 0, current_spending_mtd: 0, projected_total_spending: 0, projected_over_under: 0 });
+        setNetFlowData({ summary: net?.summary, series: net?.time_series || [] });
+
+        // Ensure category-scoped charts reflect the includeInStats tab strictly, even if backend returns broader sets
+        // 1) Spending Heatmap: filter categories and reindex data_points
+        const rawHeatCategories = heat?.categories || [];
+        const rawHeatWeekdays = heat?.weekdays || [];
+        const rawHeatPoints = heat?.data_points || [];
+        const allowedName = (name: string) => {
+          // Respect includeInStats scope
+          if (statsScope !== 'all' && !visibleExpenseCategoryNames.has(name)) return false;
+          // Also respect explicit selected categories (if any)
+          if (selectedExpenseCategoryNames.size > 0 && !selectedExpenseCategoryNames.has(name)) return false;
+          return true;
+        };
+        const oldIdxToNew = new Map<number, number>();
+        const filteredHeatCategories: string[] = [];
+        rawHeatCategories.forEach((name, idx) => {
+          if (allowedName(name)) {
+            oldIdxToNew.set(idx, filteredHeatCategories.length);
+            filteredHeatCategories.push(name);
+          }
+        });
+        const filteredHeatPoints = rawHeatPoints
+          .filter(p => oldIdxToNew.has(p.category_idx))
+          .map(p => ({ ...p, category_idx: oldIdxToNew.get(p.category_idx)! }));
+        setHeatmapData({ categories: filteredHeatCategories, weekdays: rawHeatWeekdays, data_points: filteredHeatPoints });
+
+        // 2) Expense Volatility: filter by category name
+  const rawVolCats = vol?.categories_data || [];
+  const filteredVolCats = rawVolCats.filter(c => allowedName(c.category));
+        setVolatilityData(filteredVolCats);
+
+        // 3) Comparative MoM: filter categories_comparison by category name
+  const rawMomSummary = mom?.summary || { current_total: 0, total_delta_percent: 0, total_delta_usd: 0 };
+  const rawMomCats = mom?.categories_comparison || [];
+  const filteredMomCats = rawMomCats.filter(c => allowedName(c.category));
+        setMomData({ summary: rawMomSummary, categories: filteredMomCats });
+
+        setForecastData(fc || { budget_total: 0, current_spending_mtd: 0, projected_total_spending: 0, projected_over_under: 0 });
       } catch (err) {
         // swallow but keep alive check
         if (!alive) return;
@@ -314,7 +356,7 @@ const Index = () => {
       }
     })();
     return () => { alive = false; };
-  }, [statsScope, selectedAccount, monthKey]);
+  }, [statsScope, selectedAccount, monthKey, visibleExpenseCategoryNames, selectedExpenseCats.join(','), categories.length]);
 
   const budgetData = useMemo(() => {
     // Placeholder budgets (0) with actual monthly expenses per category
@@ -420,7 +462,7 @@ const Index = () => {
                   <TabsTrigger value="exclude">Only excluded in stats</TabsTrigger>
                 </TabsList>
               </Tabs>
-              <p className="text-xs text-muted-foreground mt-2">Tabs filter Pie, Budget, and Trends. Trends calls the API with includeInStats per the selected tab.</p>
+              <p className="text-xs text-muted-foreground mt-2">Tabs and selected Expense categories filter Pie, Budget, Trends y las gráficas avanzadas (Heatmap, Volatility, MoM). Las llamadas al servidor usan includeInStats; además las categorías seleccionadas limitan lo mostrado.</p>
             </div>
             
             {selectedAccount === "all" ? (
