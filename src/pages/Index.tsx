@@ -13,6 +13,7 @@ import { MonthlyForecastGauge } from "@/components/MonthlyForecastGauge";
 import { TrendLineChart } from "@/components/TrendLineChart";
 import { BudgetComparisonChart } from "@/components/BudgetComparisonChart";
 import { TransactionsList } from "@/components/TransactionsList";
+import { TransactionsCalendar } from "../components/TransactionsCalendar";
 import { CategoryManager } from "@/components/CategoryManager";
 import { AccountManager } from "@/components/AccountManager";
 import { AccountSelector } from "@/components/AccountSelector";
@@ -598,7 +599,31 @@ const Index = () => {
 
           {/* Transactions Tab */}
           <TabsContent value="transactions">
-            <TransactionsList />
+            {/* Nested tabs for list vs calendar (persist view in URL as transactionsView) */}
+            {
+              (() => {
+                const currentView = searchParams.get('transactionsView') || 'list';
+                return (
+                  <Tabs value={currentView} onValueChange={(v) => {
+                    const next = new URLSearchParams(searchParams);
+                    next.set('page', 'transactions');
+                    next.set('transactionsView', v);
+                    setSearchParams(next, { replace: false });
+                  }} className="space-y-6">
+                    <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-grid">
+                      <TabsTrigger value="list">Listado</TabsTrigger>
+                      <TabsTrigger value="calendar">Calendario</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="list">
+                      <TransactionsList />
+                    </TabsContent>
+                    <TabsContent value="calendar">
+                      <TransactionsCalendar selectedAccount={selectedAccount} />
+                    </TabsContent>
+                  </Tabs>
+                );
+              })()
+            }
           </TabsContent>
 
           {/* Categories Tab */}
