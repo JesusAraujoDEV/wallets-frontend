@@ -161,30 +161,40 @@ export function TransactionsCalendar({ selectedAccount }: { selectedAccount?: st
   // Build calendar grid
   const firstDayOfMonth = monthStart.day(); // 0..6 (Sunday..Saturday)
   const daysInMonth = monthStart.daysInMonth();
-  const days: Array<{ date: string; totalUsd: number } | null> = [];
+  const days: Array<{ date: string; totalUsd: number; income: number; expense: number } | null> = [];
   for (let i = 0; i < firstDayOfMonth; i++) days.push(null);
   for (let d = 1; d <= daysInMonth; d++) {
     const date = monthStart.date(d).format('YYYY-MM-DD');
     const raw = dailyTotals[date];
     const totalUsd = typeof raw === 'number' && isFinite(raw) ? raw : 0;
-    days.push({ date, totalUsd });
+    const inc = Number(dailyIncome[date] || 0);
+    const exp = Number(dailyExpense[date] || 0);
+    days.push({ date, totalUsd, income: inc, expense: exp });
   }
 
-  const maxAbs = Math.max(0, ...days.map(x => (x && typeof x.totalUsd === 'number' ? Math.abs(x.totalUsd) : 0)));
-  const colorFor = (v: number) => {
-    // Distinct coloring for balance (diverging), income (green) and expense (red)
-    if (mode === 'balance') {
-      if (maxAbs <= 0) return 'hsl(var(--muted))';
-      const t = Math.max(0, Math.min(1, Math.abs(v) / maxAbs));
+  const maxIncome = Math.max(0, ...days.map(x => (x ? x.income : 0)));
+  const maxExpense = Math.max(0, ...days.map(x => (x ? x.expense : 0)));
+  const maxBalanceAbs = Math.max(0, ...days.map(x => (x ? Math.abs((x.income || 0) - (x.expense || 0)) : 0)));
+  const colorFor = (item: { totalUsd: number; income: number; expense: number }) => {
+    const { income, expense } = item;
+    if (mode === 'income') {
+      if (income === 0) return '#ffffff';
+      const t = Math.max(0, Math.min(1, income / (maxIncome || income)));
       const l = 96 - t * 50;
-      return v >= 0 ? `hsl(160 70% ${l}%)` : `hsl(0 70% ${l}%)`;
+      return `hsl(160 70% ${l}%)`;
     }
-    const max = Math.max(0, ...days.map(x => (x && typeof x.totalUsd === 'number' ? Math.abs(x.totalUsd) : 0)));
-    if (max <= 0) return 'hsl(var(--muted))';
-    const t = Math.max(0, Math.min(1, Math.abs(v) / max));
+    if (mode === 'expense') {
+      if (expense === 0) return '#ffffff';
+      const t = Math.max(0, Math.min(1, expense / (maxExpense || expense)));
+      const l = 96 - t * 50;
+      return `hsl(0 70% ${l}%)`;
+    }
+    // balance mode
+    if (income === 0 && expense === 0) return '#ffffff';
+    const bal = income - expense;
+    const t = Math.max(0, Math.min(1, Math.abs(bal) / (maxBalanceAbs || Math.abs(bal))));
     const l = 96 - t * 50;
-    if (mode === 'income') return `hsl(160 70% ${l}%)`;
-    return `hsl(0 70% ${l}%)`;
+    return bal >= 0 ? `hsl(160 70% ${l}%)` : `hsl(0 70% ${l}%)`;
   };
 
   const selectedDayTx = useMemo(() => {
@@ -255,7 +265,7 @@ export function TransactionsCalendar({ selectedAccount }: { selectedAccount?: st
               <TooltipTrigger asChild>
                 <button
                   className={`w-full h-8 sm:h-10 rounded-md border ${selectedDate === item.date ? 'ring-2 ring-primary/60' : ''}`}
-                  style={{ backgroundColor: colorFor(item.totalUsd), borderColor: 'hsl(var(--border))' }}
+                  style={{ backgroundColor: colorFor(item), borderColor: 'hsl(var(--border))' }}
                   onClick={() => {
                     setSelectedDate(item.date);
                     const next = new URLSearchParams(searchParams);
