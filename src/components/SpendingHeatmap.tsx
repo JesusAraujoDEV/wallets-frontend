@@ -16,7 +16,8 @@ export function SpendingHeatmap({ categories, weekdays, data_points }: SpendingH
     }
   }
   const colorFor = (v: number) => {
-    if (max <= 0) return 'hsl(var(--muted))';
+    // Pure white for zero values or when the entire matrix is zero
+    if (v <= 0 || max <= 0) return '#ffffff';
     const t = Math.max(0, Math.min(1, v / max));
     // Interpolate from light slate to primary
     const light = 230; // hue-ish base
