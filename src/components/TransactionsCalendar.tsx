@@ -333,14 +333,23 @@ export function TransactionsCalendar({ selectedAccount }: { selectedAccount?: st
             {selectedDayTx.length === 0 ? (
               <div className="text-sm text-muted-foreground">No hay transacciones ese día.</div>
             ) : (
-              selectedDayTx.map(tx => (
-                <div key={tx.id} className="flex items-center justify-between p-3 rounded-md border bg-card">
-                  <div className="text-sm font-medium truncate">{tx.description}</div>
-                  <div className={`text-sm font-semibold ${mode === 'balance' ? (tx.type === 'expense' ? 'text-red-600' : 'text-green-600') : ''}`}>
-                    {tx.type === 'expense' ? '-' : '+'}${Number(tx.amountUsd ?? tx.amount ?? 0).toFixed(2)}
+              selectedDayTx.map(tx => {
+                const amountColor = (() => {
+                  if (tx.type === 'income') return 'text-green-600';
+                  if (tx.type === 'expense') return 'text-red-600';
+                  return '';
+                })();
+                // In income/expense modes we only show one type already; still color explicitly
+                // In balance mode we show both types with their colors
+                return (
+                  <div key={tx.id} className="flex items-center justify-between p-3 rounded-md border bg-card">
+                    <div className="text-sm font-medium truncate">{tx.description}</div>
+                    <div className={`text-sm font-semibold ${amountColor}`}>
+                      {tx.type === 'expense' ? '-' : '+'}${Number(tx.amountUsd ?? tx.amount ?? 0).toFixed(2)}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
