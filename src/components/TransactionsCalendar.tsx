@@ -199,8 +199,11 @@ export function TransactionsCalendar({ selectedAccount }: { selectedAccount?: st
 
   const selectedDayTx = useMemo(() => {
     if (!selectedDate) return [] as Transaction[];
-    return monthTx.filter(tx => String(tx.date).slice(0,10) === selectedDate);
-  }, [selectedDate, monthTx]);
+    const sameDay = monthTx.filter(tx => String(tx.date).slice(0,10) === selectedDate);
+    if (mode === 'income') return sameDay.filter(tx => tx.type === 'income');
+    if (mode === 'expense') return sameDay.filter(tx => tx.type === 'expense');
+    return sameDay; // balance shows both
+  }, [selectedDate, monthTx, mode]);
 
   return (
     <Card className="p-4 md:p-6">
@@ -333,7 +336,9 @@ export function TransactionsCalendar({ selectedAccount }: { selectedAccount?: st
               selectedDayTx.map(tx => (
                 <div key={tx.id} className="flex items-center justify-between p-3 rounded-md border bg-card">
                   <div className="text-sm font-medium truncate">{tx.description}</div>
-                  <div className="text-sm font-semibold">{tx.type === 'expense' ? '-' : '+'}${Number(tx.amountUsd ?? tx.amount ?? 0).toFixed(2)}</div>
+                  <div className={`text-sm font-semibold ${mode === 'balance' ? (tx.type === 'expense' ? 'text-red-600' : 'text-green-600') : ''}`}>
+                    {tx.type === 'expense' ? '-' : '+'}${Number(tx.amountUsd ?? tx.amount ?? 0).toFixed(2)}
+                  </div>
                 </div>
               ))
             )}
