@@ -1,14 +1,10 @@
 // Simple client-side exchange rate helper for VES to USD equivalence
-// Data source: https://bcv-api.irissoftware.lat/api/v1/bcv
+// Data source: BCV Rates API https://bcv-api.irissoftware.lat/api/v1/exchange-rates
 
-type ApiResponse = {
-  success: boolean;
-  data?: {
-    date: string; // DD-MM-YYYY
-    tasa_dolar: string; // "370,25"
-    tasa_euro: string; // "440,48"
-  };
-  message?: string;
+type BcvResponse = {
+  date: string; // YYYY-MM-DD
+  usd_rate: number;
+  eur_rate: number;
 };
 
 export type ExchangeSnapshot = {
@@ -19,22 +15,7 @@ export type ExchangeSnapshot = {
 };
 
 const STORAGE_KEY = "pwi_exchange_rate";
-const API_URL = "https://bcv-api.irissoftware.lat/api/v1/bcv";
-
-function parseBcvRate(value: string): number | null {
-  if (!value) return null;
-  const normalized = value.replace(/\./g, "").replace(",", ".");
-  const n = Number(normalized);
-  return isFinite(n) ? n : null;
-}
-
-function toIsoDateFromBcv(date: string): string | null {
-  const parts = date.split("-");
-  if (parts.length !== 3) return null;
-  const [dd, mm, yyyy] = parts;
-  if (!dd || !mm || !yyyy) return null;
-  return `${yyyy}-${mm}-${dd}`;
-}
+const BCV_API_URL = "https://bcv-api.irissoftware.lat/api/v1/exchange-rates";
 
 function readCache(): ExchangeSnapshot | null {
   try {
@@ -60,24 +41,18 @@ export async function getVESPerUsd(forceRefresh = false): Promise<ExchangeSnapsh
   }
 
   try {
-    const res = await fetch(API_URL, { cache: "no-store" });
+    const res = await fetch(BCV_API_URL, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = (await res.json()) as ApiResponse;
-    if (!json.success || !json.data) throw new Error(json.message ?? "Invalid response");
-    const vesPerUsd = parseBcvRate(json.data.tasa_dolar);
-    const vesPerEur = parseBcvRate(json.data.tasa_euro);
-    const isoDate = toIsoDateFromBcv(json.data.date);
-    if (!vesPerUsd || !vesPerEur || !isoDate) throw new Error("Invalid rate data");
+    const json = (await res.json()) as BcvResponse;
     const snapshot: ExchangeSnapshot = {
-      vesPerUsd,
-      vesPerEur,
+      vesPerUsd: Number(json.usd_rate),
+      vesPerEur: Number(json.eur_rate),
       fetchedAt: new Date().toISOString(),
-      sourceDate: isoDate,
+      sourceDate: json.date,
     };
     writeCache(snapshot);
     return snapshot;
   } catch (err) {
-    // On error, fall back to cache if available
     return cached ?? null;
   }
 }
@@ -160,28 +135,23 @@ export async function getRateByDate(dateISO: string): Promise<ExchangeSnapshot |
   const hist = readHist();
   const cached = hist[target];
   if (cached) {
-    // Validate cached value against the official API for the exact target date.
+    // Validate cached value against the official list for the exact target date.
     // If the API returns a definitive value for the target date, refresh cache to avoid stale/mismatched entries.
     try {
-      const url = `${API_URL}?date=${target}`;
+      const url = `${BCV_API_URL}?date=${target}`;
       const res = await fetch(url, { cache: "no-store" });
       if (res.ok) {
-        const json = (await res.json()) as ApiResponse;
-        if (json.success && json.data) {
-          const isoDate = toIsoDateFromBcv(json.data.date);
-          const usd = parseBcvRate(json.data.tasa_dolar);
-          const eur = parseBcvRate(json.data.tasa_euro);
-          if (isoDate === target && usd && eur) {
-            const snap: ExchangeSnapshot = {
-              vesPerUsd: usd,
-              vesPerEur: eur,
-              fetchedAt: new Date().toISOString(),
-              sourceDate: target,
-            };
-            hist[target] = { vesPerUsd: snap.vesPerUsd, vesPerEur: snap.vesPerEur, fetchedAt: snap.fetchedAt };
-            writeHist(hist);
-            return snap;
-          }
+        const json = (await res.json()) as BcvResponse;
+        if (json && json.date === target && isFinite(json.usd_rate)) {
+          const snap: ExchangeSnapshot = {
+            vesPerUsd: Number(json.usd_rate),
+            vesPerEur: Number(json.eur_rate),
+            fetchedAt: new Date().toISOString(),
+            sourceDate: target,
+          };
+          hist[target] = { vesPerUsd: snap.vesPerUsd, vesPerEur: snap.vesPerEur, fetchedAt: snap.fetchedAt };
+          writeHist(hist);
+          return snap;
         }
       }
     } catch {
@@ -199,20 +169,12 @@ export async function getRateByDate(dateISO: string): Promise<ExchangeSnapshot |
   // Fallback: search backwards up to 7 days and use the most recent available.
   const maxBack = 7;
   const tryFetch = async (date: string) => {
-    const url = `${API_URL}?date=${date}`;
+    const url = `${BCV_API_URL}?date=${date}`;
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return null;
-    const json = (await res.json()) as ApiResponse;
-    if (!json.success || !json.data) return null;
-    const isoDate = toIsoDateFromBcv(json.data.date);
-    const usd = parseBcvRate(json.data.tasa_dolar);
-    const eur = parseBcvRate(json.data.tasa_euro);
-    if (!isoDate || !usd || !eur) return null;
-    return {
-      date: isoDate,
-      usd,
-      eur,
-    };
+    const json = (await res.json()) as BcvResponse;
+    if (!json || !isFinite(json.usd_rate)) return null;
+    return { date: json.date, usd: Number(json.usd_rate), eur: Number(json.eur_rate) };
   };
 
   try {
