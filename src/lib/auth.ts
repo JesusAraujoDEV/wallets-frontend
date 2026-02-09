@@ -14,6 +14,28 @@ export const AuthApi = {
     if (out?.token) setToken(out.token);
     return { id: String(out.user.id), username: out.user.username };
   },
+  async register(payload: { username: string; password: string; name?: string }): Promise<AuthUser> {
+    const out = await apiFetch<{ ok: boolean; token: string; user: { id: number | string; username: string } }>(
+      `auth/register`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    );
+    if (out?.token) setToken(out.token);
+    return { id: String(out.user.id), username: out.user.username };
+  },
+  async googleLogin(googleCredential: string): Promise<AuthUser> {
+    const out = await apiFetch<{ ok: boolean; token: string; user: { id: number | string; username: string } }>(
+      `auth/google-login`,
+      {
+        method: "POST",
+        body: JSON.stringify({ credential: googleCredential }),
+      }
+    );
+    if (out?.token) setToken(out.token);
+    return { id: String(out.user.id), username: out.user.username };
+  },
   async me(): Promise<AuthUser> {
     const out = await apiFetch<{ ok: boolean; user: { id: number | string; username: string } }>(`auth/me`, { method: "GET" });
     return { id: String(out.user.id), username: out.user.username };
