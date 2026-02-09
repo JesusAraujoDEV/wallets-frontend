@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Lock, Mail, User } from "lucide-react";
+import { ArrowRight, AtSign, Lock, Mail, User } from "lucide-react";
 import { AuthApi, type AuthSession } from "@/lib/auth";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -58,7 +58,6 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
         await onSuccess(session);
         return;
       }
-      window.prompt("Token (pwi_token) para copiar:", session.token || "");
       window.location.href = "/";
     } catch (err: any) {
       toast({
@@ -123,7 +122,6 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
         }
       }
       const tokenToCopy = localStorage.getItem("pwi_token") || "";
-      window.prompt("Token (pwi_token) para copiar:", tokenToCopy);
       window.location.href = "/";
     } catch (err: any) {
       toast({
@@ -253,14 +251,14 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
             )}
 
             <div className="relative">
-              <Mail className="absolute left-3 top-3 text-gray-400 h-5 w-5" />
+              <AtSign className="absolute left-3 top-3 text-gray-400 h-5 w-5" />
               <input
                 value={usernameOrEmail}
                 onChange={(e) => setUsernameOrEmail(e.target.value)}
                 type="text"
-                placeholder="Usuario o correo"
+                placeholder="Nombre de usuario"
                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
-                autoComplete={isLogin ? "username" : "email"}
+                autoComplete="username"
                 required
               />
             </div>
