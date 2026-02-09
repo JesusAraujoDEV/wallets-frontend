@@ -1,12 +1,9 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Lock, Mail, User } from "lucide-react";
 import { AuthApi } from "@/lib/auth";
 import { useToast } from "@/components/ui/use-toast";
-
-const USERNAME_SUGGESTIONS = ["JesuAura", "PepoAura", "GaboAura", "CarluchoAura", "DavidAura", "CesarAura"];
 
 function authPanelCopy(isLogin: boolean) {
   return {
@@ -24,7 +21,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   const googleClientIdConfigured = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
   const copy = useMemo(() => authPanelCopy(isLogin), [isLogin]);
@@ -215,14 +211,8 @@ export default function Login() {
                 placeholder="Usuario o correo"
                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
                 autoComplete={isLogin ? "username" : "email"}
-                list="username-suggestions"
                 required
               />
-              <datalist id="username-suggestions">
-                {USERNAME_SUGGESTIONS.map((u) => (
-                  <option key={u} value={u} />
-                ))}
-              </datalist>
             </div>
 
             <div className="relative">
