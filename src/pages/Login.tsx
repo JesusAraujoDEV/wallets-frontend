@@ -39,6 +39,7 @@ export default function Login() {
     try {
       setLoading(true);
       console.log("🔐 Token recibido, enviando al backend...");
+      console.log("📤 Payload Google -> Backend:", { token: cred });
       const session = await AuthApi.googleLogin(cred);
       try {
         localStorage.setItem("token", session.token);
