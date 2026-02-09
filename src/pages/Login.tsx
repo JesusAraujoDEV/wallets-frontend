@@ -2,8 +2,14 @@ import { useMemo, useState } from "react";
 import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Lock, Mail, User } from "lucide-react";
-import { AuthApi } from "@/lib/auth";
+import { AuthApi, type AuthSession } from "@/lib/auth";
 import { useToast } from "@/components/ui/use-toast";
+
+type LoginProps = {
+  onSuccess?: (session: AuthSession) => void | Promise<void>;
+  customTitle?: string;
+  hideNavigation?: boolean;
+};
 
 function authPanelCopy(isLogin: boolean) {
   return {
@@ -14,7 +20,7 @@ function authPanelCopy(isLogin: boolean) {
   };
 }
 
-export default function Login() {
+export default function Login({ onSuccess, customTitle, hideNavigation }: LoginProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState("");
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
@@ -47,6 +53,11 @@ export default function Login() {
         // ignore storage errors
       }
       toast({ title: "Bienvenido", description: `Sesión iniciada como ${session.user.username}` });
+      if (onSuccess) {
+        await onSuccess(session);
+        return;
+      }
+      window.prompt("Token (pwi_token) para copiar:", session.token || "");
       window.location.href = "/";
     } catch (err: any) {
       toast({
@@ -82,6 +93,10 @@ export default function Login() {
           // ignore storage errors
         }
         toast({ title: "Bienvenido", description: `Sesión iniciada como ${session.user.username}` });
+        if (onSuccess) {
+          await onSuccess(session);
+          return;
+        }
       } else {
         const session = await AuthApi.register({ username: usernameOrEmail.trim(), password, name: name.trim() || undefined });
         try {
@@ -92,7 +107,13 @@ export default function Login() {
           // ignore storage errors
         }
         toast({ title: "Cuenta creada", description: "Registro completado" });
+        if (onSuccess) {
+          await onSuccess(session);
+          return;
+        }
       }
+      const tokenToCopy = localStorage.getItem("pwi_token") || "";
+      window.prompt("Token (pwi_token) para copiar:", tokenToCopy);
       window.location.href = "/";
     } catch (err: any) {
       toast({
@@ -144,7 +165,7 @@ export default function Login() {
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.2 }}
               >
-                <h3 className="text-2xl font-bold text-gray-800 mb-2">{isLogin ? "Hola de nuevo" : "Crear cuenta"}</h3>
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">{customTitle ?? (isLogin ? "Hola de nuevo" : "Crear cuenta")}</h3>
                 <p className="text-gray-500 text-sm">{isLogin ? "Ingresa tus datos para continuar" : "Regístrate gratis en segundos"}</p>
               </motion.div>
             </AnimatePresence>
@@ -242,18 +263,20 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-8 text-center">
-            <p className="text-gray-600 text-sm">
-              {isLogin ? "¿No tienes cuenta? " : "¿Ya tienes cuenta? "}
-              <button
-                type="button"
-                onClick={() => setIsLogin((v) => !v)}
-                className="text-emerald-600 font-bold hover:underline"
-              >
-                {isLogin ? "Regístrate aquí" : "Inicia sesión"}
-              </button>
-            </p>
-          </div>
+          {!hideNavigation && (
+            <div className="mt-8 text-center">
+              <p className="text-gray-600 text-sm">
+                {isLogin ? "¿No tienes cuenta? " : "¿Ya tienes cuenta? "}
+                <button
+                  type="button"
+                  onClick={() => setIsLogin((v) => !v)}
+                  className="text-emerald-600 font-bold hover:underline"
+                >
+                  {isLogin ? "Regístrate aquí" : "Inicia sesión"}
+                </button>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
