@@ -131,7 +131,6 @@ export default function TelegramLogin() {
     <div className="min-h-screen bg-gray-50">
       <Login
         customTitle="Conecta tu cuenta para continuar"
-        hideNavigation
         onSuccess={() => handleLink()}
       />
     </div>
