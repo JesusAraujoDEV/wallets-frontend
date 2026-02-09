@@ -23,6 +23,7 @@ function authPanelCopy(isLogin: boolean) {
 export default function Login({ onSuccess, customTitle, hideNavigation }: LoginProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -80,6 +81,10 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
       toast({ title: "Falta la contraseña", description: "Ingresa tu contraseña" , variant: "destructive" });
       return;
     }
+    if (!isLogin && !email.trim()) {
+      toast({ title: "Falta el email", description: "Ingresa tu correo electrónico" , variant: "destructive" });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -98,7 +103,12 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
           return;
         }
       } else {
-        const session = await AuthApi.register({ username: usernameOrEmail.trim(), password, name: name.trim() || undefined });
+        const session = await AuthApi.register({
+          username: usernameOrEmail.trim(),
+          password,
+          name: name.trim() || undefined,
+          email: email.trim(),
+        });
         try {
           localStorage.setItem("pwi_token", session.token);
           localStorage.setItem("token", session.token);
@@ -226,6 +236,21 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {!isLogin && (
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 text-gray-400 h-5 w-5" />
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  placeholder="Correo electrónico"
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+                  autoComplete="email"
+                  required
+                />
+              </div>
+            )}
 
             <div className="relative">
               <Mail className="absolute left-3 top-3 text-gray-400 h-5 w-5" />

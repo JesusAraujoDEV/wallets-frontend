@@ -15,7 +15,7 @@ export const AuthApi = {
     if (out?.token) setToken(out.token);
     return { token: out.token, user: { id: String(out.user.id), username: out.user.username } };
   },
-  async register(payload: { username: string; password: string; name?: string }): Promise<AuthSession> {
+  async register(payload: { username: string; password: string; name?: string; email?: string }): Promise<AuthSession> {
     const out = await apiFetch<{ ok: boolean; token: string; user: { id: number | string; username: string } }>(
       `auth/register`,
       {
