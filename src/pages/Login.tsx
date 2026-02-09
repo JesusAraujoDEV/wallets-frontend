@@ -49,7 +49,7 @@ export default function Login() {
         // ignore storage errors
       }
       toast({ title: "Bienvenido", description: `Sesión iniciada como ${session.user.username}` });
-      navigate("/", { replace: true });
+      window.location.href = "/";
     } catch (err: any) {
       toast({
         title: "Google Login fallido",
@@ -93,7 +93,7 @@ export default function Login() {
         }
         toast({ title: "Cuenta creada", description: "Registro completado" });
       }
-      navigate("/", { replace: true });
+      window.location.href = "/";
     } catch (err: any) {
       toast({
         title: isLogin ? "Login fallido" : "Registro fallido",
