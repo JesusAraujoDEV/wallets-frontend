@@ -1,9 +1,10 @@
 export type AuthUser = { id: string | number; username: string };
+export type AuthSession = { token: string; user: AuthUser };
 
 import { apiFetch, setToken, getToken } from "./http";
 
 export const AuthApi = {
-  async login(username: string, password: string): Promise<AuthUser> {
+  async login(username: string, password: string): Promise<AuthSession> {
     const out = await apiFetch<{ ok: boolean; token: string; user: { id: number | string; username: string } }>(
       `auth/login`,
       {
@@ -12,9 +13,9 @@ export const AuthApi = {
       }
     );
     if (out?.token) setToken(out.token);
-    return { id: String(out.user.id), username: out.user.username };
+    return { token: out.token, user: { id: String(out.user.id), username: out.user.username } };
   },
-  async register(payload: { username: string; password: string; name?: string }): Promise<AuthUser> {
+  async register(payload: { username: string; password: string; name?: string }): Promise<AuthSession> {
     const out = await apiFetch<{ ok: boolean; token: string; user: { id: number | string; username: string } }>(
       `auth/register`,
       {
@@ -23,9 +24,9 @@ export const AuthApi = {
       }
     );
     if (out?.token) setToken(out.token);
-    return { id: String(out.user.id), username: out.user.username };
+    return { token: out.token, user: { id: String(out.user.id), username: out.user.username } };
   },
-  async googleLogin(googleCredential: string): Promise<AuthUser> {
+  async googleLogin(googleCredential: string): Promise<AuthSession> {
     const out = await apiFetch<{ ok: boolean; token: string; user: { id: number | string; username: string } }>(
       `auth/google-login`,
       {
@@ -34,7 +35,7 @@ export const AuthApi = {
       }
     );
     if (out?.token) setToken(out.token);
-    return { id: String(out.user.id), username: out.user.username };
+    return { token: out.token, user: { id: String(out.user.id), username: out.user.username } };
   },
   async me(): Promise<AuthUser> {
     const out = await apiFetch<{ ok: boolean; user: { id: number | string; username: string } }>(`auth/me`, { method: "GET" });

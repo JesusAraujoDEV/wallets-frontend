@@ -32,13 +32,21 @@ export default function Login() {
   async function handleGoogleSuccess(credentialResponse: CredentialResponse) {
     const cred = credentialResponse.credential;
     if (!cred) {
+      console.error("❌ Google no entregó el token. Revisa la configuración de Orígenes en GCP.");
       toast({ title: "Google Login fallido", description: "No se recibió credencial de Google", variant: "destructive" });
       return;
     }
     try {
       setLoading(true);
-      await AuthApi.googleLogin(cred);
-      toast({ title: "Bienvenido", description: "Sesión iniciada con Google" });
+      console.log("🔐 Token recibido, enviando al backend...");
+      const session = await AuthApi.googleLogin(cred);
+      try {
+        localStorage.setItem("token", session.token);
+        localStorage.setItem("user", JSON.stringify(session.user));
+      } catch {
+        // ignore storage errors
+      }
+      toast({ title: "Bienvenido", description: `Sesión iniciada como ${session.user.username}` });
       navigate("/", { replace: true });
     } catch (err: any) {
       toast({
@@ -65,10 +73,22 @@ export default function Login() {
     try {
       setLoading(true);
       if (isLogin) {
-        await AuthApi.login(usernameOrEmail.trim(), password);
-        toast({ title: "Bienvenido", description: `Sesión iniciada como ${usernameOrEmail.trim()}` });
+        const session = await AuthApi.login(usernameOrEmail.trim(), password);
+        try {
+          localStorage.setItem("token", session.token);
+          localStorage.setItem("user", JSON.stringify(session.user));
+        } catch {
+          // ignore storage errors
+        }
+        toast({ title: "Bienvenido", description: `Sesión iniciada como ${session.user.username}` });
       } else {
-        await AuthApi.register({ username: usernameOrEmail.trim(), password, name: name.trim() || undefined });
+        const session = await AuthApi.register({ username: usernameOrEmail.trim(), password, name: name.trim() || undefined });
+        try {
+          localStorage.setItem("token", session.token);
+          localStorage.setItem("user", JSON.stringify(session.user));
+        } catch {
+          // ignore storage errors
+        }
         toast({ title: "Cuenta creada", description: "Registro completado" });
       }
       navigate("/", { replace: true });
