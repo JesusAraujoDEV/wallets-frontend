@@ -31,7 +31,7 @@ export const AuthApi = {
       `auth/google-login`,
       {
         method: "POST",
-        body: JSON.stringify({ credential: googleCredential }),
+        body: JSON.stringify({ token: googleCredential }),
       }
     );
     if (out?.token) setToken(out.token);
