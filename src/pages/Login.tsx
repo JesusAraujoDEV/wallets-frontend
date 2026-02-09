@@ -39,8 +39,10 @@ export default function Login() {
       const session = await AuthApi.googleLogin(cred);
       console.log("📥 Respuesta Backend (sesión):", session);
       try {
+        localStorage.setItem("pwi_token", session.token);
         localStorage.setItem("token", session.token);
         localStorage.setItem("user", JSON.stringify(session.user));
+        console.log("🧾 pwi_token guardado:", localStorage.getItem("pwi_token"));
       } catch {
         // ignore storage errors
       }
@@ -73,6 +75,7 @@ export default function Login() {
       if (isLogin) {
         const session = await AuthApi.login(usernameOrEmail.trim(), password);
         try {
+          localStorage.setItem("pwi_token", session.token);
           localStorage.setItem("token", session.token);
           localStorage.setItem("user", JSON.stringify(session.user));
         } catch {
@@ -82,6 +85,7 @@ export default function Login() {
       } else {
         const session = await AuthApi.register({ username: usernameOrEmail.trim(), password, name: name.trim() || undefined });
         try {
+          localStorage.setItem("pwi_token", session.token);
           localStorage.setItem("token", session.token);
           localStorage.setItem("user", JSON.stringify(session.user));
         } catch {
