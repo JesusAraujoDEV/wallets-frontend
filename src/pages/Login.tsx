@@ -3,6 +3,7 @@ import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, AtSign, Lock, Mail, User } from "lucide-react";
 import { AuthApi, type AuthSession } from "@/lib/auth";
+import { isValidEmail, sanitizeEmailInput, sanitizeNameInput, sanitizeUsernameInput } from "@/lib/validation";
 import { useToast } from "@/components/ui/use-toast";
 
 type LoginProps = {
@@ -27,15 +28,11 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<{ identifier?: string; email?: string; password?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ identifier?: string; name?: string; email?: string; password?: string }>({});
   const { toast } = useToast();
 
   const googleClientIdConfigured = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
   const copy = useMemo(() => authPanelCopy(isLogin), [isLogin]);
-
-  function isEmail(value: string) {
-    return /\S+@\S+\.\S+/.test(value);
-  }
 
   function getReadableError(message: string) {
     const raw = message.toLowerCase();
@@ -121,7 +118,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
       toast({ title: "Falta el email", description: msg, variant: "destructive" });
       return;
     }
-    if (isLogin && usernameOrEmail.includes("@") && !isEmail(usernameOrEmail.trim())) {
+    if (isLogin && usernameOrEmail.includes("@") && !isValidEmail(usernameOrEmail.trim())) {
       const msg = "Ese correo no parece válido. Revisa el @.";
       setFieldErrors({ identifier: msg });
       toast({ title: "Correo inválido", description: msg, variant: "destructive" });
@@ -132,9 +129,10 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
       setLoading(true);
       if (isLogin) {
         const identifier = usernameOrEmail.trim();
+        const normalizedIdentifier = identifier.includes("@") ? identifier : sanitizeUsernameInput(identifier);
         const session = await AuthApi.login({
           password,
-          ...(identifier.includes("@") ? { email: identifier } : { username: identifier }),
+          ...(identifier.includes("@") ? { email: identifier } : { username: normalizedIdentifier }),
         });
         try {
           localStorage.setItem("pwi_token", session.token);
@@ -150,7 +148,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
         }
       } else {
         const session = await AuthApi.register({
-          username: usernameOrEmail.trim(),
+          username: sanitizeUsernameInput(usernameOrEmail.trim()),
           password,
           name: name.trim() || undefined,
           email: email.trim(),
@@ -176,6 +174,8 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
         setFieldErrors({ password: friendly });
       } else if (backendMessage.toLowerCase().includes("email")) {
         setFieldErrors({ email: friendly });
+      } else if (backendMessage.toLowerCase().includes("name")) {
+        setFieldErrors({ name: friendly });
       } else if (backendMessage.toLowerCase().includes("username")) {
         setFieldErrors({ identifier: friendly });
       }
@@ -280,12 +280,24 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                   <User className="absolute left-3 top-3 text-gray-400 h-5 w-5" />
                   <input
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      const sanitized = sanitizeNameInput(raw);
+                      if (sanitized !== raw) {
+                        setFieldErrors((prev) => ({ ...prev, name: "El nombre sólo puede contener letras y espacios." }));
+                      } else {
+                        setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                      }
+                      setName(sanitized);
+                    }}
                     type="text"
                     placeholder="Nombre completo"
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+                    className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition ${
+                      fieldErrors.name ? "border-red-500 animate-shake" : "border-gray-200"
+                    }`}
                     autoComplete="name"
                   />
+                  {fieldErrors.name && <p className="mt-1 text-xs text-red-500">{fieldErrors.name}</p>}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -296,13 +308,17 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                 <input
                   value={email}
                   onChange={(e) => {
-                    const value = e.target.value;
-                    setEmail(value);
-                    if (!value.trim()) {
+                    const raw = e.target.value;
+                    const sanitized = sanitizeEmailInput(raw);
+                    if (sanitized !== raw) {
+                      setFieldErrors((prev) => ({ ...prev, email: "El correo contiene caracteres no válidos." }));
+                    }
+                    setEmail(sanitized);
+                    if (!sanitized.trim()) {
                       setFieldErrors((prev) => ({ ...prev, email: "Escribe tu correo para continuar." }));
                       return;
                     }
-                    if (!isEmail(value.trim())) {
+                    if (!isValidEmail(sanitized.trim())) {
                       setFieldErrors((prev) => ({ ...prev, email: "Ese correo no parece válido. Revisa el @." }));
                       return;
                     }
@@ -325,13 +341,26 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
               <input
                 value={usernameOrEmail}
                 onChange={(e) => {
-                  const value = e.target.value;
+                  let value = e.target.value;
+                  if (value.includes("@")) {
+                    const sanitized = sanitizeEmailInput(value);
+                    if (sanitized !== value) {
+                      setFieldErrors((prev) => ({ ...prev, identifier: "El correo contiene caracteres no válidos." }));
+                    }
+                    value = sanitized;
+                  } else {
+                    const sanitized = sanitizeUsernameInput(value);
+                    if (sanitized !== value) {
+                      setFieldErrors((prev) => ({ ...prev, identifier: "El usuario sólo puede tener letras, números, . _ o -" }));
+                    }
+                    value = sanitized;
+                  }
                   setUsernameOrEmail(value);
                   if (!value.trim()) {
                     setFieldErrors((prev) => ({ ...prev, identifier: "Escribe tu usuario o correo para continuar." }));
                     return;
                   }
-                  if (value.includes("@") && !isEmail(value.trim())) {
+                  if (value.includes("@") && !isValidEmail(value.trim())) {
                     setFieldErrors((prev) => ({ ...prev, identifier: "Ese correo no parece válido. Revisa el @." }));
                     return;
                   }
