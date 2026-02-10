@@ -39,15 +39,15 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
 
   function getReadableError(message: string) {
     const raw = message.toLowerCase();
-    if (raw.includes("401") || raw.includes("unauthorized")) return "Credenciales incorrectas. Intenta de nuevo.";
+    if (raw.includes("401") || raw.includes("unauthorized")) return "Tus credenciales no coinciden. Revisa y prueba otra vez.";
     if (raw.includes("404") || raw.includes("not found")) return "No encontramos una cuenta con esos datos.";
     if (raw.includes("409") || raw.includes("conflict")) return "Ese usuario o correo ya está registrado.";
-    if (raw.includes("string.min") && raw.includes("username")) return "El usuario debe tener al menos 3 caracteres.";
-    if (raw.includes("username") && raw.includes("required")) return "Por favor, escribe tu nombre de usuario.";
+    if (raw.includes("string.min") && raw.includes("username")) return "Tu usuario debe tener al menos 3 caracteres.";
+    if (raw.includes("username") && raw.includes("required")) return "Escribe tu nombre de usuario para continuar.";
     if (raw.includes("string.email") || raw.includes("email") && raw.includes("valid")) return "Ese correo no parece válido. Revisa el @.";
     if (raw.includes("string.min") && raw.includes("password")) return "La contraseña es muy corta (mínimo 6 caracteres).";
-    if (raw.includes("email") && raw.includes("required")) return "Por favor, escribe tu correo electrónico.";
-    return "Ocurrió un error. Intenta nuevamente.";
+    if (raw.includes("email") && raw.includes("required")) return "Escribe tu correo para continuar.";
+    return "Ups, algo no salió bien. Intenta nuevamente.";
   }
 
   function parseBackendMessage(err: any) {
@@ -104,23 +104,27 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
     e.preventDefault();
     setFieldErrors({});
     if (!usernameOrEmail.trim()) {
-      setFieldErrors({ identifier: "Por favor, escribe tu usuario o correo electrónico." });
-      toast({ title: "Falta el usuario", description: "Ingresa tu usuario o correo" , variant: "destructive" });
+      const msg = "Escribe tu usuario o correo para continuar.";
+      setFieldErrors({ identifier: msg });
+      toast({ title: "Falta el usuario", description: msg, variant: "destructive" });
       return;
     }
     if (!password) {
-      setFieldErrors({ password: "Por favor, escribe tu contraseña." });
-      toast({ title: "Falta la contraseña", description: "Ingresa tu contraseña" , variant: "destructive" });
+      const msg = "Escribe tu contraseña para continuar.";
+      setFieldErrors({ password: msg });
+      toast({ title: "Falta la contraseña", description: msg, variant: "destructive" });
       return;
     }
     if (!isLogin && !email.trim()) {
-      setFieldErrors({ email: "Por favor, escribe tu correo electrónico." });
-      toast({ title: "Falta el email", description: "Ingresa tu correo electrónico" , variant: "destructive" });
+      const msg = "Escribe tu correo para continuar.";
+      setFieldErrors({ email: msg });
+      toast({ title: "Falta el email", description: msg, variant: "destructive" });
       return;
     }
     if (isLogin && usernameOrEmail.includes("@") && !isEmail(usernameOrEmail.trim())) {
-      setFieldErrors({ identifier: "Ese correo no parece válido. Revisa el @." });
-      toast({ title: "Correo inválido", description: "Ese correo no parece válido. Revisa el @." , variant: "destructive" });
+      const msg = "Ese correo no parece válido. Revisa el @.";
+      setFieldErrors({ identifier: msg });
+      toast({ title: "Correo inválido", description: msg, variant: "destructive" });
       return;
     }
 
@@ -291,7 +295,19 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                 <Mail className="absolute left-3 top-3 text-gray-400 h-5 w-5" />
                 <input
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setEmail(value);
+                    if (!value.trim()) {
+                      setFieldErrors((prev) => ({ ...prev, email: "Escribe tu correo para continuar." }));
+                      return;
+                    }
+                    if (!isEmail(value.trim())) {
+                      setFieldErrors((prev) => ({ ...prev, email: "Ese correo no parece válido. Revisa el @." }));
+                      return;
+                    }
+                    setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                  }}
                   type="email"
                   placeholder="Correo electrónico"
                   className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:bg-white transition ${
@@ -308,7 +324,23 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
               <AtSign className="absolute left-3 top-3 text-gray-400 h-5 w-5" />
               <input
                 value={usernameOrEmail}
-                onChange={(e) => setUsernameOrEmail(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setUsernameOrEmail(value);
+                  if (!value.trim()) {
+                    setFieldErrors((prev) => ({ ...prev, identifier: "Escribe tu usuario o correo para continuar." }));
+                    return;
+                  }
+                  if (value.includes("@") && !isEmail(value.trim())) {
+                    setFieldErrors((prev) => ({ ...prev, identifier: "Ese correo no parece válido. Revisa el @." }));
+                    return;
+                  }
+                  if (!value.includes("@") && value.trim().length < 3) {
+                    setFieldErrors((prev) => ({ ...prev, identifier: "Tu usuario debe tener al menos 3 caracteres." }));
+                    return;
+                  }
+                  setFieldErrors((prev) => ({ ...prev, identifier: undefined }));
+                }}
                 type="text"
                 placeholder={isLogin ? "Ingresa tu usuario o correo electrónico" : "Nombre de usuario"}
                 className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:bg-white transition ${
@@ -324,7 +356,19 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
               <Lock className="absolute left-3 top-3 text-gray-400 h-5 w-5" />
               <input
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setPassword(value);
+                  if (!value) {
+                    setFieldErrors((prev) => ({ ...prev, password: "Escribe tu contraseña para continuar." }));
+                    return;
+                  }
+                  if (value.length < 6) {
+                    setFieldErrors((prev) => ({ ...prev, password: "La contraseña es muy corta (mínimo 6 caracteres)." }));
+                    return;
+                  }
+                  setFieldErrors((prev) => ({ ...prev, password: undefined }));
+                }}
                 type="password"
                 placeholder="Contraseña"
                 className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:bg-white transition ${
