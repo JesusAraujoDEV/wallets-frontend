@@ -9,8 +9,8 @@ export function sanitizeEmailInput(value: string) {
 }
 
 export function sanitizeUsernameInput(value: string) {
-  // Lowercase and restrict to allowed username chars
-  return value.toLowerCase().replace(/[^a-z0-9._-]/g, "");
+  // Restrict to allowed username chars; preserve case (allow A-Z and a-z)
+  return value.replace(/[^A-Za-z0-9._-]/g, "");
 }
 
 export function isValidEmail(value: string) {
