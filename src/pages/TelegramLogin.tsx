@@ -28,7 +28,7 @@ export default function TelegramLogin() {
     try {
       await apiFetch("telegram/link", {
         method: "POST",
-        body: JSON.stringify({ chatId, username: username }),
+        body: JSON.stringify({ chatId, username: username || null }),
       });
       setStep("success");
     } catch (err: any) {

@@ -4,12 +4,12 @@ export type AuthSession = { token: string; user: AuthUser };
 import { apiFetch, setToken, getToken } from "./http";
 
 export const AuthApi = {
-  async login(username: string, password: string): Promise<AuthSession> {
+  async login(payload: { username?: string; email?: string; password: string }): Promise<AuthSession> {
     const out = await apiFetch<{ ok: boolean; token: string; user: { id: number | string; username: string } }>(
       `auth/login`,
       {
         method: "POST",
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(payload),
       }
     );
     if (out?.token) setToken(out.token);

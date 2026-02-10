@@ -27,10 +27,40 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ identifier?: string; email?: string; password?: string }>({});
   const { toast } = useToast();
 
   const googleClientIdConfigured = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
   const copy = useMemo(() => authPanelCopy(isLogin), [isLogin]);
+
+  function isEmail(value: string) {
+    return /\S+@\S+\.\S+/.test(value);
+  }
+
+  function getReadableError(message: string) {
+    const raw = message.toLowerCase();
+    if (raw.includes("401") || raw.includes("unauthorized")) return "Credenciales incorrectas. Intenta de nuevo.";
+    if (raw.includes("404") || raw.includes("not found")) return "No encontramos una cuenta con esos datos.";
+    if (raw.includes("409") || raw.includes("conflict")) return "Ese usuario o correo ya está registrado.";
+    if (raw.includes("string.min") && raw.includes("username")) return "El usuario debe tener al menos 3 caracteres.";
+    if (raw.includes("username") && raw.includes("required")) return "Por favor, escribe tu nombre de usuario.";
+    if (raw.includes("string.email") || raw.includes("email") && raw.includes("valid")) return "Ese correo no parece válido. Revisa el @.";
+    if (raw.includes("string.min") && raw.includes("password")) return "La contraseña es muy corta (mínimo 6 caracteres).";
+    if (raw.includes("email") && raw.includes("required")) return "Por favor, escribe tu correo electrónico.";
+    return "Ocurrió un error. Intenta nuevamente.";
+  }
+
+  function parseBackendMessage(err: any) {
+    const msg = err?.message || "";
+    if (!msg) return "";
+    try {
+      const asJson = JSON.parse(msg);
+      if (asJson?.message) return String(asJson.message);
+    } catch {
+      // ignore
+    }
+    return msg;
+  }
 
   async function handleGoogleSuccess(credentialResponse: CredentialResponse) {
     const cred = credentialResponse.credential;
@@ -72,23 +102,36 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFieldErrors({});
     if (!usernameOrEmail.trim()) {
+      setFieldErrors({ identifier: "Por favor, escribe tu usuario o correo electrónico." });
       toast({ title: "Falta el usuario", description: "Ingresa tu usuario o correo" , variant: "destructive" });
       return;
     }
     if (!password) {
+      setFieldErrors({ password: "Por favor, escribe tu contraseña." });
       toast({ title: "Falta la contraseña", description: "Ingresa tu contraseña" , variant: "destructive" });
       return;
     }
     if (!isLogin && !email.trim()) {
+      setFieldErrors({ email: "Por favor, escribe tu correo electrónico." });
       toast({ title: "Falta el email", description: "Ingresa tu correo electrónico" , variant: "destructive" });
+      return;
+    }
+    if (isLogin && usernameOrEmail.includes("@") && !isEmail(usernameOrEmail.trim())) {
+      setFieldErrors({ identifier: "Ese correo no parece válido. Revisa el @." });
+      toast({ title: "Correo inválido", description: "Ese correo no parece válido. Revisa el @." , variant: "destructive" });
       return;
     }
 
     try {
       setLoading(true);
       if (isLogin) {
-        const session = await AuthApi.login(usernameOrEmail.trim(), password);
+        const identifier = usernameOrEmail.trim();
+        const session = await AuthApi.login({
+          password,
+          ...(identifier.includes("@") ? { email: identifier } : { username: identifier }),
+        });
         try {
           localStorage.setItem("pwi_token", session.token);
           localStorage.setItem("token", session.token);
@@ -121,12 +164,20 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
           return;
         }
       }
-      const tokenToCopy = localStorage.getItem("pwi_token") || "";
       window.location.href = "/";
     } catch (err: any) {
+      const backendMessage = parseBackendMessage(err);
+      const friendly = getReadableError(backendMessage || err?.message || "");
+      if (backendMessage.toLowerCase().includes("password")) {
+        setFieldErrors({ password: friendly });
+      } else if (backendMessage.toLowerCase().includes("email")) {
+        setFieldErrors({ email: friendly });
+      } else if (backendMessage.toLowerCase().includes("username")) {
+        setFieldErrors({ identifier: friendly });
+      }
       toast({
         title: isLogin ? "Login fallido" : "Registro fallido",
-        description: err?.message || (isLogin ? "Usuario o contraseña incorrectos" : "No se pudo crear la cuenta"),
+        description: friendly,
         variant: "destructive",
       });
     } finally {
@@ -243,10 +294,13 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                   onChange={(e) => setEmail(e.target.value)}
                   type="email"
                   placeholder="Correo electrónico"
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+                  className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:bg-white transition ${
+                    fieldErrors.email ? "border-red-500 focus:ring-red-400 animate-shake" : "border-gray-200 focus:ring-emerald-500"
+                  }`}
                   autoComplete="email"
                   required
                 />
+                {fieldErrors.email && <p className="mt-1 text-xs text-red-500">{fieldErrors.email}</p>}
               </div>
             )}
 
@@ -256,11 +310,14 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                 value={usernameOrEmail}
                 onChange={(e) => setUsernameOrEmail(e.target.value)}
                 type="text"
-                placeholder="Nombre de usuario"
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+                placeholder={isLogin ? "Ingresa tu usuario o correo electrónico" : "Nombre de usuario"}
+                className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:bg-white transition ${
+                  fieldErrors.identifier ? "border-red-500 focus:ring-red-400 animate-shake" : "border-gray-200 focus:ring-emerald-500"
+                }`}
                 autoComplete="username"
                 required
               />
+              {fieldErrors.identifier && <p className="mt-1 text-xs text-red-500">{fieldErrors.identifier}</p>}
             </div>
 
             <div className="relative">
@@ -270,10 +327,13 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                 onChange={(e) => setPassword(e.target.value)}
                 type="password"
                 placeholder="Contraseña"
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+                className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:bg-white transition ${
+                  fieldErrors.password ? "border-red-500 focus:ring-red-400 animate-shake" : "border-gray-200 focus:ring-emerald-500"
+                }`}
                 autoComplete={isLogin ? "current-password" : "new-password"}
                 required
               />
+              {fieldErrors.password && <p className="mt-1 text-xs text-red-500">{fieldErrors.password}</p>}
             </div>
 
             <button
