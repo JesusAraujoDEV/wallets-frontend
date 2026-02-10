@@ -7,7 +7,7 @@ import { apiFetch, getToken } from "@/lib/http";
 
 const BOT_LINK = "https://t.me/WalletsAuraBot";
 
-type Step = "auth" | "linking" | "success" | "error" | "missing";
+type Step = "choice" | "auth" | "linking" | "success" | "error" | "missing";
 
 export default function TelegramLogin() {
   const [params] = useSearchParams();
@@ -40,10 +40,16 @@ export default function TelegramLogin() {
   }
 
   useEffect(() => {
-    const token = getToken();
-    if (token && chatId) {
-      handleLink();
+    if (!chatId) {
+      setStep("missing");
+      return;
     }
+    const token = getToken();
+    if (token) {
+      setStep("choice");
+      return;
+    }
+    setStep("auth");
   }, [chatId]);
 
   if (step === "success") {
@@ -76,6 +82,39 @@ export default function TelegramLogin() {
         <a href="/dashboard" className="mt-6 text-sm text-gray-400 hover:text-gray-600 underline">
           Ir a mi Dashboard
         </a>
+      </div>
+    );
+  }
+
+  if (step === "choice") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6 text-center">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6"
+        >
+          <MessageCircle className="w-10 h-10 text-emerald-600" />
+        </motion.div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">¿Cómo quieres continuar?</h1>
+        <p className="text-gray-500 mb-8 max-w-md">
+          Detectamos una sesión activa. Puedes vincularla con WalletBot o cambiar de cuenta.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-4">
+          <button
+            onClick={handleLink}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-3 transition-all"
+          >
+            <CheckCircle className="w-5 h-5" /> Conectar con WalletBot
+          </button>
+          <button
+            onClick={() => setStep("auth")}
+            className="bg-gray-900 hover:bg-black text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-3 transition-all"
+          >
+            <ArrowRight className="w-5 h-5" /> Cambiar de cuenta
+          </button>
+        </div>
       </div>
     );
   }
