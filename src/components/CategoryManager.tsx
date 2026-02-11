@@ -1,10 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,18 +19,6 @@ import { CategoriesStore, newId, onDataChange } from "@/lib/storage";
 import type { Category } from "@/lib/types";
 import { CategoryEditorDialog, type CategoryEditorValue } from "@/components/CategoryEditorDialog";
 
-
-// Available pastel colors from the design system
-const pastelColors = [
-  { name: "Mint Green", value: "hsl(var(--chart-1))", hsl: "154 60% 65%" },
-  { name: "Lavender", value: "hsl(var(--chart-2))", hsl: "228 40% 70%" },
-  { name: "Peach", value: "hsl(var(--chart-3))", hsl: "4 100% 75%" },
-  { name: "Pastel Yellow", value: "hsl(var(--chart-4))", hsl: "45 95% 75%" },
-  { name: "Pastel Purple", value: "hsl(var(--chart-5))", hsl: "280 50% 75%" },
-  { name: "Pastel Blue", value: "hsl(var(--chart-6))", hsl: "195 70% 75%" },
-  { name: "Pastel Pink", value: "hsl(var(--chart-7))", hsl: "340 80% 75%" },
-];
-
 export const CategoryManager = () => {
   const [categories, setCategories] = useState<Category[]>(CategoriesStore.all());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -45,7 +30,9 @@ export const CategoryManager = () => {
   const [formData, setFormData] = useState<CategoryEditorValue>({
     name: "",
     type: "expense",
-    colorName: "Mint Green",
+    color: "hsl(var(--chart-6))",
+    colorName: "Pastel Blue",
+    icon: null,
   });
   // Bulk include/exclude modal state
   const [bulkOpen, setBulkOpen] = useState<null | 'enable' | 'disable'>(null);
@@ -63,8 +50,7 @@ export const CategoryManager = () => {
       return;
     }
 
-    const selectedColor = pastelColors.find(c => c.name === formData.colorName);
-    if (!selectedColor) return;
+    if (!formData.color) return;
 
     try {
       setIsSubmitting(true);
@@ -73,8 +59,9 @@ export const CategoryManager = () => {
           ...editingCategory,
           name: formData.name,
           type: formData.type,
-          color: selectedColor.value,
-          colorName: selectedColor.name,
+          color: formData.color,
+          colorName: formData.colorName,
+          icon: formData.icon ?? null,
         });
         toast({ title: "Category Updated", description: `${formData.name} has been updated successfully.` });
       } else {
@@ -82,8 +69,9 @@ export const CategoryManager = () => {
           id: newId(),
           name: formData.name,
           type: formData.type,
-          color: selectedColor.value,
-          colorName: selectedColor.name,
+          color: formData.color,
+          colorName: formData.colorName,
+          icon: formData.icon ?? null,
         };
         await CategoriesStore.upsert(newCategory);
         toast({ title: "Category Created", description: `${formData.name} has been added successfully.` });
@@ -99,7 +87,9 @@ export const CategoryManager = () => {
     setFormData({
       name: category.name,
       type: category.type,
+      color: category.color,
       colorName: category.colorName,
+      icon: category.icon ?? null,
     });
     setIsDialogOpen(true);
   };
@@ -118,7 +108,7 @@ export const CategoryManager = () => {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingCategory(null);
-    setFormData({ name: "", type: "expense", colorName: "Mint Green" });
+    setFormData({ name: "", type: "expense", color: "hsl(var(--chart-6))", colorName: "Pastel Blue", icon: null });
   };
 
   useEffect(() => {

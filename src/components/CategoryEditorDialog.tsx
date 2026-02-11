@@ -1,25 +1,34 @@
-import { useState, useEffect } from "react";
+import { useRef, type CSSProperties } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Loader2 } from "lucide-react";
+import * as Icons from "lucide-react";
+import { getIconOptionsForType } from "@/lib/categoryIcons";
 
 export type CategoryEditorValue = {
   name: string;
   type: "income" | "expense";
+  color: string;
   colorName: string;
+  icon?: string | null;
 };
 
-const pastelColors = [
-  { name: "Mint Green", hsl: "154 60% 65%" },
-  { name: "Lavender", hsl: "228 40% 70%" },
-  { name: "Peach", hsl: "4 100% 75%" },
-  { name: "Pastel Yellow", hsl: "45 95% 75%" },
-  { name: "Pastel Purple", hsl: "280 50% 75%" },
-  { name: "Pastel Blue", hsl: "195 70% 75%" },
-  { name: "Pastel Pink", hsl: "340 80% 75%" },
+const presetColors = [
+  { name: "Chart 1", value: "hsl(var(--chart-1))" },
+  { name: "Chart 2", value: "hsl(var(--chart-2))" },
+  { name: "Chart 3", value: "hsl(var(--chart-3))" },
+  { name: "Chart 4", value: "hsl(var(--chart-4))" },
+  { name: "Chart 5", value: "hsl(var(--chart-5))" },
+  { name: "Pastel Blue", value: "hsl(var(--chart-6))" },
+  { name: "Primary", value: "hsl(var(--primary))" },
+  { name: "Secondary", value: "hsl(var(--secondary))" },
+  { name: "Accent", value: "hsl(var(--accent))" },
+  { name: "Green", value: "#22c55e" },
+  { name: "Red", value: "#ef4444" },
+  { name: "Amber", value: "#f59e0b" },
 ];
 
 export function CategoryEditorDialog({
@@ -41,14 +50,19 @@ export function CategoryEditorDialog({
   title?: string;
   description?: string;
 }) {
+  const colorInputRef = useRef<HTMLInputElement | null>(null);
+  const iconOptions = getIconOptionsForType(value.type);
+  const isCustomColor = !presetColors.some((c) => c.value === value.color);
+  const selectedColorLabel = isCustomColor ? value.color : value.colorName;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg rounded-xl bg-background/95 backdrop-blur shadow-lg">
         <DialogHeader>
           <DialogTitle>{title || "Edit Category"}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
           <div className="space-y-2">
             <Label htmlFor="category-name">Category Name</Label>
             <Input
@@ -60,39 +74,76 @@ export function CategoryEditorDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="category-type">Type</Label>
-            <Select value={value.type} onValueChange={(v: any) => onChange({ ...value, type: v })}>
-              <SelectTrigger id="category-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="expense">Expense</SelectItem>
-                <SelectItem value="income">Income</SelectItem>
-              </SelectContent>
-            </Select>
+            <ToggleGroup
+              type="single"
+              value={value.type}
+              onValueChange={(v) => v && onChange({ ...value, type: v as "income" | "expense" })}
+              className="justify-start"
+            >
+              <ToggleGroupItem value="expense" aria-label="Expense">Expense</ToggleGroupItem>
+              <ToggleGroupItem value="income" aria-label="Income">Income</ToggleGroupItem>
+            </ToggleGroup>
           </div>
           <div className="space-y-2">
             <Label>Color</Label>
-            <div className="grid grid-cols-4 gap-3">
-              {pastelColors.map((color) => (
-                <button
-                  key={color.name}
-                  type="button"
-                  onClick={() => onChange({ ...value, colorName: color.name })}
-                  className={`group relative h-12 rounded-md transition-all ${
-                    value.colorName === color.name ? "ring-2 ring-ring ring-offset-2" : "hover:scale-105"
-                  }`}
-                  style={{ backgroundColor: `hsl(${color.hsl})` }}
-                >
-                  <span className="sr-only">{color.name}</span>
-                  {value.colorName === color.name && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="h-3 w-3 rounded-full bg-background" />
-                    </div>
-                  )}
-                </button>
-              ))}
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+              {presetColors.map((opt) => {
+                const active = value.color === opt.value;
+                return (
+                  <button
+                    key={opt.name}
+                    type="button"
+                    className={`h-8 w-8 rounded-full border transition ${active ? "ring-2 ring-offset-2" : "hover:scale-105"}`}
+                    style={{ backgroundColor: opt.value, ...(active ? ({ "--tw-ring-color": opt.value } as CSSProperties) : {}) }}
+                    title={opt.name}
+                    onClick={() => onChange({ ...value, color: opt.value, colorName: opt.name })}
+                  />
+                );
+              })}
+              <button
+                type="button"
+                className={`h-8 w-8 rounded-full border transition ${isCustomColor ? "ring-2 ring-offset-2" : "hover:scale-105"}`}
+                style={{
+                  backgroundImage: "conic-gradient(#f43f5e, #f59e0b, #22c55e, #3b82f6, #a855f7, #f43f5e)",
+                  ...(isCustomColor ? ({ "--tw-ring-color": value.color } as CSSProperties) : {}),
+                }}
+                aria-label="Pick custom color"
+                title="Custom color"
+                onClick={() => colorInputRef.current?.click()}
+              />
+              <input
+                ref={colorInputRef}
+                type="color"
+                className="hidden"
+                value={isCustomColor ? value.color : "#3b82f6"}
+                onChange={(e) => onChange({ ...value, color: e.target.value, colorName: e.target.value })}
+              />
             </div>
-            <p className="text-sm text-muted-foreground mt-2">Selected: {value.colorName}</p>
+            <div className="text-sm text-muted-foreground">Selected: <span className="font-medium">{selectedColorLabel}</span></div>
+          </div>
+          <div className="space-y-2">
+            <Label>Icon</Label>
+            <div className="max-h-56 overflow-y-auto pr-1">
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                {iconOptions.map((key) => {
+                  const C = (Icons as any)[key];
+                  if (!C) return null;
+                  const active = value.icon === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`h-10 w-10 rounded-md border flex items-center justify-center transition ${active ? "bg-accent ring-2 ring-offset-2" : "hover:bg-accent/40"}`}
+                      style={active ? ({ "--tw-ring-color": value.color } as CSSProperties) : undefined}
+                      title={key}
+                      onClick={() => onChange({ ...value, icon: key })}
+                    >
+                      <C className="h-5 w-5" style={{ color: value.color || undefined }} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
         <DialogFooter>
