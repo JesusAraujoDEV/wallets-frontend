@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
-import { KPICard } from "@/components/KPICard";
+import { DashboardStats } from "@/components/DashboardStats";
 import { ExpensePieChart } from "@/components/ExpensePieChart";
 import { NetCashFlowChart } from "@/components/NetCashFlowChart";
 import { SpendingHeatmap } from "@/components/SpendingHeatmap";
@@ -25,7 +24,7 @@ import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from 
 import { AuthApi, type AuthUser } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
 import { useVESExchangeRate, convertToUSD } from "@/lib/rates";
-import { fetchIncomeSummary, fetchExpenseSummary, fetchBalanceSummary, fetchGlobalBalance, fetchIncomeMonthly, fetchExpenseMonthly } from "@/lib/summary";
+import { fetchIncomeMonthly, fetchExpenseMonthly } from "@/lib/summary";
 import { isBalanceAdjustmentCategory, isBalanceAdjustmentPlus } from "@/lib/utils";
 import type { Account, Category, Transaction } from "@/lib/types";
 import { fetchNetCashFlow, fetchSpendingHeatmap, fetchExpenseVolatility, fetchComparativeMoM, fetchMonthlyForecast, fetchIncomeHeatmap, fetchIncomeVolatility, fetchComparativeMoMIncome } from "@/lib/stats";
@@ -42,10 +41,6 @@ const Index = () => {
   const [selectedExpenseCats, setSelectedExpenseCats] = useState<string[]>([]);
   const { rate } = useVESExchangeRate();
   const [statsScope, setStatsScope] = useState<"all" | "only" | "exclude">("all");
-  const [kpiIncome, setKpiIncome] = useState<number>(0);
-  const [kpiExpenses, setKpiExpenses] = useState<number>(0);
-  const [kpiNet, setKpiNet] = useState<number>(0);
-  const [totalBalanceUsd, setTotalBalanceUsd] = useState<number>(0);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   // New stats datasets
@@ -128,22 +123,6 @@ const Index = () => {
     return () => { alive = false; };
   }, []);
   
-  // Fetch Total Balance from API (global accounts total in USD)
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const b = await fetchGlobalBalance();
-        if (!alive) return;
-        setTotalBalanceUsd(b.accounts_total_usd ?? 0);
-      } catch {
-        if (!alive) return;
-        setTotalBalanceUsd(0);
-      }
-    })();
-    return () => { alive = false; };
-  }, []);
-
   const now = new Date();
   const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const isCurrentMonth = (iso: string) => {
@@ -195,31 +174,6 @@ const Index = () => {
     const m = `${now.getMonth() + 1}`.padStart(2, '0');
     return `${y}-${m}`;
   }, [now]);
-
-  useEffect(() => {
-    let alive = true;
-    const dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
-    const dateTo = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10);
-    const include: true = true;
-    const accountIds = selectedAccount !== 'all' ? [selectedAccount] : undefined;
-    (async () => {
-      try {
-        const [inc, exp, net] = await Promise.all([
-          fetchIncomeSummary({ month: monthKey, includeInStats: include, accountIds }),
-          fetchExpenseSummary({ month: monthKey, includeInStats: include, accountIds }),
-          fetchBalanceSummary({ month: monthKey, includeInStats: include, accountIds })
-        ]);
-        if (!alive) return;
-        setKpiIncome(inc || 0);
-        setKpiExpenses(exp || 0);
-        setKpiNet(net || (inc || 0) - (exp || 0));
-      } catch (e) {
-        if (!alive) return;
-        setKpiIncome(0); setKpiExpenses(0); setKpiNet(0);
-      }
-    })();
-    return () => { alive = false; };
-  }, [monthKey, selectedAccount]);
 
   // Charts
   const expensePieData = useMemo(() => {
@@ -455,29 +409,7 @@ const Index = () => {
       <main className="container mx-auto px-4 py-8">
         {/* Persistence uses localStorage via helper functions; no import/export UI */}
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <KPICard
-            title="Total Balance (USD)"
-            value={`$${totalBalanceUsd.toFixed(2)}`}
-            icon={Wallet}
-            trend={{ value: "", isPositive: true }}
-            colorScheme="primary"
-          />
-          <KPICard
-            title="Monthly Income (USD)"
-            value={`$${kpiIncome.toFixed(2)}`}
-            icon={TrendingUp}
-            trend={{ value: "", isPositive: true }}
-            colorScheme="secondary"
-          />
-          <KPICard
-            title="Monthly Expenses (USD)"
-            value={`$${kpiExpenses.toFixed(2)}`}
-            icon={TrendingDown}
-            trend={{ value: "", isPositive: false }}
-            colorScheme="accent"
-          />
-        </div>
+        <DashboardStats transactions={txByAccount} />
 
         {/* Main Content with Tabs */}
         <Tabs
