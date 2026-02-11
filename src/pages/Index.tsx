@@ -409,7 +409,7 @@ const Index = () => {
       <main className="container mx-auto px-4 py-8">
         {/* Persistence uses localStorage via helper functions; no import/export UI */}
         {/* KPI Cards */}
-        <DashboardStats transactions={txByAccount} />
+        <DashboardStats transactions={txByAccount} accounts={accounts} rate={rate} />
 
         {/* Main Content with Tabs */}
         <Tabs

@@ -1,9 +1,13 @@
 import { useMemo } from "react";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
-import type { Transaction } from "@/lib/types";
+import type { Account, Transaction } from "@/lib/types";
+import type { ExchangeSnapshot } from "@/lib/rates";
+import { convertToUSD } from "@/lib/rates";
 
 interface DashboardStatsProps {
   transactions: Transaction[];
+  accounts: Account[];
+  rate: ExchangeSnapshot | null;
 }
 
 const normalizeType = (type?: string | null) => {
@@ -20,7 +24,7 @@ const toUsd = (tx: Transaction) => {
   return 0;
 };
 
-export function DashboardStats({ transactions }: DashboardStatsProps) {
+export function DashboardStats({ transactions, accounts, rate }: DashboardStatsProps) {
   const { totalBalance, monthlyIncome, monthlyExpenses } = useMemo(() => {
     const now = new Date();
     const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -33,6 +37,11 @@ export function DashboardStats({ transactions }: DashboardStatsProps) {
     let expenseTotal = 0;
     let monthIncome = 0;
     let monthExpense = 0;
+
+    const totalBalanceUsd = accounts.reduce((sum, acc) => {
+      const usd = convertToUSD(acc.balance || 0, acc.currency, rate);
+      return sum + (usd ?? 0);
+    }, 0);
 
     for (const tx of transactions) {
       const type = normalizeType(tx.type);
@@ -47,11 +56,11 @@ export function DashboardStats({ transactions }: DashboardStatsProps) {
     }
 
     return {
-      totalBalance: incomeTotal - expenseTotal,
+      totalBalance: totalBalanceUsd,
       monthlyIncome: monthIncome,
       monthlyExpenses: monthExpense,
     };
-  }, [transactions]);
+  }, [transactions, accounts, rate]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
