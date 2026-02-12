@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import type { Account, Transaction } from "@/lib/types";
+import type { GlobalBalance } from "@/lib/summary";
 import type { ExchangeSnapshot } from "@/lib/rates";
 import { convertToUSD } from "@/lib/rates";
 
@@ -8,6 +9,7 @@ interface DashboardStatsProps {
   transactions: Transaction[];
   accounts: Account[];
   rate: ExchangeSnapshot | null;
+  balanceSummary?: GlobalBalance | null;
 }
 
 const normalizeType = (type?: string | null) => {
@@ -24,7 +26,7 @@ const toUsd = (tx: Transaction) => {
   return 0;
 };
 
-export function DashboardStats({ transactions, accounts, rate }: DashboardStatsProps) {
+export function DashboardStats({ transactions, accounts, rate, balanceSummary }: DashboardStatsProps) {
   const { totalBalance, monthlyIncome, monthlyExpenses } = useMemo(() => {
     const now = new Date();
     const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -62,13 +64,17 @@ export function DashboardStats({ transactions, accounts, rate }: DashboardStatsP
     };
   }, [transactions, accounts, rate]);
 
+  const displayTotalBalance = balanceSummary?.accounts_total_usd ?? totalBalance;
+  const displayMonthlyIncome = balanceSummary?.income_total_usd ?? monthlyIncome;
+  const displayMonthlyExpenses = balanceSummary?.expense_total_usd ?? monthlyExpenses;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
       <div className="rounded-lg bg-card text-card-foreground p-6 shadow-md hover:shadow-lg transition-all duration-300 border-0">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <p className="text-sm text-muted-foreground mb-2">Total Balance (USD)</p>
-            <h3 className="text-3xl font-bold text-foreground mb-2">${totalBalance.toFixed(2)}</h3>
+            <h3 className="text-3xl font-bold text-foreground mb-2">${displayTotalBalance.toFixed(2)}</h3>
             <p className="text-sm font-medium text-primary">+</p>
           </div>
           <div className="p-3 rounded-xl bg-primary-light text-primary-foreground">
@@ -81,7 +87,7 @@ export function DashboardStats({ transactions, accounts, rate }: DashboardStatsP
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <p className="text-sm text-muted-foreground mb-2">Monthly Income (USD)</p>
-            <h3 className="text-3xl font-bold text-foreground mb-2">${monthlyIncome.toFixed(2)}</h3>
+            <h3 className="text-3xl font-bold text-foreground mb-2">${displayMonthlyIncome.toFixed(2)}</h3>
             <p className="text-sm font-medium text-primary">+</p>
           </div>
           <div className="p-3 rounded-xl bg-secondary-light text-secondary-foreground">
@@ -94,7 +100,7 @@ export function DashboardStats({ transactions, accounts, rate }: DashboardStatsP
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <p className="text-sm text-muted-foreground mb-2">Monthly Expenses (USD)</p>
-            <h3 className="text-3xl font-bold text-foreground mb-2">${monthlyExpenses.toFixed(2)}</h3>
+            <h3 className="text-3xl font-bold text-foreground mb-2">${displayMonthlyExpenses.toFixed(2)}</h3>
             <p className="text-sm font-medium text-destructive"></p>
           </div>
           <div className="p-3 rounded-xl bg-accent-light text-accent-foreground">

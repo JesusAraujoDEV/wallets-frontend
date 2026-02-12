@@ -24,7 +24,7 @@ import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from 
 import { AuthApi, type AuthUser } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
 import { useVESExchangeRate, convertToUSD } from "@/lib/rates";
-import { fetchIncomeMonthly, fetchExpenseMonthly } from "@/lib/summary";
+import { fetchIncomeMonthly, fetchExpenseMonthly, fetchGlobalBalance, type GlobalBalance } from "@/lib/summary";
 import { isBalanceAdjustmentCategory, isBalanceAdjustmentPlus } from "@/lib/utils";
 import type { Account, Category, Transaction } from "@/lib/types";
 import { fetchNetCashFlow, fetchSpendingHeatmap, fetchExpenseVolatility, fetchComparativeMoM, fetchMonthlyForecast, fetchIncomeHeatmap, fetchIncomeVolatility, fetchComparativeMoMIncome } from "@/lib/stats";
@@ -53,6 +53,7 @@ const Index = () => {
   const [incomeVolatilityData, setIncomeVolatilityData] = useState<any[]>([]);
   const [incomeMomData, setIncomeMomData] = useState<{ summary: any; categories: any[] }>({ summary: { current_total: 0, total_delta_percent: 0, total_delta_usd: 0 }, categories: [] });
   const [forecastData, setForecastData] = useState<{ budget_total: number; current_spending_mtd: number; projected_total_spending: number; projected_over_under: number }>({ budget_total: 0, current_spending_mtd: 0, projected_total_spending: 0, projected_over_under: 0 });
+  const [balanceSummary, setBalanceSummary] = useState<GlobalBalance | null>(null);
 
   const allowedPages = useMemo(() => new Set(["dashboard", "transactions", "categories", "accounts"]), []);
   const pageFromUrl = searchParams.get("page") || "";
@@ -208,6 +209,22 @@ const Index = () => {
   }, [txByAccount, categories, accounts, rate, expenseFilterSet, selectedExpenseCats.length, statsScope]);
 
   const [trendData, setTrendData] = useState<{ month: string; income: number; expenses: number }[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    const accountIds = selectedAccount !== "all" ? [selectedAccount] : undefined;
+    (async () => {
+      try {
+        const summary = await fetchGlobalBalance({ month: monthKey, accountIds });
+        if (!alive) return;
+        setBalanceSummary(summary);
+      } catch {
+        if (!alive) return;
+        setBalanceSummary(null);
+      }
+    })();
+    return () => { alive = false; };
+  }, [monthKey, selectedAccount]);
 
   useEffect(() => {
     let alive = true;
@@ -409,7 +426,7 @@ const Index = () => {
       <main className="container mx-auto px-4 py-8">
         {/* Persistence uses localStorage via helper functions; no import/export UI */}
         {/* KPI Cards */}
-        <DashboardStats transactions={txByAccount} accounts={accounts} rate={rate} />
+        <DashboardStats transactions={txByAccount} accounts={accounts} rate={rate} balanceSummary={balanceSummary} />
 
         {/* Main Content with Tabs */}
         <Tabs
