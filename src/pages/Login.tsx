@@ -277,7 +277,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
           </div>
 
           <div className="mb-6 flex justify-center">
-            <div className="w-full">
+            <div className="flex justify-center">
               {googleClientIdConfigured ? (
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
@@ -293,7 +293,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                 <button
                   type="button"
                   disabled
-                  className="w-full h-11 rounded-lg bg-gray-100 text-gray-500 text-sm font-semibold border border-gray-200"
+                  className="h-11 rounded-lg bg-gray-100 text-gray-500 text-sm font-semibold border border-gray-200 px-5"
                   title="Configura VITE_GOOGLE_CLIENT_ID para habilitar Google"
                 >
                   Continuar con Google (no configurado)
