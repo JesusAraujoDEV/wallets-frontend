@@ -8,7 +8,9 @@ export const EXPENSE_ICON_OPTIONS: string[] = [
   "Gamepad2","Tv","Puzzle","Paperclip",
   "FileText","PenLine","Pencil","Utensils",
   "Pizza","Shirt","SquareParking","Cloud",
-  "Database","GraduationCap","Music2"
+  "Database","GraduationCap","Music2",
+  "Plane","Bus","Dumbbell","Beer","Coffee","PawPrint","Wrench","Zap",
+  "Smartphone","Wifi","Baby","Hammer"
 ];
 
 export const INCOME_ICON_OPTIONS: string[] = [
