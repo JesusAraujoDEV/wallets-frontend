@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import TelegramLogin from "./pages/TelegramLogin";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import RequireAuth from "@/components/RequireAuth";
 import GlobalLoadingBar from "@/components/GlobalLoadingBar";
 import NotFound from "./pages/NotFound";
@@ -21,6 +23,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/telegram-login" element={<TelegramLogin />} />
           <Route path="/" element={
             <RequireAuth>

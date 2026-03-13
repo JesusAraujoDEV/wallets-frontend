@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, AtSign, Lock, Mail, User } from "lucide-react";
+import { Link } from "react-router-dom";
 import { AuthApi, type AuthSession } from "@/lib/auth";
 import { isValidEmail, sanitizeEmailInput, sanitizeNameInput, sanitizeUsernameInput } from "@/lib/validation";
 import { useToast } from "@/components/ui/use-toast";
@@ -450,6 +451,14 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
               />
               {fieldErrors.password && <p className="mt-1 text-xs text-red-500">{fieldErrors.password}</p>}
             </div>
+
+            {isLogin && (
+              <div className="-mt-1 flex justify-end">
+                <Link to="/forgot-password" className="text-sm text-emerald-600 hover:underline">
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
+            )}
 
             <button
               type="submit"

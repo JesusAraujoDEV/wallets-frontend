@@ -19,7 +19,7 @@ export const onNetworkActivity = (handler: (count: number) => void) => {
 };
 const emitNet = () => bus.dispatchEvent(new Event("net"));
 
-async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
+export async function trackedApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     inFlight++;
     emitNet();
@@ -28,6 +28,10 @@ async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
     inFlight = Math.max(0, inFlight - 1);
     emitNet();
   }
+}
+
+async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
+  return trackedApiFetch<T>(path, init);
 }
 
 // In-memory caches to keep sync API surface for components

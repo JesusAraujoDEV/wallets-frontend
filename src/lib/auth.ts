@@ -2,6 +2,7 @@ export type AuthUser = { id: string | number; username: string };
 export type AuthSession = { token: string; user: AuthUser };
 
 import { apiFetch, setToken, getToken } from "./http";
+import { trackedApiFetch } from "./storage";
 
 export const AuthApi = {
   async login(payload: { username?: string; email?: string; password: string }): Promise<AuthSession> {
@@ -48,6 +49,18 @@ export const AuthApi = {
       // Always clear local token
       setToken(null);
     }
+  },
+  async forgotPassword(email: string): Promise<{ ok?: boolean; message?: string }> {
+    return trackedApiFetch<{ ok?: boolean; message?: string }>(`auth/forgot-password`, {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  },
+  async resetPassword(token: string, newPassword: string): Promise<{ ok?: boolean; message?: string }> {
+    return apiFetch<{ ok?: boolean; message?: string }>(`auth/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ token, newPassword }),
+    });
   },
   token(): string | null {
     return getToken();
