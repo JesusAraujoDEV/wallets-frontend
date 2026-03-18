@@ -1,11 +1,14 @@
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthApi } from "@/lib/auth";
 import type { AuthProfileResponse } from "@/lib/types";
-import { Loader2, LogOut, Mail, UserCircle2 } from "lucide-react";
+import { Loader2, PencilLine } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
 
 function ProfileField({ label, value }: { label: string; value: string }) {
   return (
@@ -19,9 +22,20 @@ function ProfileField({ label, value }: { label: string; value: string }) {
 export default function Profile() {
   const [user, setUser] = useState<AuthProfileResponse["user"] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loggingOut, setLoggingOut] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting },
+  } = useForm<{ name: string; email: string; username: string }>({
+    defaultValues: {
+      name: "",
+      email: "",
+      username: "",
+    },
+  });
 
   useEffect(() => {
     let alive = true;
@@ -31,6 +45,11 @@ export default function Profile() {
         const response = await AuthApi.me();
         if (alive) {
           setUser(response.user);
+          reset({
+            name: response.user.name || "",
+            email: response.user.email || "",
+            username: response.user.username || "",
+          });
         }
       } catch (error) {
         if (alive) {
@@ -50,30 +69,74 @@ export default function Profile() {
     return () => {
       alive = false;
     };
-  }, [toast]);
+  }, [toast, reset]);
 
-  async function handleLogout() {
-    try {
-      setLoggingOut(true);
-      await AuthApi.logout();
-      navigate("/login", { replace: true });
-    } finally {
-      setLoggingOut(false);
+  const onSubmit = handleSubmit(async (values) => {
+    if (!user) return;
+
+    const nextName = values.name.trim();
+    const nextEmail = values.email.trim();
+    const nextUsername = values.username.trim();
+
+    const payload = {
+      ...(nextName !== user.name ? { name: nextName } : {}),
+      ...(nextEmail !== user.email ? { email: nextEmail } : {}),
+      ...(nextUsername !== user.username ? { username: nextUsername } : {}),
+    };
+
+    if (Object.keys(payload).length === 0) {
+      setIsEditing(false);
+      toast({ title: "Sin cambios", description: "No hay datos nuevos para actualizar." });
+      return;
     }
-  }
+
+    try {
+      const updatedUser = await AuthApi.updateProfile(payload);
+      setUser(updatedUser);
+      reset({
+        name: updatedUser.name || "",
+        email: updatedUser.email || "",
+        username: updatedUser.username || "",
+      });
+      setIsEditing(false);
+      toast({ title: "Perfil actualizado", description: "Tus datos se guardaron correctamente." });
+    } catch (error) {
+      toast({
+        title: "No se pudo actualizar el perfil",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const userInitials = (user?.name || user?.username || "U")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("");
 
   return (
     <div className="space-y-6">
       <Card className="border-slate-200 bg-white shadow-sm">
         <CardHeader className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600">
-              <UserCircle2 className="h-6 w-6" />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-14 w-14 border border-emerald-100 bg-emerald-50 text-emerald-700">
+                <AvatarFallback className="bg-emerald-50 text-base font-semibold text-emerald-700">{userInitials || "U"}</AvatarFallback>
+              </Avatar>
+              <div>
+                <CardTitle className="text-2xl text-slate-950">Perfil</CardTitle>
+                <CardDescription>Consulta tus datos personales y mantiene tu informacion al dia.</CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-2xl text-slate-950">Perfil</CardTitle>
-              <CardDescription>Consulta tus datos de sesión y gestiona el cierre de sesión desde una vista dedicada.</CardDescription>
-            </div>
+
+            {!isEditing ? (
+              <Button variant="outline" className="w-full gap-2 sm:w-auto" onClick={() => setIsEditing(true)} disabled={loading}>
+                <PencilLine className="h-4 w-4" />
+                Editar perfil
+              </Button>
+            ) : null}
           </div>
         </CardHeader>
 
@@ -83,30 +146,58 @@ export default function Profile() {
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Cargando perfil...
             </div>
-          ) : (
+          ) : !isEditing ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <ProfileField label="Nombre" value={user?.name || "No disponible"} />
               <ProfileField label="Email" value={user?.email || "No disponible"} />
               <ProfileField label="Username" value={user?.username || "No disponible"} />
             </div>
+          ) : (
+            <form className="space-y-4" onSubmit={onSubmit}>
+              <div className="space-y-2">
+                <Label htmlFor="profile-name">Nombre</Label>
+                <Input id="profile-name" {...register("name", { required: true })} placeholder="Tu nombre" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="profile-email">Email</Label>
+                <Input id="profile-email" type="email" {...register("email", { required: true })} placeholder="tu@email.com" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="profile-username">Username</Label>
+                <Input id="profile-username" {...register("username", { required: true })} placeholder="tu_usuario" />
+              </div>
+
+              <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditing(false);
+                    reset({
+                      name: user?.name || "",
+                      email: user?.email || "",
+                      username: user?.username || "",
+                    });
+                  }}
+                  disabled={isSubmitting}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    "Guardar cambios"
+                  )}
+                </Button>
+              </div>
+            </form>
           )}
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-            <div className="flex items-center gap-2 font-medium text-slate-900">
-              <Mail className="h-4 w-4" />
-              Estado de cuenta
-            </div>
-            <p className="mt-2">
-              Tu información se obtiene desde <span className="font-medium">AuthApi.me()</span> y permanece protegida dentro del bloque privado del router.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
-            <Button variant="destructive" onClick={handleLogout} disabled={loggingOut || loading}>
-              {loggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-              Cerrar sesión
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>

@@ -52,6 +52,14 @@ export interface AuthProfileResponse {
   user: AuthUser;
 }
 
+export interface UpdateProfilePayload {
+  name?: string;
+  email?: string;
+  username?: string;
+}
+
+export type UpdateProfileResponse = AuthUser | AuthProfileResponse;
+
 export interface GenericSuccessResponse {
   success: boolean;
   message: string;

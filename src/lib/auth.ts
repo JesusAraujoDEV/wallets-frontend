@@ -1,6 +1,13 @@
 import { apiFetch, setToken, getToken } from "./http";
 import { trackedApiFetch } from "./storage";
-import type { AuthProfileResponse, AuthSession, AuthUser, GenericSuccessResponse } from "./types";
+import type {
+  AuthProfileResponse,
+  AuthSession,
+  AuthUser,
+  GenericSuccessResponse,
+  UpdateProfilePayload,
+  UpdateProfileResponse,
+} from "./types";
 
 export type { AuthProfileResponse, AuthSession, AuthUser } from "./types";
 
@@ -47,6 +54,18 @@ export const AuthApi = {
   async me(): Promise<AuthProfileResponse> {
     const out = await apiFetch<AuthProfileResponse>(`auth/me`, { method: "GET" });
     return { ...out, user: { ...out.user, id: String(out.user.id) } };
+  },
+  async updateProfile(data: UpdateProfilePayload): Promise<AuthUser> {
+    const out = await apiFetch<UpdateProfileResponse>(`auth/me`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+
+    if ("user" in out) {
+      return { ...out.user, id: String(out.user.id) };
+    }
+
+    return { ...out, id: String(out.id) };
   },
   async logout(): Promise<void> {
     try {

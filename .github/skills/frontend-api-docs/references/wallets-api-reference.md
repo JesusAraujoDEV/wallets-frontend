@@ -685,6 +685,33 @@ Query: none
 }
 ```
 
+### PATCH /auth/me
+Purpose: Update authenticated user profile fields.
+
+Body:
+```json
+{
+  "name": "string",
+  "email": "user@example.com",
+  "username": "string"
+}
+```
+
+200 response:
+```json
+{
+  "id": 0,
+  "username": "string",
+  "email": "user@example.com",
+  "name": "string"
+}
+```
+
+Errors:
+- `400` invalid request payload
+- `401` unauthorized
+- `409` username/email conflict
+
 ### POST /auth/logout
 Purpose: Symbolic logout.
 
