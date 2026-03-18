@@ -32,7 +32,7 @@ export const CategoryManager = () => {
     name: "",
     type: "expense",
     color: "hsl(var(--chart-6))",
-    colorName: "Pastel Blue",
+    colorName: "Sky Blue",
     icon: null,
   });
   // Bulk include/exclude modal state
@@ -109,7 +109,7 @@ export const CategoryManager = () => {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingCategory(null);
-    setFormData({ name: "", type: "expense", color: "hsl(var(--chart-6))", colorName: "Pastel Blue", icon: null });
+    setFormData({ name: "", type: "expense", color: "hsl(var(--chart-6))", colorName: "Sky Blue", icon: null });
   };
 
   useEffect(() => {

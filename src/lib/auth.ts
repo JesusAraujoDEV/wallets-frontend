@@ -1,12 +1,18 @@
-export type AuthUser = { id: string | number; username: string };
-export type AuthSession = { token: string; user: AuthUser };
-
 import { apiFetch, setToken, getToken } from "./http";
 import { trackedApiFetch } from "./storage";
+import type { AuthProfileResponse, AuthSession, AuthUser, GenericSuccessResponse } from "./types";
+
+export type { AuthProfileResponse, AuthSession, AuthUser } from "./types";
+
+type AuthSessionResponse = {
+  ok: boolean;
+  token: string;
+  user: AuthUser;
+};
 
 export const AuthApi = {
   async login(payload: { username?: string; email?: string; password: string }): Promise<AuthSession> {
-    const out = await apiFetch<{ ok: boolean; token: string; user: { id: number | string; username: string } }>(
+    const out = await apiFetch<AuthSessionResponse>(
       `auth/login`,
       {
         method: "POST",
@@ -14,10 +20,10 @@ export const AuthApi = {
       }
     );
     if (out?.token) setToken(out.token);
-    return { token: out.token, user: { id: String(out.user.id), username: out.user.username } };
+    return { token: out.token, user: { ...out.user, id: String(out.user.id) } };
   },
   async register(payload: { username: string; password: string; name?: string; email?: string }): Promise<AuthSession> {
-    const out = await apiFetch<{ ok: boolean; token: string; user: { id: number | string; username: string } }>(
+    const out = await apiFetch<AuthSessionResponse>(
       `auth/register`,
       {
         method: "POST",
@@ -25,10 +31,10 @@ export const AuthApi = {
       }
     );
     if (out?.token) setToken(out.token);
-    return { token: out.token, user: { id: String(out.user.id), username: out.user.username } };
+    return { token: out.token, user: { ...out.user, id: String(out.user.id) } };
   },
   async googleLogin(googleCredential: string): Promise<AuthSession> {
-    const out = await apiFetch<{ ok: boolean; token: string; user: { id: number | string; username: string } }>(
+    const out = await apiFetch<AuthSessionResponse>(
       `auth/google-login`,
       {
         method: "POST",
@@ -36,11 +42,11 @@ export const AuthApi = {
       }
     );
     if (out?.token) setToken(out.token);
-    return { token: out.token, user: { id: String(out.user.id), username: out.user.username } };
+    return { token: out.token, user: { ...out.user, id: String(out.user.id) } };
   },
-  async me(): Promise<AuthUser> {
-    const out = await apiFetch<{ ok: boolean; user: { id: number | string; username: string } }>(`auth/me`, { method: "GET" });
-    return { id: String(out.user.id), username: out.user.username };
+  async me(): Promise<AuthProfileResponse> {
+    const out = await apiFetch<AuthProfileResponse>(`auth/me`, { method: "GET" });
+    return { ...out, user: { ...out.user, id: String(out.user.id) } };
   },
   async logout(): Promise<void> {
     try {
@@ -50,14 +56,14 @@ export const AuthApi = {
       setToken(null);
     }
   },
-  async forgotPassword(email: string): Promise<{ ok?: boolean; message?: string }> {
-    return trackedApiFetch<{ ok?: boolean; message?: string }>(`auth/forgot-password`, {
+  async forgotPassword(email: string): Promise<GenericSuccessResponse> {
+    return trackedApiFetch<GenericSuccessResponse>(`auth/forgot-password`, {
       method: "POST",
       body: JSON.stringify({ email }),
     });
   },
-  async resetPassword(token: string, newPassword: string): Promise<{ ok?: boolean; message?: string }> {
-    return apiFetch<{ ok?: boolean; message?: string }>(`auth/reset-password`, {
+  async resetPassword(token: string, newPassword: string): Promise<GenericSuccessResponse> {
+    return apiFetch<GenericSuccessResponse>(`auth/reset-password`, {
       method: "POST",
       body: JSON.stringify({ token, newPassword }),
     });

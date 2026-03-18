@@ -10,8 +10,8 @@ export default function RequireAuth({ children }: { children: JSX.Element }) {
     let alive = true;
     (async () => {
       try {
-        const u = await AuthApi.me();
-        if (alive) setUser(u);
+        const response = await AuthApi.me();
+        if (alive) setUser(response.user);
       } catch {
         if (alive) setUser(null);
       } finally {

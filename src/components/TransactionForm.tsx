@@ -48,7 +48,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
   const [newCatName, setNewCatName] = useState("");
   const [creatingCat, setCreatingCat] = useState(false);
   const [newCatColor, setNewCatColor] = useState<string>("hsl(var(--chart-6))");
-  const [newCatColorName, setNewCatColorName] = useState<string>("Pastel Blue");
+  const [newCatColorName, setNewCatColorName] = useState<string>("Sky Blue");
   const [newCatIcon, setNewCatIcon] = useState<string | null>(null);
 
   const ICON_OPTIONS: string[] = getIconOptionsForType(type);
@@ -345,7 +345,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                         }
                         setNewCatName("");
                         setNewCatColor("hsl(var(--chart-6))");
-                        setNewCatColorName("Pastel Blue");
+                        setNewCatColorName("Sky Blue");
                         setNewCatIcon(null);
                         toast({ title: "Category created", description: `${name} added to ${type}.` });
                       } finally {
@@ -366,7 +366,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                       { color: "hsl(var(--chart-3))", name: "Chart 3" },
                       { color: "hsl(var(--chart-4))", name: "Chart 4" },
                       { color: "hsl(var(--chart-5))", name: "Chart 5" },
-                      { color: "hsl(var(--chart-6))", name: "Pastel Blue" },
+                      { color: "hsl(var(--chart-6))", name: "Sky Blue" },
                       { color: "hsl(var(--primary))", name: "Primary" },
                       { color: "hsl(var(--secondary))", name: "Secondary" },
                       { color: "hsl(var(--accent))", name: "Accent" },

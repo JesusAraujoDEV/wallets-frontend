@@ -11,23 +11,17 @@ import { ComparativeMoMIncome } from "@/components/ComparativeMoMIncome";
 import { MonthlyForecastGauge } from "@/components/MonthlyForecastGauge";
 import { TrendLineChart } from "@/components/TrendLineChart";
 import { BudgetComparisonChart } from "@/components/BudgetComparisonChart";
-import { TransactionsList } from "@/components/TransactionsList";
-import { TransactionsCalendar } from "../components/TransactionsCalendar";
-import { CategoryManager } from "@/components/CategoryManager";
-import { AccountManager } from "@/components/AccountManager";
 import { AccountSelector } from "@/components/AccountSelector";
 import CategoryMultiSelect from "@/components/CategoryMultiSelect";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// No import/export UI; data persistence handled via storage functions
-import { useSearchParams } from "react-router-dom";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AuthApi } from "@/lib/auth";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
-import { AuthApi, type AuthUser } from "@/lib/auth";
-import { useNavigate } from "react-router-dom";
 import { useVESExchangeRate, convertToUSD } from "@/lib/rates";
 import { fetchIncomeMonthly, fetchExpenseMonthly, fetchGlobalBalance, type GlobalBalance } from "@/lib/summary";
 import { isBalanceAdjustmentCategory, isBalanceAdjustmentPlus } from "@/lib/utils";
-import type { Account, Category, Transaction } from "@/lib/types";
+import type { Account, Category, Transaction, AuthUser } from "@/lib/types";
 import { fetchNetCashFlow, fetchSpendingHeatmap, fetchExpenseVolatility, fetchComparativeMoM, fetchMonthlyForecast, fetchIncomeHeatmap, fetchIncomeVolatility, fetchComparativeMoMIncome } from "@/lib/stats";
+import { useNavigate } from "react-router-dom";
 
 // Dashboard data is derived from localStorage (JSON DB)
 
@@ -39,10 +33,9 @@ const Index = () => {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [selectedIncomeCats, setSelectedIncomeCats] = useState<string[]>([]);
   const [selectedExpenseCats, setSelectedExpenseCats] = useState<string[]>([]);
+  const navigate = useNavigate();
   const { rate } = useVESExchangeRate();
   const [statsScope, setStatsScope] = useState<"all" | "only" | "exclude">("all");
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   // New stats datasets
   const [netFlowData, setNetFlowData] = useState<{ summary?: any; series: any[] }>({ summary: undefined, series: [] });
   const [heatmapData, setHeatmapData] = useState<{ categories: string[]; weekdays: string[]; data_points: any[] }>({ categories: [], weekdays: [], data_points: [] });
@@ -55,22 +48,6 @@ const Index = () => {
   const [forecastData, setForecastData] = useState<{ budget_total: number; current_spending_mtd: number; projected_total_spending: number; projected_over_under: number }>({ budget_total: 0, current_spending_mtd: 0, projected_total_spending: 0, projected_over_under: 0 });
   const [balanceSummary, setBalanceSummary] = useState<GlobalBalance | null>(null);
 
-  const allowedPages = useMemo(() => new Set(["dashboard", "transactions", "categories", "accounts"]), []);
-  const pageFromUrl = searchParams.get("page") || "";
-  const normalizedPage = pageFromUrl.toLowerCase();
-  const currentPage = allowedPages.has(normalizedPage) ? normalizedPage : "dashboard";
-
-  // Ensure the URL always contains a valid ?page=<value>
-  useEffect(() => {
-    if (!allowedPages.has(normalizedPage)) {
-      const next = new URLSearchParams(searchParams);
-      next.set("page", "dashboard");
-      // Replace to avoid adding an extra history entry on first load
-      setSearchParams(next, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  
   // Load JSON DB contents and subscribe to changes
   useEffect(() => {
     const load = () => {
@@ -110,20 +87,21 @@ const Index = () => {
     localStorage.setItem("dashboard.categoryFilters", payload);
   }, [selectedIncomeCats, selectedExpenseCats]);
 
-  // Fetch current user for header title
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const u = await AuthApi.me();
-        if (alive) setAuthUser(u);
+        const response = await AuthApi.me();
+        if (alive) setAuthUser(response.user);
       } catch {
-        // ignore; RequireAuth handles redirect when not authenticated
+        if (alive) setAuthUser(null);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, []);
-  
+
   const now = new Date();
   const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const isCurrentMonth = (iso: string) => {
@@ -410,7 +388,7 @@ const Index = () => {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-6 flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{authUser?.username ? `${authUser.username}'s Financial Dashboard` : 'Financial Dashboard'}</h1>
+            <h1 className="text-3xl font-bold text-foreground">{authUser?.username ? `${authUser.username} Dashboard` : "Dashboard"}</h1>
             <p className="text-muted-foreground mt-1">Track your finances with clarity</p>
           </div>
           <button
@@ -423,169 +401,88 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Persistence uses localStorage via helper functions; no import/export UI */}
-        {/* KPI Cards */}
-        <DashboardStats transactions={txByAccount} accounts={accounts} rate={rate} balanceSummary={balanceSummary} />
+      <DashboardStats transactions={txByAccount} accounts={accounts} rate={rate} balanceSummary={balanceSummary} />
 
-        {/* Main Content with Tabs */}
-        <Tabs
-          value={currentPage}
-          onValueChange={(val) => {
-            const next = new URLSearchParams(searchParams);
-            next.set("page", val);
-            // Push a new history entry so Back works between tabs
-            setSearchParams(next, { replace: false });
-          }}
-          className="space-y-6"
-        >
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="transactions">Transactions</TabsTrigger>
-            <TabsTrigger value="categories">Categories</TabsTrigger>
-            <TabsTrigger value="accounts">Accounts</TabsTrigger>
-          </TabsList>
+      <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+        <AccountSelector selectedAccount={selectedAccount} onAccountChange={setSelectedAccount} />
 
-          {/* Dashboard Tab */}
-          <TabsContent value="dashboard" className="space-y-6">
-            <AccountSelector 
-              selectedAccount={selectedAccount}
-              onAccountChange={setSelectedAccount}
-            />
-            {/* Category scope tabs (affects charts; KPIs stay includeInStats=1) */}
-            <div className="mb-4">
-              <Tabs value={statsScope} onValueChange={(v) => setStatsScope(v as any)}>
-                <TabsList className="grid grid-cols-3 w-full md:w-auto md:inline-grid">
-                  <TabsTrigger value="all">All categories</TabsTrigger>
-                  <TabsTrigger value="only">Only included in stats</TabsTrigger>
-                  <TabsTrigger value="exclude">Only excluded in stats</TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <p className="text-xs text-muted-foreground mt-2">Tabs and selected Expense categories filter Pie, Budget, Trends y las gráficas avanzadas (Heatmap, Volatility, MoM). Las llamadas al servidor usan includeInStats; además las categorías seleccionadas limitan lo mostrado.</p>
-            </div>
-            
-            {selectedAccount === "all" ? (
-              <div className="mb-4 p-4 bg-primary-light/30 rounded-lg border border-primary/20">
-                <p className="text-sm text-foreground flex items-center gap-2">
-                  <span className="font-semibold">Global Dashboard View:</span>
-                  Showing aggregated data across all accounts
-                </p>
-              </div>
-            ) : (
-              <div className="mb-4 p-4 bg-secondary-light/30 rounded-lg border border-secondary/20">
-                <p className="text-sm text-foreground flex items-center gap-2">
-                  <span className="font-semibold">Account Dashboard View:</span>
-                  Showing data for selected account only
-                </p>
-              </div>
-            )}
+        <div className="space-y-2">
+          <Tabs value={statsScope} onValueChange={(value) => setStatsScope(value as typeof statsScope)}>
+            <TabsList className="grid w-full grid-cols-1 gap-2 bg-transparent p-0 md:inline-grid md:w-auto md:grid-cols-3">
+              <TabsTrigger value="all">All categories</TabsTrigger>
+              <TabsTrigger value="only">Only included in stats</TabsTrigger>
+              <TabsTrigger value="exclude">Only excluded in stats</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <p className="text-xs text-slate-500">
+            Tabs and selected categories filter pie, budget, trends and advanced charts. Server calls still respect the backend includeInStats contract.
+          </p>
+        </div>
 
-            {/* Category Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <CategoryMultiSelect
-                label="Elegir categorías Income"
-                categories={visibleIncomeCategories}
-                selected={selectedIncomeCats}
-                onChange={setSelectedIncomeCats}
-                placeholder="Todas las categorías de Income"
-              />
-              <CategoryMultiSelect
-                label="Elegir categorías Expense"
-                categories={visibleExpenseCategories}
-                selected={selectedExpenseCats}
-                onChange={setSelectedExpenseCats}
-                placeholder="Todas las categorías de Expense"
-              />
-            </div>
+        {selectedAccount === "all" ? (
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <span className="font-semibold">Global Dashboard View:</span> Showing aggregated data across all accounts.
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+            <span className="font-semibold">Account Dashboard View:</span> Showing data for the selected account only.
+          </div>
+        )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ExpensePieChart 
-                data={expensePieData}
-                onSliceClick={(catId) => {
-                  if (!catId) return;
-                  setSelectedExpenseCats((prev) => {
-                    const set = new Set(prev);
-                    if (set.has(catId)) {
-                      return prev.filter((x) => x !== catId);
-                    }
-                    return [...prev, catId];
-                  });
-                }}
-              />
-              <TrendLineChart data={trendData} />
-            </div>
-            <div>
-              <BudgetComparisonChart data={budgetData} />
-            </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <CategoryMultiSelect
+            label="Elegir categorías Income"
+            categories={visibleIncomeCategories}
+            selected={selectedIncomeCats}
+            onChange={setSelectedIncomeCats}
+            placeholder="Todas las categorías de Income"
+          />
+          <CategoryMultiSelect
+            label="Elegir categorías Expense"
+            categories={visibleExpenseCategories}
+            selected={selectedExpenseCats}
+            onChange={setSelectedExpenseCats}
+            placeholder="Todas las categorías de Expense"
+          />
+        </div>
 
-            {/* New Advanced Stats section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <NetCashFlowChart summary={netFlowData.summary} data={netFlowData.series} />
-              <MonthlyForecastGauge {...forecastData} />
-            </div>
-            {/* Heatmaps side-by-side */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <SpendingHeatmap {...heatmapData} />
-              <IncomeHeatmap {...incomeHeatmapData} />
-            </div>
-            {/* Volatility charts side-by-side */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ExpenseVolatilityBoxPlot categories={volatilityData} />
-              <IncomeVolatilityBoxPlot categories={incomeVolatilityData} />
-            </div>
-            {/* Comparative MoM (expense then income) */}
-            <div>
-              {momData?.summary ? (
-                <ComparativeMoM summary={momData.summary} categories={momData.categories} />
-              ) : null}
-            </div>
-            <div>
-              {incomeMomData?.summary ? (
-                <ComparativeMoMIncome summary={incomeMomData.summary} categories={incomeMomData.categories} />
-              ) : null}
-            </div>
-          </TabsContent>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ExpensePieChart
+            data={expensePieData}
+            onSliceClick={(catId) => {
+              if (!catId) return;
+              setSelectedExpenseCats((prev) => {
+                const set = new Set(prev);
+                if (set.has(catId)) {
+                  return prev.filter((x) => x !== catId);
+                }
+                return [...prev, catId];
+              });
+            }}
+          />
+          <TrendLineChart data={trendData} />
+        </div>
 
-          {/* Transactions Tab */}
-          <TabsContent value="transactions">
-            {/* Nested tabs for list vs calendar (persist view in URL as transactionsView) */}
-            {
-              (() => {
-                const currentView = searchParams.get('transactionsView') || 'list';
-                return (
-                  <Tabs value={currentView} onValueChange={(v) => {
-                    const next = new URLSearchParams(searchParams);
-                    next.set('page', 'transactions');
-                    next.set('transactionsView', v);
-                    setSearchParams(next, { replace: false });
-                  }} className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-grid">
-                      <TabsTrigger value="list">Listado</TabsTrigger>
-                      <TabsTrigger value="calendar">Calendario</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="list">
-                      <TransactionsList />
-                    </TabsContent>
-                    <TabsContent value="calendar">
-                      <TransactionsCalendar selectedAccount={selectedAccount} />
-                    </TabsContent>
-                  </Tabs>
-                );
-              })()
-            }
-          </TabsContent>
+        <BudgetComparisonChart data={budgetData} />
 
-          {/* Categories Tab */}
-          <TabsContent value="categories">
-            <CategoryManager />
-          </TabsContent>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <NetCashFlowChart summary={netFlowData.summary} data={netFlowData.series} />
+          <MonthlyForecastGauge {...forecastData} />
+        </div>
 
-          {/* Accounts Tab */}
-          <TabsContent value="accounts">
-            <AccountManager />
-          </TabsContent>
-        </Tabs>
-      </main>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <SpendingHeatmap {...heatmapData} />
+          <IncomeHeatmap {...incomeHeatmapData} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ExpenseVolatilityBoxPlot categories={volatilityData} />
+          <IncomeVolatilityBoxPlot categories={incomeVolatilityData} />
+        </div>
+
+        {momData?.summary ? <ComparativeMoM summary={momData.summary} categories={momData.categories} /> : null}
+        {incomeMomData?.summary ? <ComparativeMoMIncome summary={incomeMomData.summary} categories={incomeMomData.categories} /> : null}
+      </section>
     </div>
   );
 };

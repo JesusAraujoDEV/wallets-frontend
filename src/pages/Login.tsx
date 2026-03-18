@@ -15,7 +15,7 @@ type LoginProps = {
 
 function authPanelCopy(isLogin: boolean) {
   return {
-    title: isLogin ? "Bienvenido a tu\nLibertad Financiera." : "Únete al\nTeam Aura.",
+    title: isLogin ? "Bienvenido a\nPlatica." : "Únete a\nPlatica.",
     description: isLogin
       ? "Tus finanzas claras, tus metas cerca. Entra y mira cómo crece tu imperio."
       : "El primer paso para dominar tu dinero empieza aquí. Es simple, rápido y seguro.",
@@ -239,7 +239,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-emerald-400/20 rounded-full translate-x-1/3 translate-y-1/3 blur-3xl" />
 
         <div className="z-10">
-          <div className="text-3xl font-bold tracking-wider">Wallets.</div>
+          <div className="text-3xl font-bold tracking-wider">Platica</div>
         </div>
 
         <div className="z-10 mb-20">

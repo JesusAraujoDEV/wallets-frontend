@@ -34,3 +34,26 @@ export interface DataBundle {
   categories: Category[];
   transactions: Transaction[];
 }
+
+export interface AuthUser {
+  id: string | number;
+  username: string;
+  email: string;
+  name: string;
+}
+
+export interface AuthSession {
+  token: string;
+  user: AuthUser;
+}
+
+export interface AuthProfileResponse {
+  ok: boolean;
+  user: AuthUser;
+}
+
+export interface GenericSuccessResponse {
+  success: boolean;
+  message: string;
+  data: Record<string, never>;
+}
