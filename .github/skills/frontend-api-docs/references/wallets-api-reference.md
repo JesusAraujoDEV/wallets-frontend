@@ -615,7 +615,8 @@ Body:
     "id": 0,
     "username": "string",
     "email": "user@example.com",
-    "name": "string"
+    "name": "string",
+    "auth_provider": "local"
   }
 }
 ```
@@ -652,7 +653,8 @@ Body:
     "id": 0,
     "username": "string",
     "email": "user@example.com",
-    "name": "string"
+    "name": "string",
+    "auth_provider": "local"
   }
 }
 ```
@@ -680,7 +682,8 @@ Query: none
     "id": 0,
     "username": "string",
     "email": "user@example.com",
-    "name": "string"
+    "name": "string",
+    "auth_provider": "local"
   }
 }
 ```
@@ -703,7 +706,8 @@ Body:
   "id": 0,
   "username": "string",
   "email": "user@example.com",
-  "name": "string"
+  "name": "string",
+  "auth_provider": "local"
 }
 ```
 
@@ -770,6 +774,60 @@ Body:
 Errors:
 - `400` invalid/expired token or invalid request
 - `500` internal server error
+
+### POST /api/auth/email-change/request
+Purpose: Generate OTP sent to current (old) email before email change.
+
+Body:
+```json
+{
+  "currentPassword": "string"
+}
+```
+
+200 response:
+- OK (OTP generated and sent to old email).
+
+### POST /api/auth/email-change/verify-old
+Purpose: Validate OTP from old email and trigger OTP to the new email.
+
+Body:
+```json
+{
+  "code": "string",
+  "newEmail": "user@example.com"
+}
+```
+
+200 response:
+- OK (old email OTP validated, new email OTP sent).
+
+### POST /api/auth/email-change/confirm
+Purpose: Validate OTP sent to new email and persist email update.
+
+Body:
+```json
+{
+  "code": "string",
+  "newEmail": "user@example.com"
+}
+```
+
+200 response:
+- OK (new email OTP validated, email updated in database).
+
+### POST /api/auth/unlink-google
+Purpose: Unlink Google auth provider and assign local password.
+
+Body:
+```json
+{
+  "newPassword": "string"
+}
+```
+
+200 response:
+- OK (Google account unlinked and local password set).
 
 ---
 
@@ -1010,6 +1068,9 @@ Errors:
 
 ## Schema names exposed by API docs
 
+User schema update:
+- `User.auth_provider` (string): `local | google`
+
 - `Account`
 - `AccountCreate`
 - `AccountUpdate`
@@ -1021,6 +1082,10 @@ Errors:
 - `RegisterResponse`
 - `ForgotPasswordRequest`
 - `ResetPasswordRequest`
+- `EmailChangeRequest`
+- `EmailChangeVerifyOldRequest`
+- `EmailChangeConfirmRequest`
+- `UnlinkGoogleRequest`
 - `GenericSuccessResponse`
 - `Category`
 - `CategoryCreate`
