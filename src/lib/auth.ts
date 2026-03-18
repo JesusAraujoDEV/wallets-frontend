@@ -4,9 +4,13 @@ import type {
   AuthProfileResponse,
   AuthSession,
   AuthUser,
+  ConfirmNewEmailPayload,
   GenericSuccessResponse,
+  RequestEmailChangePayload,
+  UnlinkGooglePayload,
   UpdateProfilePayload,
   UpdateProfileResponse,
+  VerifyOldEmailOtpPayload,
 } from "./types";
 
 export type { AuthProfileResponse, AuthSession, AuthUser } from "./types";
@@ -79,6 +83,30 @@ export const AuthApi = {
     return trackedApiFetch<GenericSuccessResponse>(`auth/forgot-password`, {
       method: "POST",
       body: JSON.stringify({ email }),
+    });
+  },
+  async requestEmailChange(payload: RequestEmailChangePayload): Promise<void> {
+    await apiFetch<unknown>(`auth/email-change/request`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  async verifyOldEmailOtp(payload: VerifyOldEmailOtpPayload): Promise<void> {
+    await apiFetch<unknown>(`auth/email-change/verify-old`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  async confirmNewEmail(payload: ConfirmNewEmailPayload): Promise<void> {
+    await apiFetch<unknown>(`auth/email-change/confirm`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  async unlinkGoogle(payload: UnlinkGooglePayload): Promise<void> {
+    await apiFetch<unknown>(`auth/unlink-google`, {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
   },
   async resetPassword(token: string, newPassword: string): Promise<GenericSuccessResponse> {

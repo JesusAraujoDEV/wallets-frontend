@@ -616,7 +616,7 @@ Body:
     "username": "string",
     "email": "user@example.com",
     "name": "string",
-    "auth_provider": "local"
+    "authProvider": "local"
   }
 }
 ```
@@ -654,7 +654,7 @@ Body:
     "username": "string",
     "email": "user@example.com",
     "name": "string",
-    "auth_provider": "local"
+    "authProvider": "local"
   }
 }
 ```
@@ -683,7 +683,7 @@ Query: none
     "username": "string",
     "email": "user@example.com",
     "name": "string",
-    "auth_provider": "local"
+    "authProvider": "local"
   }
 }
 ```
@@ -707,7 +707,7 @@ Body:
   "username": "string",
   "email": "user@example.com",
   "name": "string",
-  "auth_provider": "local"
+  "authProvider": "local"
 }
 ```
 
@@ -1069,7 +1069,7 @@ Errors:
 ## Schema names exposed by API docs
 
 User schema update:
-- `User.auth_provider` (string): `local | google`
+- `User.authProvider` (string): `local | google`
 
 - `Account`
 - `AccountCreate`

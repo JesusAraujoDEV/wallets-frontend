@@ -40,6 +40,7 @@ export interface AuthUser {
   username: string;
   email: string;
   name: string;
+  authProvider?: "local" | "google";
 }
 
 export interface AuthSession {
@@ -59,6 +60,24 @@ export interface UpdateProfilePayload {
 }
 
 export type UpdateProfileResponse = AuthUser | AuthProfileResponse;
+
+export interface RequestEmailChangePayload {
+  currentPassword: string;
+}
+
+export interface VerifyOldEmailOtpPayload {
+  code: string;
+  newEmail: string;
+}
+
+export interface ConfirmNewEmailPayload {
+  code: string;
+  newEmail: string;
+}
+
+export interface UnlinkGooglePayload {
+  newPassword: string;
+}
 
 export interface GenericSuccessResponse {
   success: boolean;
