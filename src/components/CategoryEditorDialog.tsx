@@ -62,7 +62,7 @@ export function CategoryEditorDialog({
           <DialogTitle>{title || "Edit Category"}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
-        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        <div className="space-y-4 pr-1">
           <div className="space-y-2">
             <Label htmlFor="category-name">Category Name</Label>
             <Input
@@ -123,7 +123,7 @@ export function CategoryEditorDialog({
           </div>
           <div className="space-y-2">
             <Label>Icon</Label>
-            <div className="max-h-56 overflow-y-auto pr-1">
+            <div className="pr-1">
               <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                 {iconOptions.map((key) => {
                   const C = (Icons as any)[key];

@@ -18,6 +18,7 @@ import dayjs from 'dayjs';
 import { cn, isBalanceAdjustmentCategory } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getIconOptionsForType } from "@/lib/categoryIcons";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { exportTransfers, exportTransfersEpicPdfAuto } from "@/lib/exports";
 
@@ -44,16 +45,51 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState<false | "pdf" | "xlsx">(false);
   const filteredCategories = categories.filter((c) => c.type === type);
-  const [isCatPickerOpen, setIsCatPickerOpen] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [pickerType, setPickerType] = useState<"income" | "expense">("expense");
   const [newCatName, setNewCatName] = useState("");
   const [creatingCat, setCreatingCat] = useState(false);
   const [newCatColor, setNewCatColor] = useState<string>("hsl(var(--chart-6))");
   const [newCatColorName, setNewCatColorName] = useState<string>("Sky Blue");
   const [newCatIcon, setNewCatIcon] = useState<string | null>(null);
 
-  const ICON_OPTIONS: string[] = getIconOptionsForType(type);
+  const ICON_OPTIONS: string[] = getIconOptionsForType(pickerType);
 
-  const uiCategories = filteredCategories.filter((c) => !isBalanceAdjustmentCategory(c.name));
+  const pickerFilteredCategories = categories
+    .filter((c) => c.type === pickerType)
+    .filter((c) => !isBalanceAdjustmentCategory(c.name));
+  const selectedCategory = categories.find((c) => c.id === category) ?? null;
+
+  const resetCategoryDialogForm = () => {
+    setNewCatName("");
+    setNewCatColor("hsl(var(--chart-6))");
+    setNewCatColorName("Sky Blue");
+    setNewCatIcon(null);
+  };
+
+  const handleCreateInlineCategory = async () => {
+    const name = newCatName.trim();
+    if (!name) {
+      toast({ title: "Missing name", description: "Please enter a category name.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setCreatingCat(true);
+      const tempId = newId();
+      await CategoriesStore.upsert({ id: tempId, name, type: pickerType, color: newCatColor, colorName: newCatColorName, icon: newCatIcon ?? undefined });
+      const created = CategoriesStore.all().find(c => c.name.toLowerCase() === name.toLowerCase() && c.type === pickerType);
+      if (created) {
+        setType(pickerType);
+        setCategory(created.id);
+      }
+      toast({ title: "Category created", description: `${name} added to ${pickerType}.` });
+      setCategoryModalOpen(false);
+      resetCategoryDialogForm();
+    } finally {
+      setCreatingCat(false);
+    }
+  };
 
   useEffect(() => {
     const load = () => {
@@ -194,19 +230,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
             </SelectContent>
           </Select>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="type">Type</Label>
-            <Select value={type} onValueChange={(value) => setType(value as "income" | "expense")}>
-              <SelectTrigger id="type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="income">Income</SelectItem>
-                <SelectItem value="expense">Expense</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="amount">Amount</Label>
             <Input
@@ -262,104 +286,95 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="category">Category</Label>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setIsCatPickerOpen(true)}
-            className="w-full justify-start"
+          <Label htmlFor="category" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            Category
+          </Label>
+          <Button 
+            type="button" 
+            onClick={() => setCategoryModalOpen(true)} 
+            className="inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-emerald-50 hover:text-emerald-900 h-10 px-4 py-2 w-full justify-start text-left font-normal"
           >
-            {(() => {
-              const selected = uiCategories.find(c => c.id === category) || filteredCategories.find(c => c.id === category);
-              return selected ? (
-                <span className="flex items-center gap-2">
-                  {selected.icon && (Icons as any)[selected.icon] ? (
-                    (() => { const C = (Icons as any)[selected.icon]; return <C className="h-4 w-4" style={{ color: selected.color || undefined }} />; })()
-                  ) : null}
-                  <span
-                    className="inline-block w-3 h-3 rounded-full"
-                    style={{ backgroundColor: selected.color || "hsl(var(--muted))" }}
-                  />
-                  <span className="truncate">{selected.name}</span>
-                </span>
-              ) : (
-                <span className="text-muted-foreground">Select {type} category</span>
-              );
-            })()}
+            {selectedCategory ? (
+              <span className="flex items-center gap-2 w-full min-w-0">
+                <CategoryIcon name={selectedCategory.icon} className="h-4 w-4 shrink-0" style={{ color: selectedCategory.color }} />
+                <span
+                  className="inline-block w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: selectedCategory.color }}
+                />
+                <span className="truncate flex-1 text-left">{selectedCategory.name}</span>
+              </span>
+            ) : (
+              <span className="text-muted-foreground">Select category...</span>
+            )}
           </Button>
-        </div>
-        <Dialog open={isCatPickerOpen} onOpenChange={setIsCatPickerOpen}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Select Category</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-              <div className="text-sm text-muted-foreground">Type: <span className="font-medium capitalize">{type}</span></div>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2">
-                {uiCategories.map((cat) => {
-                  const selected = category === cat.id;
-                  return (
-                    <button
-                      type="button"
-                      key={cat.id}
-                      onClick={() => { setCategory(cat.id); setIsCatPickerOpen(false); }}
-                      className={cn(
-                        "flex items-start text-left gap-2 px-3 py-2 rounded-md border text-sm h-auto w-full max-w-full",
-                        selected ? "bg-accent border-accent ring-2 ring-accent/50" : "hover:bg-accent/40"
-                      )}
-                      title={cat.name}
-                    >
-                      {cat.icon && (Icons as any)[cat.icon] ? (
-                        (() => { const C = (Icons as any)[cat.icon]; return <C className="h-5 w-5 shrink-0" style={{ color: cat.color || undefined }} />; })()
-                      ) : null}
-                      <span
-                        className="inline-block w-3 h-3 rounded-full shrink-0"
-                        style={{ backgroundColor: cat.color || "hsl(var(--muted))" }}
-                      />
-                      <span className="flex-1 min-w-0 whitespace-normal break-normal leading-tight">{cat.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="pt-2 border-t" />
-              <div className="space-y-2">
-                <Label htmlFor="newCatName">Create new category</Label>
-                <div className="flex gap-2">
-                  <Input id="newCatName" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="e.g. Groceries" />
-                  <Button
-                    type="button"
-                    onClick={async () => {
-                      const name = newCatName.trim();
-                      if (!name) {
-                        toast({ title: "Missing name", description: "Please enter a category name.", variant: "destructive" });
-                        return;
-                      }
-                      try {
-                        setCreatingCat(true);
-                        const tempId = newId();
-                        await CategoriesStore.upsert({ id: tempId, name, type, color: newCatColor, colorName: newCatColorName, icon: newCatIcon ?? undefined });
-                        const created = CategoriesStore.all().find(c => c.name.toLowerCase() === name.toLowerCase() && c.type === type);
-                        if (created) {
-                          setCategory(created.id);
-                          setIsCatPickerOpen(false);
-                        }
-                        setNewCatName("");
-                        setNewCatColor("hsl(var(--chart-6))");
-                        setNewCatColorName("Sky Blue");
-                        setNewCatIcon(null);
-                        toast({ title: "Category created", description: `${name} added to ${type}.` });
-                      } finally {
-                        setCreatingCat(false);
-                      }
-                    }}
-                    disabled={creatingCat}
-                  >
-                    {creatingCat ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Create</>) : 'Create'}
-                  </Button>
+          <Dialog
+            open={categoryModalOpen}
+            onOpenChange={(open) => {
+              setCategoryModalOpen(open);
+              if (open) setPickerType(type);
+              if (!open) resetCategoryDialogForm();
+            }}
+          >
+            <DialogContent className="w-[95vw] max-w-lg max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Select Category</DialogTitle>
+              </DialogHeader>
+
+              <Tabs value={pickerType} onValueChange={(value) => setPickerType(value as "income" | "expense")} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="expense">Expense</TabsTrigger>
+                  <TabsTrigger value="income">Income</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2">
+                  {pickerFilteredCategories.map((cat) => {
+                    const selected = category === cat.id;
+                    return (
+                      <button
+                        type="button"
+                        key={cat.id}
+                        onClick={() => {
+                          setType(cat.type);
+                          setCategory(cat.id);
+                          setCategoryModalOpen(false);
+                          resetCategoryDialogForm();
+                        }}
+                        className={cn(
+                          "flex h-auto w-full max-w-full items-start gap-2 rounded-md border px-3 py-2 text-left text-sm",
+                          selected ? "border-accent bg-accent ring-2 ring-accent/50" : "hover:bg-accent/40"
+                        )}
+                        title={cat.name}
+                      >
+                        {cat.icon && (Icons as any)[cat.icon] ? (
+                          (() => { const C = (Icons as any)[cat.icon]; return <C className="h-5 w-5 shrink-0" style={{ color: cat.color || undefined }} />; })()
+                        ) : null}
+                        <span
+                          className="inline-block h-3 w-3 shrink-0 rounded-full"
+                          style={{ backgroundColor: cat.color || "hsl(var(--muted))" }}
+                        />
+                        <span className="min-w-0 flex-1 truncate leading-tight">{cat.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
+
+                <div className="pt-4 border-t mt-4"></div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="newCatName">Create new category</Label>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input id="newCatName" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="e.g. Groceries" />
+                    <Button type="button" className="w-full sm:w-auto" onClick={handleCreateInlineCategory} disabled={creatingCat}>
+                      {creatingCat ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Create</>) : "Create"}
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label>Color</Label>
-                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
                     {[
                       { color: "hsl(var(--chart-1))", name: "Chart 1" },
                       { color: "hsl(var(--chart-2))", name: "Chart 2" },
@@ -383,14 +398,18 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                         )}
                         style={{ backgroundColor: opt.color }}
                         title={opt.name}
-                        onClick={() => { setNewCatColor(opt.color); setNewCatColorName(opt.name); }}
+                        onClick={() => {
+                          setNewCatColor(opt.color);
+                          setNewCatColorName(opt.name);
+                        }}
                       />
                     ))}
                   </div>
                 </div>
+
                 <div className="space-y-2">
                   <Label>Icon</Label>
-                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
                     {ICON_OPTIONS.map((key) => {
                       const C = (Icons as any)[key];
                       if (!C) return null;
@@ -400,7 +419,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                           key={key}
                           type="button"
                           className={cn(
-                            "h-10 w-10 rounded-md border flex items-center justify-center",
+                            "flex h-10 w-10 items-center justify-center rounded-md border",
                             active ? "bg-accent ring-2 ring-accent/70" : "hover:bg-accent/40"
                           )}
                           title={key}
@@ -413,9 +432,9 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                   </div>
                 </div>
               </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
         <div className="space-y-2">
           <Label htmlFor="description">Description (Optional)</Label>
           <Input

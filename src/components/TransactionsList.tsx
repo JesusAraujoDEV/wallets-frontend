@@ -395,9 +395,9 @@ export const TransactionsList = () => {
                   >
                     <div className="">
                       {transaction.type === "income" ? (
-                        <ArrowUpCircle className="h-8 w-8 text-primary" />
+                        <ArrowUpCircle className="h-8 w-8 text-emerald-500" />
                       ) : (
-                        <ArrowDownCircle className="h-8 w-8 text-accent" />
+                        <ArrowDownCircle className="h-8 w-8 text-red-500" />
                       )}
                     </div>
                     <div className="min-w-0">

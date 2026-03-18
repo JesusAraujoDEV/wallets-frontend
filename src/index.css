@@ -23,15 +23,15 @@ All colors MUST be HSL.
     --primary-foreground: 154 15% 15%;
     --primary-light: 154 60% 85%;
 
-    /* Lavender - secondary */
-    --secondary: 228 40% 70%;
-    --secondary-foreground: 228 15% 20%;
-    --secondary-light: 228 40% 88%;
+    /* Teal - secondary */
+    --secondary: 168 42% 78%;
+    --secondary-foreground: 164 35% 18%;
+    --secondary-light: 168 44% 90%;
 
-    /* Peach - accent */
-    --accent: 4 100% 75%;
-    --accent-foreground: 4 20% 20%;
-    --accent-light: 4 100% 88%;
+    /* Emerald - accent */
+    --accent: 152 48% 88%;
+    --accent-foreground: 154 40% 20%;
+    --accent-light: 152 52% 94%;
 
     --muted: 154 20% 92%;
     --muted-foreground: 154 10% 45%;
@@ -76,11 +76,11 @@ All colors MUST be HSL.
     --primary: 154 50% 55%;
     --primary-foreground: 154 10% 95%;
 
-    --secondary: 228 30% 50%;
-    --secondary-foreground: 228 10% 95%;
+    --secondary: 168 34% 34%;
+    --secondary-foreground: 168 18% 92%;
 
-    --accent: 4 80% 60%;
-    --accent-foreground: 4 10% 95%;
+    --accent: 152 36% 30%;
+    --accent-foreground: 152 20% 92%;
 
     --muted: 154 15% 20%;
     --muted-foreground: 154 10% 65%;
