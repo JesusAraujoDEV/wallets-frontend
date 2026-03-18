@@ -453,7 +453,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
             </div>
 
             {isLogin && (
-              <div className="-mt-1 flex justify-end">
+              <div className="mt-1 flex justify-end">
                 <Link to="/forgot-password" className="text-sm text-emerald-600 hover:underline">
                   ¿Olvidaste tu contraseña?
                 </Link>

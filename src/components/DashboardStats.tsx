@@ -69,7 +69,7 @@ export function DashboardStats({ transactions, accounts, rate, balanceSummary }:
   const displayMonthlyExpenses = balanceSummary?.expense_total_usd ?? monthlyExpenses;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 md:gap-6">
       <div className="rounded-lg bg-card text-card-foreground p-6 shadow-md hover:shadow-lg transition-all duration-300 border-0">
         <div className="flex items-start justify-between">
           <div className="flex-1">

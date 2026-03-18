@@ -258,7 +258,7 @@ export function TransactionsCalendar({ selectedAccount }: { selectedAccount?: st
         </div>
       </div>
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1 sm:gap-2 mx-auto max-w-[820px]">
+      <div className="mx-auto grid w-full max-w-5xl grid-cols-7 gap-1 sm:gap-2">
         {['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map((w, i) => (
           <div key={i} className="text-[10px] sm:text-xs text-muted-foreground text-center">{w}</div>
         ))}
@@ -293,7 +293,7 @@ export function TransactionsCalendar({ selectedAccount }: { selectedAccount?: st
                   const cntExp = dailyCountExpense[dateKey] || 0;
                   const bal = inc - exp;
                   return (
-                    <div className="space-y-1 min-w-[170px]">
+                    <div className="min-w-0 max-w-xs space-y-1">
                       <div className="text-xs font-semibold">{dayjs(dateKey).format('ddd, MMM D')}</div>
                       <div className="text-xs flex justify-between"><span>Ingresos:</span><span className="font-medium">${inc.toFixed(2)} <span className="text-muted-foreground">({cntInc})</span></span></div>
                       <div className="text-xs flex justify-between"><span>Gastos:</span><span className="font-medium">${exp.toFixed(2)} <span className="text-muted-foreground">({cntExp})</span></span></div>

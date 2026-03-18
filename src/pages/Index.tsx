@@ -21,7 +21,6 @@ import { fetchIncomeMonthly, fetchExpenseMonthly, fetchGlobalBalance, type Globa
 import { isBalanceAdjustmentCategory, isBalanceAdjustmentPlus } from "@/lib/utils";
 import type { Account, Category, Transaction, AuthUser } from "@/lib/types";
 import { fetchNetCashFlow, fetchSpendingHeatmap, fetchExpenseVolatility, fetchComparativeMoM, fetchMonthlyForecast, fetchIncomeHeatmap, fetchIncomeVolatility, fetchComparativeMoMIncome } from "@/lib/stats";
-import { useNavigate } from "react-router-dom";
 
 // Dashboard data is derived from localStorage (JSON DB)
 
@@ -33,7 +32,6 @@ const Index = () => {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [selectedIncomeCats, setSelectedIncomeCats] = useState<string[]>([]);
   const [selectedExpenseCats, setSelectedExpenseCats] = useState<string[]>([]);
-  const navigate = useNavigate();
   const { rate } = useVESExchangeRate();
   const [statsScope, setStatsScope] = useState<"all" | "only" | "exclude">("all");
   // New stats datasets
@@ -385,19 +383,12 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-6 flex items-center justify-between gap-3">
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-6">
           <div>
             <h1 className="text-3xl font-bold text-foreground">{authUser?.username ? `${authUser.username} Dashboard` : "Dashboard"}</h1>
             <p className="text-muted-foreground mt-1">Track your finances with clarity</p>
           </div>
-          <button
-            className="h-9 rounded-md border px-3 text-sm hover:bg-accent"
-            onClick={async () => { await AuthApi.logout(); navigate('/login', { replace: true }); }}
-            title="Cerrar sesión"
-          >
-            Logout
-          </button>
         </div>
       </header>
 
@@ -406,15 +397,15 @@ const Index = () => {
       <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
         <AccountSelector selectedAccount={selectedAccount} onAccountChange={setSelectedAccount} />
 
-        <div className="space-y-2">
+        <div>
           <Tabs value={statsScope} onValueChange={(value) => setStatsScope(value as typeof statsScope)}>
-            <TabsList className="grid w-full grid-cols-1 gap-2 bg-transparent p-0 md:inline-grid md:w-auto md:grid-cols-3">
-              <TabsTrigger value="all">All categories</TabsTrigger>
-              <TabsTrigger value="only">Only included in stats</TabsTrigger>
-              <TabsTrigger value="exclude">Only excluded in stats</TabsTrigger>
+            <TabsList className="h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-0">
+              <TabsTrigger className="w-full sm:w-auto" value="all">All categories</TabsTrigger>
+              <TabsTrigger className="w-full sm:w-auto" value="only">Only included in stats</TabsTrigger>
+              <TabsTrigger className="w-full sm:w-auto" value="exclude">Only excluded in stats</TabsTrigger>
             </TabsList>
           </Tabs>
-          <p className="text-xs text-slate-500">
+          <p className="my-4 text-sm text-slate-500">
             Tabs and selected categories filter pie, budget, trends and advanced charts. Server calls still respect the backend includeInStats contract.
           </p>
         </div>
@@ -429,7 +420,7 @@ const Index = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
           <CategoryMultiSelect
             label="Elegir categorías Income"
             categories={visibleIncomeCategories}

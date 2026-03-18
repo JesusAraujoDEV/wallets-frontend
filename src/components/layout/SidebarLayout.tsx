@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { AuthApi } from "@/lib/auth";
 import {
   Sheet,
   SheetContent,
@@ -10,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
+  LogOut,
   Menu,
   ReceiptText,
   Tags,
@@ -17,7 +19,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 type NavigationItem = {
   to: string;
@@ -64,6 +66,13 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
 export default function SidebarLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await AuthApi.logout();
+    setMobileOpen(false);
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 md:h-screen md:overflow-hidden">
@@ -80,13 +89,19 @@ export default function SidebarLayout() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-full max-w-xs border-r border-slate-200 bg-white px-0">
+            <SheetContent side="left" className="flex w-full max-w-xs flex-col border-r border-slate-200 bg-white px-0">
               <SheetHeader className="border-b border-slate-200 px-6 pb-4 text-left">
                 <SheetTitle>Platica</SheetTitle>
                 <SheetDescription>Navega entre dashboard, movimientos, catálogos y perfil.</SheetDescription>
               </SheetHeader>
-              <div className="px-4 py-6">
+              <div className="flex-1 px-4 py-6">
                 <SidebarNav onNavigate={() => setMobileOpen(false)} />
+              </div>
+              <div className="border-t border-slate-200 p-4">
+                <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
+                  <LogOut className="h-4 w-4" />
+                  Cerrar sesión
+                </Button>
               </div>
             </SheetContent>
           </Sheet>
@@ -103,6 +118,13 @@ export default function SidebarLayout() {
 
           <div className="flex-1 px-4 py-6">
             <SidebarNav />
+          </div>
+
+          <div className="mt-auto border-t border-slate-200 p-4">
+            <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
+              <LogOut className="h-4 w-4" />
+              Cerrar sesión
+            </Button>
           </div>
         </aside>
 

@@ -37,7 +37,7 @@ export const AccountSelector = ({ selectedAccount, onAccountChange }: AccountSel
   const options = useMemo(() => accounts, [accounts]);
 
   return (
-    <div className="flex items-center gap-3 p-4 bg-card rounded-lg shadow-sm border border-border">
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-center">
       <div className="flex items-center gap-2 text-muted-foreground">
         {selectedAccount === "all" ? (
           <Globe className="w-5 h-5" />
@@ -47,7 +47,7 @@ export const AccountSelector = ({ selectedAccount, onAccountChange }: AccountSel
         <span className="text-sm font-medium">View:</span>
       </div>
       <Select value={selectedAccount} onValueChange={onAccountChange}>
-        <SelectTrigger className="w-[250px]">
+        <SelectTrigger className="w-full sm:max-w-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

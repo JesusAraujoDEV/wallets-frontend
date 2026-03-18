@@ -310,14 +310,14 @@ export const TransactionsList = () => {
   return (
     <Card className="shadow-md">
       <CardHeader>
-        <div className="flex items-start sm:items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <CardTitle>Transaction Log</CardTitle>
             <CardDescription>View and filter your daily transactions</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:justify-between sm:gap-4">
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-              <Button onClick={() => setIsAddOpen(true)} className="gap-2">
+              <Button onClick={() => setIsAddOpen(true)} className="w-full gap-2 sm:w-auto">
                 <Plus className="h-4 w-4" />
                 New Transaction
               </Button>
@@ -328,7 +328,7 @@ export const TransactionsList = () => {
                 <TransactionForm asModalContent onSubmitted={async () => { setIsAddOpen(false); await refetch(); }} />
               </DialogContent>
             </Dialog>
-            <Button variant="outline" className="gap-2" onClick={() => setIsExportOpen(true)}>
+            <Button variant="outline" className="w-full gap-2 sm:w-auto" onClick={() => setIsExportOpen(true)}>
               <Download className="h-4 w-4" />
               Download Transfers
             </Button>
