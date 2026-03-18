@@ -75,7 +75,7 @@ export default function SidebarLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 md:h-screen md:overflow-hidden">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 md:h-screen md:overflow-hidden">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur md:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
@@ -108,7 +108,7 @@ export default function SidebarLayout() {
         </div>
       </header>
 
-      <div className="flex min-h-screen w-full md:h-screen md:flex-row md:overflow-hidden">
+      <div className="flex h-screen w-full overflow-hidden overflow-x-hidden bg-background md:flex-row">
         <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white md:fixed md:top-0 md:left-0 md:z-20 md:flex md:h-screen md:flex-col md:overflow-y-auto">
           <div className="border-b border-slate-200 px-6 py-6">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">Platica</p>
@@ -128,7 +128,7 @@ export default function SidebarLayout() {
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 px-4 py-4 md:ml-64 md:h-screen md:overflow-y-auto md:overflow-x-hidden md:px-6 md:py-6">
+        <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-4 md:ml-64 md:h-screen md:overflow-y-auto md:px-6 md:py-6">
           <Outlet />
         </main>
       </div>

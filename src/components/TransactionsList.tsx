@@ -321,7 +321,7 @@ export const TransactionsList = () => {
                 <Plus className="h-4 w-4" />
                 New Transaction
               </Button>
-              <DialogContent className="sm:max-w-lg">
+              <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
                 <DialogHeader>
                   <DialogTitle>Add Transaction</DialogTitle>
                 </DialogHeader>
@@ -467,7 +467,7 @@ export const TransactionsList = () => {
         </div>
       </CardContent>
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
           <DialogHeader>
             <DialogTitle>Edit Transaction</DialogTitle>
           </DialogHeader>
@@ -585,7 +585,7 @@ export const TransactionsList = () => {
         </DialogContent>
       </Dialog>
       <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
           <DialogHeader>
             <DialogTitle>Export Transfers</DialogTitle>
           </DialogHeader>

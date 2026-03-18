@@ -57,7 +57,7 @@ export function CategoryEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg rounded-xl bg-background/95 backdrop-blur shadow-lg">
+      <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl bg-background/95 backdrop-blur shadow-lg">
         <DialogHeader>
           <DialogTitle>{title || "Edit Category"}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}

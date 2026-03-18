@@ -124,15 +124,16 @@ export const CategoryManager = () => {
   return (
     <Card className="shadow-md">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <CardTitle>Category Management</CardTitle>
             <CardDescription>Create and manage your custom categories</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col flex-wrap gap-2 sm:w-auto sm:flex-row">
             <Button
               variant="ghost"
               size="sm"
+              className="w-full sm:w-auto"
               onClick={async () => {
                 setBulkOpen('enable');
                 setBulkLoading(true);
@@ -154,6 +155,7 @@ export const CategoryManager = () => {
             <Button
               variant="ghost"
               size="sm"
+              className="w-full sm:w-auto"
               onClick={async () => {
                 setBulkOpen('disable');
                 setBulkLoading(true);
@@ -174,7 +176,7 @@ export const CategoryManager = () => {
             </Button>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="gap-2">
+                <Button className="w-full gap-2 sm:w-auto">
                   <Plus className="h-4 w-4" />
                   New Category
                 </Button>
@@ -324,7 +326,7 @@ export const CategoryManager = () => {
       </CardContent>
       {/* Bulk include/exclude dialog */}
       <Dialog open={!!bulkOpen} onOpenChange={(open) => { if (!open) { setBulkOpen(null); setBulkOptions([]); setBulkSelected([]); } }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
           <DialogHeader>
             <DialogTitle>{bulkOpen === 'enable' ? 'Include categories in stats' : 'Exclude categories from stats'}</DialogTitle>
             <DialogDescription>

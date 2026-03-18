@@ -30,7 +30,7 @@ export function AccountEditorDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
         <DialogHeader>
           <DialogTitle>{title || "Edit Account"}</DialogTitle>
         </DialogHeader>
