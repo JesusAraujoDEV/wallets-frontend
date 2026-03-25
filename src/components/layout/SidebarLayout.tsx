@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthApi } from "@/lib/auth";
 import {
   Sheet,
@@ -52,8 +53,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             to={item.to}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-3 rounded-xl border border-transparent px-3 py-3 text-sm font-medium text-slate-600 transition-colors hover:border-slate-200 hover:bg-slate-100 hover:text-slate-950",
-                isActive && "border-emerald-100 bg-emerald-50 text-emerald-700",
+                "flex items-center gap-3 rounded-xl border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground",
+                isActive && "border-primary/30 bg-primary/15 text-primary",
               )
             }
           >
@@ -77,12 +78,12 @@ export default function SidebarLayout() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50 md:h-screen md:overflow-hidden">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur md:hidden">
+    <div className="min-h-screen overflow-x-hidden bg-background md:h-screen md:overflow-hidden">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur md:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">Platica</p>
-            <h1 className="truncate text-base font-semibold text-slate-950">Panel financiero</h1>
+            <h1 className="truncate text-base font-semibold text-foreground">Panel financiero</h1>
           </div>
 
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -91,15 +92,16 @@ export default function SidebarLayout() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="flex w-full max-w-xs flex-col border-r border-slate-200 bg-white px-0">
-              <SheetHeader className="border-b border-slate-200 px-6 pb-4 text-left">
+            <SheetContent side="left" className="flex w-full max-w-xs flex-col border-r border-border bg-card px-0">
+              <SheetHeader className="border-b border-border px-6 pb-4 text-left">
                 <SheetTitle>Platica</SheetTitle>
                 <SheetDescription>Navega entre dashboard, movimientos, catálogos y perfil.</SheetDescription>
               </SheetHeader>
               <div className="flex-1 px-4 py-6">
                 <SidebarNav onNavigate={() => setMobileOpen(false)} />
               </div>
-              <div className="border-t border-slate-200 p-4">
+              <div className="border-t border-border p-4 space-y-2">
+                <ThemeToggle />
                 <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
                   <LogOut className="h-4 w-4" />
                   Cerrar sesión
@@ -111,18 +113,19 @@ export default function SidebarLayout() {
       </header>
 
       <div className="flex h-screen w-full overflow-hidden overflow-x-hidden bg-background md:flex-row">
-        <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white md:fixed md:top-0 md:left-0 md:z-20 md:flex md:h-screen md:flex-col md:overflow-y-auto">
-          <div className="border-b border-slate-200 px-6 py-6">
+        <aside className="hidden w-64 shrink-0 border-r border-border bg-card md:fixed md:top-0 md:left-0 md:z-20 md:flex md:h-screen md:flex-col md:overflow-y-auto">
+          <div className="border-b border-border px-6 py-6">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">Platica</p>
-            <h1 className="mt-2 text-xl font-semibold text-slate-950">Dashboard</h1>
-            <p className="mt-1 text-sm text-slate-500">Navegación principal de tu workspace financiero.</p>
+            <h1 className="mt-2 text-xl font-semibold text-foreground">Dashboard</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Navegación principal de tu workspace financiero.</p>
           </div>
 
           <div className="flex-1 px-4 py-6">
             <SidebarNav />
           </div>
 
-          <div className="mt-auto border-t border-slate-200 p-4">
+          <div className="mt-auto border-t border-border p-4 space-y-2">
+            <ThemeToggle />
             <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
               Cerrar sesión

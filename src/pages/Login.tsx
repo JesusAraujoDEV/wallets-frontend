@@ -233,9 +233,9 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
   }
 
   return (
-    <div className="min-h-screen w-full flex bg-gray-50">
+    <div className="min-h-screen w-full flex bg-background">
       <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-emerald-600 to-teal-800 p-12 flex-col justify-between text-white relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl" />
+        <div className="absolute top-0 left-0 w-64 h-64 bg-foreground/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl" />
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-emerald-400/20 rounded-full translate-x-1/3 translate-y-1/3 blur-3xl" />
 
         <div className="z-10">
@@ -261,7 +261,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
       </div>
 
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl lg:shadow-none">
+        <div className="w-full max-w-md bg-card text-card-foreground p-8 rounded-2xl shadow-xl lg:shadow-none">
           <div className="text-center mb-8">
             <AnimatePresence mode="wait">
               <motion.div
@@ -271,8 +271,8 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.2 }}
               >
-                <h3 className="text-2xl font-bold text-gray-800 mb-2">{customTitle ?? (isLogin ? "Hola de nuevo" : "Crear cuenta")}</h3>
-                <p className="text-gray-500 text-sm">{isLogin ? "Ingresa tus datos para continuar" : "Regístrate gratis en segundos"}</p>
+                <h3 className="text-2xl font-bold text-card-foreground mb-2">{customTitle ?? (isLogin ? "Hola de nuevo" : "Crear cuenta")}</h3>
+                <p className="text-muted-foreground text-sm">{isLogin ? "Ingresa tus datos para continuar" : "Regístrate gratis en segundos"}</p>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -294,7 +294,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                 <button
                   type="button"
                   disabled
-                  className="h-11 rounded-lg bg-gray-100 text-gray-500 text-sm font-semibold border border-gray-200 px-5"
+                  className="h-11 rounded-lg bg-muted text-muted-foreground text-sm font-semibold border border-border px-5"
                   title="Configura VITE_GOOGLE_CLIENT_ID para habilitar Google"
                 >
                   Continuar con Google (no configurado)
@@ -304,9 +304,9 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
           </div>
 
           <div className="relative flex py-5 items-center">
-            <div className="flex-grow border-t border-gray-200" />
-            <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase">O usa tus credenciales</span>
-            <div className="flex-grow border-t border-gray-200" />
+            <div className="flex-grow border-t border-border" />
+            <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs uppercase">O usa tus credenciales</span>
+            <div className="flex-grow border-t border-border" />
           </div>
 
           <form onSubmit={onSubmit} className="space-y-4">
@@ -320,7 +320,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                   transition={{ duration: 0.2 }}
                   className="relative"
                 >
-                  <User className="absolute left-3 top-3 text-gray-400 h-5 w-5" />
+                  <User className="absolute left-3 top-3 text-muted-foreground h-5 w-5" />
                   <input
                     value={name}
                     onChange={(e) => {
@@ -335,8 +335,8 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                     }}
                     type="text"
                     placeholder="Nombre completo"
-                    className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition ${
-                      fieldErrors.name ? "border-red-500 animate-shake" : "border-gray-200"
+                    className={`w-full pl-10 pr-4 py-3 bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:bg-background transition ${
+                      fieldErrors.name ? "border-red-500 animate-shake" : "border-input"
                     }`}
                     autoComplete="name"
                   />
@@ -347,7 +347,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
 
             {!isLogin && (
               <div className="relative">
-                <Mail className="absolute left-3 top-3 text-gray-400 h-5 w-5" />
+                <Mail className="absolute left-3 top-3 text-muted-foreground h-5 w-5" />
                 <input
                   value={email}
                   onChange={(e) => {
@@ -369,8 +369,8 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                   }}
                   type="email"
                   placeholder="Correo electrónico"
-                  className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:bg-white transition ${
-                    fieldErrors.email ? "border-red-500 focus:ring-red-400 animate-shake" : "border-gray-200 focus:ring-emerald-500"
+                  className={`w-full pl-10 pr-4 py-3 bg-background border rounded-lg focus:outline-none focus:ring-2 focus:bg-background transition ${
+                    fieldErrors.email ? "border-red-500 focus:ring-red-400 animate-shake" : "border-input focus:ring-ring"
                   }`}
                   autoComplete="email"
                   required
@@ -380,7 +380,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
             )}
 
             <div className="relative">
-              <AtSign className="absolute left-3 top-3 text-gray-400 h-5 w-5" />
+              <AtSign className="absolute left-3 top-3 text-muted-foreground h-5 w-5" />
               <input
                 value={usernameOrEmail}
                 onChange={(e) => {
@@ -415,8 +415,8 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                 }}
                 type="text"
                 placeholder={isLogin ? "Ingresa tu usuario o correo electrónico" : "Nombre de usuario"}
-                className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:bg-white transition ${
-                  fieldErrors.identifier ? "border-red-500 focus:ring-red-400 animate-shake" : "border-gray-200 focus:ring-emerald-500"
+                className={`w-full pl-10 pr-4 py-3 bg-background border rounded-lg focus:outline-none focus:ring-2 focus:bg-background transition ${
+                  fieldErrors.identifier ? "border-red-500 focus:ring-red-400 animate-shake" : "border-input focus:ring-ring"
                 }`}
                 autoComplete="username"
                 required
@@ -425,7 +425,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
             </div>
 
             <div className="relative">
-              <Lock className="absolute left-3 top-3 text-gray-400 h-5 w-5" />
+              <Lock className="absolute left-3 top-3 text-muted-foreground h-5 w-5" />
               <input
                 value={password}
                 onChange={(e) => {
@@ -443,8 +443,8 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
                 }}
                 type="password"
                 placeholder="Contraseña"
-                className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:bg-white transition ${
-                  fieldErrors.password ? "border-red-500 focus:ring-red-400 animate-shake" : "border-gray-200 focus:ring-emerald-500"
+                className={`w-full pl-10 pr-4 py-3 bg-background border rounded-lg focus:outline-none focus:ring-2 focus:bg-background transition ${
+                  fieldErrors.password ? "border-red-500 focus:ring-red-400 animate-shake" : "border-input focus:ring-ring"
                 }`}
                 autoComplete={isLogin ? "current-password" : "new-password"}
                 required
@@ -463,7 +463,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gray-900 hover:bg-black disabled:opacity-60 disabled:hover:bg-gray-900 text-white font-bold py-3 rounded-lg transition duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              className="w-full bg-primary hover:bg-primary/90 disabled:opacity-60 disabled:hover:bg-primary text-primary-foreground font-bold py-3 rounded-lg transition duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
             >
               {loading ? (isLogin ? "Entrando..." : "Creando...") : isLogin ? "Entrar" : "Registrarse"}
               <ArrowRight className="h-5 w-5" />
@@ -472,7 +472,7 @@ export default function Login({ onSuccess, customTitle, hideNavigation }: LoginP
 
           {!hideNavigation && (
             <div className="mt-8 text-center">
-              <p className="text-gray-600 text-sm">
+              <p className="text-muted-foreground text-sm">
                 {isLogin ? "¿No tienes cuenta? " : "¿Ya tienes cuenta? "}
                 <button
                   type="button"

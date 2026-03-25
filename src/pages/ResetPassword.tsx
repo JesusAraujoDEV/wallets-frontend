@@ -48,12 +48,12 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="min-h-screen w-full flex bg-gray-50">
+      <div className="min-h-screen w-full flex bg-background">
         <div className="w-full flex items-center justify-center p-8">
-          <Card className="w-full max-w-md border-0 bg-white p-2 rounded-2xl shadow-xl lg:shadow-none">
+          <Card className="w-full max-w-md border-0 bg-card p-2 rounded-2xl shadow-xl lg:shadow-none">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-gray-800">Crear nueva contraseña</CardTitle>
-              <CardDescription className="text-gray-500">Enlace inválido o expirado</CardDescription>
+              <CardTitle className="text-2xl font-bold text-card-foreground">Crear nueva contraseña</CardTitle>
+              <CardDescription className="text-muted-foreground">Enlace inválido o expirado</CardDescription>
             </CardHeader>
             <CardContent>
               <Button type="button" className="w-full" onClick={() => navigate("/login")}>
@@ -67,12 +67,12 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen w-full flex bg-gray-50">
+    <div className="min-h-screen w-full flex bg-background">
       <div className="w-full flex items-center justify-center p-8">
-        <Card className="w-full max-w-md border-0 bg-white p-2 rounded-2xl shadow-xl lg:shadow-none">
+        <Card className="w-full max-w-md border-0 bg-card p-2 rounded-2xl shadow-xl lg:shadow-none">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-gray-800">Crear nueva contraseña</CardTitle>
-            <CardDescription className="text-gray-500">Ingresa y confirma tu nueva contraseña.</CardDescription>
+            <CardTitle className="text-2xl font-bold text-card-foreground">Crear nueva contraseña</CardTitle>
+            <CardDescription className="text-muted-foreground">Ingresa y confirma tu nueva contraseña.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

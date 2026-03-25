@@ -54,7 +54,7 @@ export default function TelegramLogin() {
 
   if (step === "success") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -63,8 +63,8 @@ export default function TelegramLogin() {
           <CheckCircle className="w-12 h-12 text-emerald-600" />
         </motion.div>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">¡Sincronización Completada!</h1>
-        <p className="text-gray-500 mb-8 max-w-md">
+        <h1 className="text-3xl font-bold text-foreground mb-2">¡Sincronización Completada!</h1>
+        <p className="text-muted-foreground mb-8 max-w-md">
           Tu cuenta de Wallets ahora está conectada con Telegram{username ? (
             <>
               , <span className="font-semibold">{username}</span>
@@ -79,7 +79,7 @@ export default function TelegramLogin() {
           <MessageCircle className="w-6 h-6" /> Volver al Bot 🤖
         </a>
 
-        <a href="/dashboard" className="mt-6 text-sm text-gray-400 hover:text-gray-600 underline">
+        <a href="/dashboard" className="mt-6 text-sm text-muted-foreground hover:text-foreground underline">
           Ir a mi Dashboard
         </a>
       </div>
@@ -88,7 +88,7 @@ export default function TelegramLogin() {
 
   if (step === "choice") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -96,8 +96,8 @@ export default function TelegramLogin() {
         >
           <MessageCircle className="w-10 h-10 text-emerald-600" />
         </motion.div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">¿Cómo quieres continuar?</h1>
-        <p className="text-gray-500 mb-8 max-w-md">
+        <h1 className="text-3xl font-bold text-foreground mb-2">¿Cómo quieres continuar?</h1>
+        <p className="text-muted-foreground mb-8 max-w-md">
           Detectamos una sesión activa. Puedes vincularla con WalletBot o cambiar de cuenta.
         </p>
 
@@ -110,7 +110,7 @@ export default function TelegramLogin() {
           </button>
           <button
             onClick={() => setStep("auth")}
-            className="bg-gray-900 hover:bg-black text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-3 transition-all"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-xl font-semibold flex items-center gap-3 transition-all"
           >
             <ArrowRight className="w-5 h-5" /> Cambiar de cuenta
           </button>
@@ -121,26 +121,26 @@ export default function TelegramLogin() {
 
   if (step === "linking") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           className="w-24 h-24 rounded-full border-4 border-emerald-200 border-t-emerald-500 animate-spin mb-6"
         />
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Vinculando tu cuenta...</h1>
-        <p className="text-gray-500">No cierres esta ventana.</p>
+        <h1 className="text-2xl font-bold text-foreground mb-2">Vinculando tu cuenta...</h1>
+        <p className="text-muted-foreground">No cierres esta ventana.</p>
       </div>
     );
   }
 
   if (step === "missing") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
         <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mb-6">
           <Link2 className="w-12 h-12 text-amber-600" />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Falta el chat_id</h1>
-        <p className="text-gray-500 mb-6">Regresa al bot para generar el enlace correcto.</p>
+        <h1 className="text-2xl font-bold text-foreground mb-2">Falta el chat_id</h1>
+        <p className="text-muted-foreground mb-6">Regresa al bot para generar el enlace correcto.</p>
         <a href={BOT_LINK} className="text-emerald-600 font-semibold hover:underline">
           Volver al Bot
         </a>
@@ -150,15 +150,15 @@ export default function TelegramLogin() {
 
   if (step === "error") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
         <div className="w-24 h-24 bg-rose-100 rounded-full flex items-center justify-center mb-6">
           <ArrowRight className="w-12 h-12 text-rose-600 rotate-180" />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">No pudimos vincular tu cuenta</h1>
-        <p className="text-gray-500 mb-6">{error ?? "Inténtalo nuevamente."}</p>
+        <h1 className="text-2xl font-bold text-foreground mb-2">No pudimos vincular tu cuenta</h1>
+        <p className="text-muted-foreground mb-6">{error ?? "Inténtalo nuevamente."}</p>
         <button
           onClick={handleLink}
-          className="bg-gray-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-black transition"
+          className="bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition"
         >
           Reintentar
         </button>
@@ -167,7 +167,7 @@ export default function TelegramLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Login
         customTitle="Conecta tu cuenta para continuar"
         onSuccess={() => handleLink()}

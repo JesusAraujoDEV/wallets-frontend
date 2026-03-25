@@ -11,9 +11,9 @@ export default function Transactions() {
 
   return (
     <div className="space-y-6">
-      <Card className="border-slate-200 bg-white shadow-sm">
+      <Card className="border-border bg-card shadow-sm">
         <CardHeader className="space-y-2">
-          <CardTitle className="text-2xl text-slate-950">Transacciones</CardTitle>
+          <CardTitle className="text-2xl text-card-foreground">Transacciones</CardTitle>
           <CardDescription>
             Administra movimientos, filtra tu historial y explora el calendario financiero desde una ruta dedicada.
           </CardDescription>

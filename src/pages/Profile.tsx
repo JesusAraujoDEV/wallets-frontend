@@ -436,7 +436,7 @@ export default function Profile() {
 
   return (
     <div className="space-y-6">
-      <Card className="border-slate-200 bg-white shadow-sm">
+      <Card className="border-border bg-card shadow-sm">
         <CardHeader className="space-y-3">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
@@ -444,7 +444,7 @@ export default function Profile() {
                 <AvatarFallback className="bg-emerald-50 text-base font-semibold text-emerald-700">{userInitials || "U"}</AvatarFallback>
               </Avatar>
               <div>
-                <CardTitle className="text-2xl text-slate-950">Perfil</CardTitle>
+                <CardTitle className="text-2xl text-card-foreground">Perfil</CardTitle>
                 <CardDescription>Consulta tus datos personales y mantiene tu informacion al dia.</CardDescription>
               </div>
             </div>
@@ -460,7 +460,7 @@ export default function Profile() {
 
         <CardContent className="space-y-6">
           {loading ? (
-            <div className="flex min-h-40 items-center justify-center text-slate-500">
+            <div className="flex min-h-40 items-center justify-center text-muted-foreground">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Cargando perfil...
             </div>
@@ -563,7 +563,7 @@ export default function Profile() {
       </Card>
 
       {user?.authProvider === "local" ? (
-        <Card className="border-slate-200 bg-white shadow-sm">
+        <Card className="border-border bg-card shadow-sm">
           <CardHeader>
             <CardTitle>Seguridad</CardTitle>
             <CardDescription>Gestiona tu contraseña de acceso local.</CardDescription>
@@ -631,7 +631,7 @@ export default function Profile() {
 
             {emailStep === 3 ? (
               <>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                <div className="rounded-lg border border-border bg-muted p-3 text-sm text-foreground">
                   Confirmando nuevo correo: <span className="font-medium">{newEmail}</span>
                 </div>
                 <div className="space-y-2">

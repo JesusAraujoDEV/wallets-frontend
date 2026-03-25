@@ -404,7 +404,7 @@ const Index = () => {
 
       <DashboardStats transactions={txByAccount} accounts={accounts} rate={rate} balanceSummary={balanceSummary} />
 
-      <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+      <section className="space-y-6 rounded-3xl border border-border bg-card p-5 shadow-sm md:p-6">
         <AccountSelector selectedAccount={selectedAccount} onAccountChange={setSelectedAccount} />
 
         <div className="space-y-2">
@@ -423,11 +423,11 @@ const Index = () => {
         </div>
 
         {selectedAccount === "all" ? (
-          <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <div className="rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
             <span className="font-semibold">Global Dashboard View:</span> Showing aggregated data across all accounts.
           </div>
         ) : (
-          <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+          <div className="rounded-2xl border border-border bg-muted px-4 py-3 text-sm text-foreground">
             <span className="font-semibold">Account Dashboard View:</span> Showing data for the selected account only.
           </div>
         )}

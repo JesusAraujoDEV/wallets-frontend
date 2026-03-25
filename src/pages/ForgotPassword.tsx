@@ -41,12 +41,12 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-gray-50">
+    <div className="min-h-screen w-full flex bg-background">
       <div className="w-full flex items-center justify-center p-8">
-        <Card className="w-full max-w-md border-0 bg-white p-2 rounded-2xl shadow-xl lg:shadow-none">
+        <Card className="w-full max-w-md border-0 bg-card p-2 rounded-2xl shadow-xl lg:shadow-none">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-gray-800">Recuperar contraseña</CardTitle>
-            <CardDescription className="text-gray-500">
+            <CardTitle className="text-2xl font-bold text-card-foreground">Recuperar contraseña</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Ingresa tu correo y te enviaremos instrucciones para restablecer el acceso.
             </CardDescription>
           </CardHeader>

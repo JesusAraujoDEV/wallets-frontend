@@ -219,11 +219,11 @@ export default function CategoryGroups() {
 
   return (
     <div className="space-y-6">
-      <Card className="border-slate-200 bg-white shadow-sm">
+      <Card className="border-border bg-card shadow-sm">
         <CardHeader className="space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2 text-2xl text-slate-950">
+              <CardTitle className="flex items-center gap-2 text-2xl text-card-foreground">
                 <Layers className="h-6 w-6" />
                 Grupos de Categorías
               </CardTitle>
@@ -319,17 +319,17 @@ export default function CategoryGroups() {
               Cargando grupos...
             </div>
           ) : groups.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               No hay grupos creados. Agrega tu primer grupo para empezar.
             </div>
           ) : (
             <div className="space-y-3">
               {groups.map((group) => (
-                <div key={group.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div key={group.id} className="flex flex-col gap-3 rounded-xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-slate-900">{group.name}</p>
-                    <p className="text-sm text-slate-500">Tipo: {group.type}</p>
-                    <p className="text-sm text-slate-500">
+                    <p className="truncate font-semibold text-card-foreground">{group.name}</p>
+                    <p className="text-sm text-muted-foreground">Tipo: {group.type}</p>
+                    <p className="text-sm text-muted-foreground">
                       Estadísticas: {group.analyticsBehavior === "include" ? "Incluir" : "Excluir"}
                     </p>
                   </div>
@@ -405,7 +405,7 @@ export default function CategoryGroups() {
                 Cargando categorías...
               </div>
             ) : filteredCategories.length === 0 ? (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 No tienes categorías de tipo {assigningGroup?.type} disponibles para asignar.
               </p>
             ) : (
@@ -418,7 +418,7 @@ export default function CategoryGroups() {
                     <label
                       key={category.id}
                       htmlFor={`assign-category-${category.id}`}
-                      className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3 hover:bg-slate-50"
+                      className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 hover:bg-accent"
                     >
                       <Checkbox
                         id={`assign-category-${category.id}`}
@@ -426,14 +426,14 @@ export default function CategoryGroups() {
                         onCheckedChange={(checked) => toggleCategorySelection(categoryId, checked === true)}
                       />
                       <div
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border"
                         style={{ backgroundColor: `${category.color}20` }}
                       >
                         <CategoryIcon name={category.icon} color={category.color} className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-slate-900">{category.name}</p>
-                        <p className="text-xs text-slate-500">{category.type === "income" ? "Ingreso" : "Gasto"}</p>
+                        <p className="truncate text-sm font-medium text-card-foreground">{category.name}</p>
+                        <p className="text-xs text-muted-foreground">{category.type === "income" ? "Ingreso" : "Gasto"}</p>
                       </div>
                     </label>
                   );
