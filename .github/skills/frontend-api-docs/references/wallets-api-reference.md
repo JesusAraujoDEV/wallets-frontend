@@ -1015,6 +1015,27 @@ Query:
 }
 ```
 
+### PATCH /category-groups/{groupId}/assign-categories
+Purpose: Bulk-assign categories to a category group.
+
+Path params:
+- `groupId` (integer, required)
+
+Body:
+```json
+{
+  "categoryIds": [1, 2, 3]
+}
+```
+
+200 response example:
+```json
+{
+  "ok": true,
+  "message": "Categories assigned successfully"
+}
+```
+
 ---
 
 ## Telegram

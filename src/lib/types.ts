@@ -32,6 +32,16 @@ export interface CategoryGroupUpsertPayload {
   analyticsBehavior: CategoryGroupAnalyticsBehavior;
 }
 
+export interface CategoryGroupAssignCategoriesPayload {
+  categoryIds: number[];
+}
+
+export interface CategoryGroupAssignCategoriesResponse {
+  ok?: boolean;
+  success?: boolean;
+  message?: string;
+}
+
 export interface CategoryGroupDeleteResponse {
   ok: boolean;
   rowCount: number;

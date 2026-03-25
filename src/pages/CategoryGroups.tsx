@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Layers, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Layers, ListPlus, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -17,8 +19,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import type { CategoryGroup, CategoryGroupUpsertPayload } from "@/lib/types";
-import { createCategoryGroup, deleteCategoryGroup, fetchCategoryGroups, updateCategoryGroup } from "@/lib/storage";
+import { CategoryIcon } from "@/components/CategoryIcon";
+import type { Category, CategoryGroup, CategoryGroupUpsertPayload } from "@/lib/types";
+import { CategoriesStore, assignCategoriesToGroup, createCategoryGroup, deleteCategoryGroup, fetchCategoryGroups, updateCategoryGroup } from "@/lib/storage";
 
 type GroupForm = {
   name: string;
@@ -33,13 +36,20 @@ const emptyForm: GroupForm = {
 };
 
 export default function CategoryGroups() {
+  const queryClient = useQueryClient();
   const [groups, setGroups] = useState<CategoryGroup[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingAssignment, setSavingAssignment] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<CategoryGroup | null>(null);
+  const [assigningGroup, setAssigningGroup] = useState<CategoryGroup | null>(null);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   const [form, setForm] = useState<GroupForm>(emptyForm);
 
   const loadGroups = async () => {
@@ -82,6 +92,71 @@ export default function CategoryGroups() {
     setDialogOpen(false);
     setEditingGroup(null);
     setForm(emptyForm);
+  };
+
+  const closeAssignDialog = () => {
+    setAssignDialogOpen(false);
+    setAssigningGroup(null);
+    setSelectedCategoryIds([]);
+  };
+
+  const loadCategoriesForGroup = async (group: CategoryGroup) => {
+    try {
+      setLoadingCategories(true);
+      await CategoriesStore.refresh();
+      const list = CategoriesStore.all();
+      setCategories(list);
+      const initialSelection = list
+        .filter((category) => Number(category.groupId) === group.id)
+        .map((category) => Number(category.id));
+      setSelectedCategoryIds(initialSelection);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `No se pudieron cargar las categorías: ${String(error)}`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  const openAssignDialog = async (group: CategoryGroup) => {
+    setAssigningGroup(group);
+    setAssignDialogOpen(true);
+    await loadCategoriesForGroup(group);
+  };
+
+  const toggleCategorySelection = (categoryId: number, checked: boolean) => {
+    setSelectedCategoryIds((prev) => {
+      if (checked) {
+        if (prev.includes(categoryId)) return prev;
+        return [...prev, categoryId];
+      }
+      return prev.filter((id) => id !== categoryId);
+    });
+  };
+
+  const saveCategoryAssignment = async () => {
+    if (!assigningGroup) return;
+
+    try {
+      setSavingAssignment(true);
+      await assignCategoriesToGroup(assigningGroup.id, selectedCategoryIds);
+      toast({ title: "Asignación actualizada", description: "Las categorías del grupo fueron actualizadas correctamente." });
+
+      closeAssignDialog();
+      await Promise.all([loadGroups(), CategoriesStore.refresh()]);
+      await queryClient.invalidateQueries();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `No se pudieron guardar las categorías del grupo: ${String(error)}`,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingAssignment(false);
+    }
   };
 
   const submitGroup = async () => {
@@ -245,6 +320,10 @@ export default function CategoryGroups() {
                     </p>
                   </div>
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:gap-3">
+                    <Button variant="secondary" className="w-full sm:w-auto" onClick={() => void openAssignDialog(group)}>
+                      <ListPlus className="mr-2 h-4 w-4" />
+                      Manage Categories
+                    </Button>
                     <Button variant="outline" className="w-full sm:w-auto" onClick={() => openEditDialog(group)}>
                       <Pencil className="mr-2 h-4 w-4" />
                       Editar
@@ -293,6 +372,75 @@ export default function CategoryGroups() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={assignDialogOpen} onOpenChange={(open) => !open && closeAssignDialog()}>
+        <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
+          <DialogHeader>
+            <DialogTitle>Manage Categories</DialogTitle>
+            <DialogDescription>
+              {assigningGroup
+                ? `Selecciona las categorías que pertenecerán al grupo \"${assigningGroup.name}\".`
+                : "Selecciona las categorías para este grupo."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {loadingCategories ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Cargando categorías...
+              </div>
+            ) : categories.length === 0 ? (
+              <p className="text-sm text-slate-500">No hay categorías disponibles para asignar.</p>
+            ) : (
+              <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
+                {categories.map((category) => {
+                  const categoryId = Number(category.id);
+                  const isChecked = selectedCategoryIds.includes(categoryId);
+
+                  return (
+                    <label
+                      key={category.id}
+                      htmlFor={`assign-category-${category.id}`}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3 hover:bg-slate-50"
+                    >
+                      <Checkbox
+                        id={`assign-category-${category.id}`}
+                        checked={isChecked}
+                        onCheckedChange={(checked) => toggleCategorySelection(categoryId, checked === true)}
+                      />
+                      <div
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200"
+                        style={{ backgroundColor: `${category.color}20` }}
+                      >
+                        <CategoryIcon name={category.icon} color={category.color} className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-900">{category.name}</p>
+                        <p className="text-xs text-slate-500">{category.type === "income" ? "Ingreso" : "Gasto"}</p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeAssignDialog} disabled={savingAssignment}>Cancelar</Button>
+            <Button onClick={saveCategoryAssignment} disabled={savingAssignment || !assigningGroup} aria-busy={savingAssignment}>
+              {savingAssignment ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
