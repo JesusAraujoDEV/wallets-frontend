@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar as CalendarIcon, PlusCircle, Loader2, Download } from "lucide-react";
 import * as Icons from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { AccountsStore, CategoriesStore, TransactionsStore, TransfersStore, newId, onDataChange } from "@/lib/storage";
-import type { Account, Category } from "@/lib/types";
+import { AccountsStore, CategoriesStore, TransactionsStore, TransfersStore, fetchCategoryGroups, newId, onDataChange } from "@/lib/storage";
+import type { Account, Category, CategoryGroup } from "@/lib/types";
 import { useVESExchangeRate } from "@/lib/rates";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -52,6 +52,9 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
   const [newCatColor, setNewCatColor] = useState<string>("hsl(var(--chart-6))");
   const [newCatColorName, setNewCatColorName] = useState<string>("Sky Blue");
   const [newCatIcon, setNewCatIcon] = useState<string | null>(null);
+  const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([]);
+  const [categoryGroupsLoading, setCategoryGroupsLoading] = useState(false);
+  const [newCatGroupId, setNewCatGroupId] = useState<string>("");
 
   const ICON_OPTIONS: string[] = getIconOptionsForType(pickerType);
 
@@ -65,6 +68,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
     setNewCatColor("hsl(var(--chart-6))");
     setNewCatColorName("Sky Blue");
     setNewCatIcon(null);
+    setNewCatGroupId(categoryGroups.length > 0 ? String(categoryGroups[0].id) : "");
   };
 
   const handleCreateInlineCategory = async () => {
@@ -73,11 +77,15 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
       toast({ title: "Missing name", description: "Please enter a category name.", variant: "destructive" });
       return;
     }
+    if (!newCatGroupId) {
+      toast({ title: "Missing category group", description: "Please select a category group.", variant: "destructive" });
+      return;
+    }
 
     try {
       setCreatingCat(true);
       const tempId = newId();
-      await CategoriesStore.upsert({ id: tempId, name, type: pickerType, color: newCatColor, colorName: newCatColorName, icon: newCatIcon ?? undefined });
+      await CategoriesStore.upsert({ id: tempId, name, type: pickerType, color: newCatColor, colorName: newCatColorName, icon: newCatIcon ?? undefined, groupId: Number(newCatGroupId) });
       const created = CategoriesStore.all().find(c => c.name.toLowerCase() === name.toLowerCase() && c.type === pickerType);
       if (created) {
         setType(pickerType);
@@ -99,6 +107,22 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
     load();
     const off = onDataChange(load);
     return off;
+  }, []);
+
+  useEffect(() => {
+    const loadGroups = async () => {
+      try {
+        setCategoryGroupsLoading(true);
+        const groups = await fetchCategoryGroups();
+        setCategoryGroups(groups);
+        setNewCatGroupId(groups.length > 0 ? String(groups[0].id) : "");
+      } catch (error) {
+        toast({ title: "Error loading category groups", description: String(error), variant: "destructive" });
+      } finally {
+        setCategoryGroupsLoading(false);
+      }
+    };
+    loadGroups();
   }, []);
 
   // Ensure selected category matches the chosen type
@@ -366,10 +390,27 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
                   <Label htmlFor="newCatName">Create new category</Label>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Input id="newCatName" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="e.g. Groceries" />
-                    <Button type="button" className="w-full sm:w-auto" onClick={handleCreateInlineCategory} disabled={creatingCat}>
+                    <Button type="button" className="w-full sm:w-auto" onClick={handleCreateInlineCategory} disabled={creatingCat || categoryGroupsLoading || categoryGroups.length === 0 || !newCatGroupId}>
                       {creatingCat ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Create</>) : "Create"}
                     </Button>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="newCatGroupId">Category Group</Label>
+                  <Select value={newCatGroupId} onValueChange={setNewCatGroupId}>
+                    <SelectTrigger id="newCatGroupId" disabled={categoryGroupsLoading || categoryGroups.length === 0}>
+                      <SelectValue placeholder={categoryGroupsLoading ? "Loading groups..." : "Select a category group"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryGroups.map((group) => (
+                        <SelectItem key={group.id} value={String(group.id)}>{group.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {categoryGroups.length === 0 ? (
+                    <p className="text-sm text-destructive">You need at least one category group before creating categories.</p>
+                  ) : null}
                 </div>
 
                 <div className="space-y-2">

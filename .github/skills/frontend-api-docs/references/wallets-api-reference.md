@@ -837,7 +837,6 @@ Body:
 Purpose: List user categories.
 
 Query:
-- `includeInStats` (string, optional): `true | false | 1 | 0`
 - `type` (string, optional): `income | expense | ingreso | gasto`
 
 200 response:
@@ -847,7 +846,12 @@ Query:
     "id": 0,
     "name": "string",
     "type": "ingreso",
-    "includeInStats": true,
+    "groupId": 0,
+    "group": {
+      "id": 0,
+      "name": "string",
+      "description": "string"
+    },
     "userId": 0
   }
 ]
@@ -861,7 +865,7 @@ Body:
 {
   "name": "string",
   "type": "income",
-  "includeInStats": true
+  "groupId": 0
 }
 ```
 
@@ -871,7 +875,12 @@ Body:
   "id": 0,
   "name": "string",
   "type": "ingreso",
-  "includeInStats": true,
+  "groupId": 0,
+  "group": {
+    "id": 0,
+    "name": "string",
+    "description": "string"
+  },
   "userId": 0
 }
 ```
@@ -887,7 +896,7 @@ Body:
 {
   "name": "string",
   "type": "income",
-  "includeInStats": true
+  "groupId": 0
 }
 ```
 
@@ -903,44 +912,10 @@ Query:
 200 response:
 - Successful deletion.
 
-### POST /categories/include-in-stats/enable
-Purpose: Enable include_in_stats for multiple categories.
+### GET /category-groups
+Purpose: List available category groups for authenticated user.
 
-Body:
-```json
-{
-  "ids": [0]
-}
-```
-
-200 response:
-```json
-{
-  "ok": true,
-  "rowCount": 0
-}
-```
-
-### POST /categories/include-in-stats/disable
-Purpose: Disable include_in_stats for multiple categories.
-
-Body:
-```json
-{
-  "ids": [0]
-}
-```
-
-200 response:
-```json
-{
-  "ok": true,
-  "rowCount": 0
-}
-```
-
-### GET /categories/include-in-stats/enabled
-Purpose: List categories with include_in_stats=true.
+Query: none
 
 200 response:
 ```json
@@ -948,25 +923,7 @@ Purpose: List categories with include_in_stats=true.
   {
     "id": 0,
     "name": "string",
-    "type": "ingreso",
-    "includeInStats": true,
-    "userId": 0
-  }
-]
-```
-
-### GET /categories/include-in-stats/disabled
-Purpose: List categories with include_in_stats=false.
-
-200 response:
-```json
-[
-  {
-    "id": 0,
-    "name": "string",
-    "type": "ingreso",
-    "includeInStats": true,
-    "userId": 0
+    "description": "string"
   }
 ]
 ```

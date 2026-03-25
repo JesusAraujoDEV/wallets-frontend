@@ -1,7 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,8 +14,8 @@ import {
 import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
-import { CategoriesStore, newId, onDataChange } from "@/lib/storage";
-import type { Category } from "@/lib/types";
+import { CategoriesStore, fetchCategoryGroups, newId, onDataChange } from "@/lib/storage";
+import type { Category, CategoryGroup } from "@/lib/types";
 import { CategoryEditorDialog, type CategoryEditorValue } from "@/components/CategoryEditorDialog";
 import { CategoryIcon } from "@/components/CategoryIcon";
 
@@ -25,21 +24,18 @@ export const CategoryManager = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [groups, setGroups] = useState<CategoryGroup[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
   const [formData, setFormData] = useState<CategoryEditorValue>({
     name: "",
     type: "expense",
+    groupId: "",
     color: "hsl(var(--chart-6))",
     colorName: "Sky Blue",
     icon: null,
   });
-  // Bulk include/exclude modal state
-  const [bulkOpen, setBulkOpen] = useState<null | 'enable' | 'disable'>(null);
-  const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkOptions, setBulkOptions] = useState<Category[]>([]);
-  const [bulkSelected, setBulkSelected] = useState<string[]>([]);
 
   const handleCreateOrUpdate = async () => {
     if (!formData.name.trim()) {
@@ -52,6 +48,14 @@ export const CategoryManager = () => {
     }
 
     if (!formData.color) return;
+    if (!formData.groupId) {
+      toast({
+        title: "Error",
+        description: "Category group is required",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -63,6 +67,7 @@ export const CategoryManager = () => {
           color: formData.color,
           colorName: formData.colorName,
           icon: formData.icon ?? null,
+          groupId: Number(formData.groupId),
         });
         toast({ title: "Category Updated", description: `${formData.name} has been updated successfully.` });
       } else {
@@ -73,6 +78,7 @@ export const CategoryManager = () => {
           color: formData.color,
           colorName: formData.colorName,
           icon: formData.icon ?? null,
+          groupId: Number(formData.groupId),
         };
         await CategoriesStore.upsert(newCategory);
         toast({ title: "Category Created", description: `${formData.name} has been added successfully.` });
@@ -88,6 +94,7 @@ export const CategoryManager = () => {
     setFormData({
       name: category.name,
       type: category.type,
+      groupId: String(category.groupId),
       color: category.color,
       colorName: category.colorName,
       icon: category.icon ?? null,
@@ -109,13 +116,32 @@ export const CategoryManager = () => {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingCategory(null);
-    setFormData({ name: "", type: "expense", color: "hsl(var(--chart-6))", colorName: "Sky Blue", icon: null });
+    setFormData({ name: "", type: "expense", groupId: "", color: "hsl(var(--chart-6))", colorName: "Sky Blue", icon: null });
+  };
+
+  const loadGroups = async () => {
+    try {
+      setGroupsLoading(true);
+      const nextGroups = await fetchCategoryGroups();
+      setGroups(nextGroups);
+      if (nextGroups.length > 0 && !editingCategory) {
+        setFormData((prev) => ({ ...prev, groupId: prev.groupId || String(nextGroups[0].id) }));
+      }
+    } catch (error) {
+      toast({ title: "Error", description: `Unable to load category groups: ${String(error)}`, variant: "destructive" });
+    } finally {
+      setGroupsLoading(false);
+    }
   };
 
   useEffect(() => {
     setCategories(CategoriesStore.all());
     const off = onDataChange(() => setCategories(CategoriesStore.all()));
     return off;
+  }, []);
+
+  useEffect(() => {
+    loadGroups();
   }, []);
 
   const expenseCategories = categories.filter(c => c.type === "expense");
@@ -130,50 +156,6 @@ export const CategoryManager = () => {
             <CardDescription>Create and manage your custom categories</CardDescription>
           </div>
           <div className="flex w-full flex-col flex-wrap gap-2 sm:w-auto sm:flex-row">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full sm:w-auto"
-              onClick={async () => {
-                setBulkOpen('enable');
-                setBulkLoading(true);
-                setBulkSelected([]);
-                try {
-                  const opts = await CategoriesStore.fetchByIncludeInStats(false);
-                  setBulkOptions(opts);
-                } catch (e) {
-                  toast({ title: 'Error loading categories', description: String(e), variant: 'destructive' });
-                  setBulkOpen(null);
-                } finally {
-                  setBulkLoading(false);
-                }
-              }}
-              disabled={isSubmitting}
-            >
-              Include in stats
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full sm:w-auto"
-              onClick={async () => {
-                setBulkOpen('disable');
-                setBulkLoading(true);
-                setBulkSelected([]);
-                try {
-                  const opts = await CategoriesStore.fetchByIncludeInStats(true);
-                  setBulkOptions(opts);
-                } catch (e) {
-                  toast({ title: 'Error loading categories', description: String(e), variant: 'destructive' });
-                  setBulkOpen(null);
-                } finally {
-                  setBulkLoading(false);
-                }
-              }}
-              disabled={isSubmitting}
-            >
-              Exclude from stats
-            </Button>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="w-full gap-2 sm:w-auto">
@@ -192,6 +174,8 @@ export const CategoryManager = () => {
             submitting={isSubmitting}
             title={editingCategory ? "Edit Category" : "Create New Category"}
             description={editingCategory ? "Update the category details below." : "Add a new category to organize your transactions."}
+            groups={groups}
+            groupsLoading={groupsLoading}
           />
         </div>
       </CardHeader>
@@ -202,21 +186,11 @@ export const CategoryManager = () => {
           <h3 className="text-sm font-semibold text-muted-foreground mb-3">EXPENSE CATEGORIES</h3>
           <div className="space-y-2">
             {expenseCategories.map((category) => {
-              const selected = selectedIds.includes(category.id);
               return (
                 <div
                   key={category.id}
                   className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border hover:bg-muted/50 transition-colors"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={(e) => {
-                      if (e.target.checked) setSelectedIds(prev => [...prev, category.id]);
-                      else setSelectedIds(prev => prev.filter(id => id !== category.id));
-                    }}
-                    className="h-4 w-4"
-                  />
                   <div
                     className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
                     style={{ backgroundColor: category.color }}
@@ -228,32 +202,29 @@ export const CategoryManager = () => {
                     <p className="font-medium text-foreground truncate">{category.name}</p>
                     <p className="text-xs text-muted-foreground">{category.colorName}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {category.includeInStats ? <Badge variant="outline" className="text-xs">In stats</Badge> : null}
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(category)}
-                        className="h-8 w-8 p-0"
-                        disabled={deletingId === category.id}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setConfirmDeleteId(category.id)}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        disabled={deletingId === category.id}
-                      >
-                        {deletingId === category.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(category)}
+                      className="h-8 w-8 p-0"
+                      disabled={deletingId === category.id}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setConfirmDeleteId(category.id)}
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      disabled={deletingId === category.id}
+                    >
+                      {deletingId === category.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 </div>
               );
@@ -266,21 +237,11 @@ export const CategoryManager = () => {
           <h3 className="text-sm font-semibold text-muted-foreground mb-3">INCOME CATEGORIES</h3>
           <div className="space-y-2">
             {incomeCategories.map((category) => {
-              const selected = selectedIds.includes(category.id);
               return (
                 <div
                   key={category.id}
                   className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border hover:bg-muted/50 transition-colors"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={(e) => {
-                      if (e.target.checked) setSelectedIds(prev => [...prev, category.id]);
-                      else setSelectedIds(prev => prev.filter(id => id !== category.id));
-                    }}
-                    className="h-4 w-4"
-                  />
                   <div
                     className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
                     style={{ backgroundColor: category.color }}
@@ -292,31 +253,28 @@ export const CategoryManager = () => {
                     <p className="font-medium text-foreground truncate">{category.name}</p>
                     <p className="text-xs text-muted-foreground">{category.colorName}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {category.includeInStats ? <Badge variant="outline" className="text-xs">In stats</Badge> : null}
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(category)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setConfirmDeleteId(category.id)}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        disabled={deletingId === category.id}
-                      >
-                        {deletingId === category.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(category)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setConfirmDeleteId(category.id)}
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      disabled={deletingId === category.id}
+                    >
+                      {deletingId === category.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 </div>
               );
@@ -324,69 +282,6 @@ export const CategoryManager = () => {
           </div>
         </div>
       </CardContent>
-      {/* Bulk include/exclude dialog */}
-      <Dialog open={!!bulkOpen} onOpenChange={(open) => { if (!open) { setBulkOpen(null); setBulkOptions([]); setBulkSelected([]); } }}>
-        <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
-          <DialogHeader>
-            <DialogTitle>{bulkOpen === 'enable' ? 'Include categories in stats' : 'Exclude categories from stats'}</DialogTitle>
-            <DialogDescription>
-              {bulkOpen === 'enable'
-                ? 'Select one or more categories to include in stats.'
-                : 'Select one or more categories to exclude from stats.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-            {bulkLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
-            ) : bulkOptions.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No categories available.</div>
-            ) : (
-              bulkOptions.map(cat => {
-                const checked = bulkSelected.includes(cat.id);
-                return (
-                  <label key={cat.id} className="flex items-center gap-3 p-2 rounded-md border hover:bg-muted/50">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4"
-                      checked={checked}
-                      onChange={(e) => {
-                        if (e.target.checked) setBulkSelected(prev => [...prev, cat.id]);
-                        else setBulkSelected(prev => prev.filter(id => id !== cat.id));
-                      }}
-                    />
-                    <span className="w-4 h-4 rounded-full inline-block" style={{ backgroundColor: cat.color }} />
-                    <span className="flex-1 min-w-0 truncate">{cat.name} <span className="ml-1 text-xs text-muted-foreground">({cat.type})</span></span>
-                    {cat.includeInStats ? <Badge variant="outline" className="text-xs">In stats</Badge> : null}
-                  </label>
-                );
-              })
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setBulkOpen(null); setBulkOptions([]); setBulkSelected([]); }} disabled={isSubmitting}>Cancel</Button>
-            <Button
-              onClick={async () => {
-                if (!bulkOpen || bulkSelected.length === 0) return;
-                try {
-                  setIsSubmitting(true);
-                  await CategoriesStore.bulkSetIncludeInStats(bulkSelected, bulkOpen === 'enable');
-                  toast({ title: 'Updated', description: `${bulkOpen === 'enable' ? 'Included' : 'Excluded'} ${bulkSelected.length} categories.` });
-                  setBulkOpen(null);
-                  setBulkOptions([]);
-                  setBulkSelected([]);
-                } catch (e) {
-                  toast({ title: 'Error', description: String(e), variant: 'destructive' });
-                } finally {
-                  setIsSubmitting(false);
-                }
-              }}
-              disabled={bulkSelected.length === 0 || isSubmitting}
-            >
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       {/* Confirm delete dialog */}
       <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => setConfirmDeleteId(open ? confirmDeleteId : null)}>
         <AlertDialogContent>

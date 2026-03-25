@@ -1,5 +1,23 @@
-import { Account, Category, Transaction } from "./types";
+import { Account, Category, CategoryGroup, Transaction } from "./types";
 import { apiFetch } from "./http";
+
+type ApiCategoryGroup = {
+  id: number;
+  name: string;
+  description?: string | null;
+};
+
+type ApiCategory = {
+  id: number | string;
+  name: string;
+  type: "ingreso" | "gasto" | "income" | "expense";
+  icon?: string | null;
+  color?: string;
+  colorName?: string;
+  groupId?: number | string | null;
+  group_id?: number | string | null;
+  group?: ApiCategoryGroup | null;
+};
 
 // Event bus for reactive updates
 const bus = new EventTarget();
@@ -39,6 +57,15 @@ let accountsCache: Account[] = [];
 let categoriesCache: Category[] = [];
 let transactionsCache: Transaction[] = [];
 
+export async function fetchCategoryGroups(): Promise<CategoryGroup[]> {
+  const list = await fetchJSON<ApiCategoryGroup[]>(`category-groups`);
+  return (list || []).map((g) => ({
+    id: Number(g.id),
+    name: String(g.name),
+    description: g.description ?? null,
+  }));
+}
+
 // Accounts
 export const AccountsStore = {
   all(): Account[] {
@@ -77,15 +104,22 @@ export const CategoriesStore = {
     return categoriesCache;
   },
   async refresh(): Promise<void> {
-    const list = await fetchJSON<any[]>(`categories`);
+    const list = await fetchJSON<ApiCategory[]>(`categories`);
     categoriesCache = (list || []).map((c) => ({
       id: String(c.id),
       name: String(c.name),
-      type: (c.type === "ingreso" || c.type === "income") ? "income" : (c.type === "expense" || c.type === "gasto") ? "expense" : (c.type as any) || "expense",
+      type: (c.type === "ingreso" || c.type === "income") ? "income" : "expense",
       icon: c.icon ?? null,
       color: c.color || "hsl(var(--chart-6))",
       colorName: c.colorName || "",
-      includeInStats: !!(c.include_in_stats ?? c.includeInStats ?? false),
+      groupId: Number(c.groupId ?? c.group_id ?? 0),
+      group: c.group
+        ? {
+            id: Number(c.group.id),
+            name: String(c.group.name),
+            description: c.group.description ?? null,
+          }
+        : undefined,
     }));
     emit();
   },
@@ -97,6 +131,7 @@ export const CategoriesStore = {
       icon: category.icon ?? null,
       color: category.color,
       colorName: category.colorName,
+      groupId: Number(category.groupId),
     };
     if (exists) {
       await fetchJSON(`categories?id=${encodeURIComponent(category.id)}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -108,25 +143,6 @@ export const CategoriesStore = {
   async remove(id: string): Promise<void> {
     await fetchJSON(`categories?id=${encodeURIComponent(id)}`, { method: "DELETE" });
     await this.refresh();
-  },
-  async bulkSetIncludeInStats(ids: string[], enabled: boolean): Promise<void> {
-    if (!ids || ids.length === 0) return;
-    const path = `categories/include-in-stats/${enabled ? 'enable' : 'disable'}`;
-    const payload = { ids: ids.map((i) => Number(i)) };
-    await fetchJSON(path, { method: 'POST', body: JSON.stringify(payload) });
-    await this.refresh();
-  },
-  async fetchByIncludeInStats(flag: boolean): Promise<Category[]> {
-    const list = await fetchJSON<any[]>(`categories?includeInStats=${flag ? 'true' : 'false'}`);
-    return (list || []).map((c) => ({
-      id: String(c.id),
-      name: String(c.name),
-      type: (c.type === "ingreso" || c.type === "income") ? "income" : (c.type === "expense" || c.type === "gasto") ? "expense" : (c.type as any) || "expense",
-      icon: c.icon ?? null,
-      color: c.color || "hsl(var(--chart-6))",
-      colorName: c.colorName || "",
-      includeInStats: !!(c.include_in_stats ?? c.includeInStats ?? flag),
-    }));
   },
 };
 

@@ -8,7 +8,7 @@ export default function Categories() {
         <CardHeader className="space-y-2">
           <CardTitle className="text-2xl text-slate-950">Categorías</CardTitle>
           <CardDescription>
-            Organiza ingresos y gastos desde un catálogo centralizado con edición y control de inclusión en estadísticas.
+            Organiza ingresos y gastos desde un catálogo centralizado con edición y asignación por grupos de categoría.
           </CardDescription>
         </CardHeader>
         <CardContent>

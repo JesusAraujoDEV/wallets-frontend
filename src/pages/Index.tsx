@@ -114,20 +114,8 @@ const Index = () => {
   const expenseFilterSet = useMemo(() => new Set(selectedExpenseCats), [selectedExpenseCats]);
   const incomeCategories = useMemo(() => categories.filter(c => c.type === "income"), [categories]);
   const expenseCategories = useMemo(() => categories.filter(c => c.type === "expense"), [categories]);
-  const visibleIncomeCategories = useMemo(() => {
-    return incomeCategories.filter(c => {
-      if (statsScope === "only") return c.includeInStats === true;
-      if (statsScope === "exclude") return c.includeInStats === false;
-      return true;
-    });
-  }, [incomeCategories, statsScope]);
-  const visibleExpenseCategories = useMemo(() => {
-    return expenseCategories.filter(c => {
-      if (statsScope === "only") return c.includeInStats === true;
-      if (statsScope === "exclude") return c.includeInStats === false;
-      return true;
-    });
-  }, [expenseCategories, statsScope]);
+  const visibleIncomeCategories = useMemo(() => incomeCategories, [incomeCategories]);
+  const visibleExpenseCategories = useMemo(() => expenseCategories, [expenseCategories]);
   const visibleExpenseCategoryNames = useMemo(() => new Set(visibleExpenseCategories.map(c => c.name)), [visibleExpenseCategories]);
   const visibleIncomeCategoryNames = useMemo(() => new Set(visibleIncomeCategories.map(c => c.name)), [visibleIncomeCategories]);
   const selectedExpenseCategoryNames = useMemo(() => {
@@ -160,9 +148,6 @@ const Index = () => {
         const cat = categories.find(c => c.id === t.categoryId);
         // Exclude balance adjustment categories
         if (isBalanceAdjustmentCategory(cat?.name)) return false;
-        // Apply statsScope filtering by category.includeInStats
-        if (statsScope === "only") return cat?.includeInStats === true;
-        if (statsScope === "exclude") return cat?.includeInStats === false;
         return true; // all
       })
       .filter(t => (selectedExpenseCats.length > 0 ? expenseFilterSet.has(t.categoryId) : true));
@@ -362,8 +347,6 @@ const Index = () => {
       .filter(t => {
         const cat = categories.find(c => c.id === t.categoryId);
         if (isBalanceAdjustmentCategory(cat?.name)) return false;
-        if (statsScope === "only") return cat?.includeInStats === true;
-        if (statsScope === "exclude") return cat?.includeInStats === false;
         return true;
       })
       .filter(t => (selectedExpenseCats.length > 0 ? expenseFilterSet.has(t.categoryId) : true));
@@ -406,7 +389,7 @@ const Index = () => {
             </TabsList>
           </Tabs>
           <p className="my-4 text-sm text-slate-500">
-            Tabs and selected categories filter pie, budget, trends and advanced charts. Server calls still respect the backend includeInStats contract.
+            Tabs and selected categories filter pie, budget, trends and advanced charts.
           </p>
         </div>
 

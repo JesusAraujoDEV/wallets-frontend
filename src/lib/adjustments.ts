@@ -1,10 +1,13 @@
-import { AccountsStore, CategoriesStore, TransactionsStore, newId } from "@/lib/storage";
+import { AccountsStore, CategoriesStore, TransactionsStore, fetchCategoryGroups, newId } from "@/lib/storage";
 import type { Account, Category } from "@/lib/types";
 
 export async function ensureAdjustmentCategory(kind: "income" | "expense"): Promise<Category> {
   const name = kind === "income" ? "Ajuste de Balance (+)" : "Ajuste de Balance (-)";
   let cat = CategoriesStore.all().find(c => c.name === name);
   if (cat) return cat;
+  const groups = await fetchCategoryGroups();
+  const defaultGroup = groups[0];
+  if (!defaultGroup) throw new Error("No category groups available to create adjustment category");
   try {
     const newCat: Category = {
       id: newId(),
@@ -12,6 +15,7 @@ export async function ensureAdjustmentCategory(kind: "income" | "expense"): Prom
       type: kind,
       color: kind === "income" ? "hsl(var(--chart-2))" : "hsl(var(--chart-3))",
       colorName: kind === "income" ? "Lavender" : "Peach",
+      groupId: defaultGroup.id,
     };
     await CategoriesStore.upsert(newCat);
     cat = CategoriesStore.all().find(c => c.name === name) || newCat;

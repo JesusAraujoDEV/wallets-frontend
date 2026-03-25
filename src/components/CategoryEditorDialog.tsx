@@ -3,14 +3,17 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Loader2 } from "lucide-react";
 import * as Icons from "lucide-react";
 import { getIconOptionsForType } from "@/lib/categoryIcons";
+import type { CategoryGroup } from "@/lib/types";
 
 export type CategoryEditorValue = {
   name: string;
   type: "income" | "expense";
+  groupId: string;
   color: string;
   colorName: string;
   icon?: string | null;
@@ -40,6 +43,8 @@ export function CategoryEditorDialog({
   submitting,
   title,
   description,
+  groups,
+  groupsLoading,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -49,11 +54,14 @@ export function CategoryEditorDialog({
   submitting?: boolean;
   title?: string;
   description?: string;
+  groups: CategoryGroup[];
+  groupsLoading?: boolean;
 }) {
   const colorInputRef = useRef<HTMLInputElement | null>(null);
   const iconOptions = getIconOptionsForType(value.type);
   const isCustomColor = !presetColors.some((c) => c.value === value.color);
   const selectedColorLabel = isCustomColor ? value.color : value.colorName;
+  const saveDisabled = !!submitting || groupsLoading || groups.length === 0 || !value.groupId;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,6 +91,22 @@ export function CategoryEditorDialog({
               <ToggleGroupItem value="expense" aria-label="Expense">Expense</ToggleGroupItem>
               <ToggleGroupItem value="income" aria-label="Income">Income</ToggleGroupItem>
             </ToggleGroup>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="category-group">Category Group</Label>
+            <Select value={value.groupId} onValueChange={(next) => onChange({ ...value, groupId: next })}>
+              <SelectTrigger id="category-group" disabled={groupsLoading || groups.length === 0}>
+                <SelectValue placeholder={groupsLoading ? "Loading groups..." : "Select a category group"} />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((group) => (
+                  <SelectItem key={group.id} value={String(group.id)}>{group.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {groups.length === 0 ? (
+              <p className="text-sm text-destructive">You need at least one category group before creating or editing categories.</p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label>Color</Label>
@@ -148,7 +172,7 @@ export function CategoryEditorDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={!!submitting}>Cancel</Button>
-          <Button onClick={onSubmit} disabled={!!submitting} aria-busy={!!submitting}>
+          <Button onClick={onSubmit} disabled={saveDisabled} aria-busy={!!submitting}>
             {submitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

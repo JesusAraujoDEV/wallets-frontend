@@ -12,7 +12,14 @@ export interface Category {
   icon?: string | null;
   color: string; // CSS color value
   colorName: string;
-  includeInStats?: boolean;
+  groupId: number;
+  group?: CategoryGroup;
+}
+
+export interface CategoryGroup {
+  id: number;
+  name: string;
+  description?: string | null;
 }
 
 export interface Transaction {
