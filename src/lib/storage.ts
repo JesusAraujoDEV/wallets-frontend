@@ -1,4 +1,4 @@
-import { Account, Category, CategoryGroup, Transaction } from "./types";
+import { Account, Category, CategoryGroup, CategoryGroupDeleteResponse, CategoryGroupUpsertPayload, Transaction } from "./types";
 import { apiFetch } from "./http";
 
 type ApiCategoryGroup = {
@@ -64,6 +64,36 @@ export async function fetchCategoryGroups(): Promise<CategoryGroup[]> {
     name: String(g.name),
     description: g.description ?? null,
   }));
+}
+
+export async function createCategoryGroup(payload: CategoryGroupUpsertPayload): Promise<CategoryGroup> {
+  const created = await fetchJSON<ApiCategoryGroup>(`category-groups`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return {
+    id: Number(created.id),
+    name: String(created.name),
+    description: created.description ?? null,
+  };
+}
+
+export async function updateCategoryGroup(id: number, payload: CategoryGroupUpsertPayload): Promise<CategoryGroup> {
+  const updated = await fetchJSON<ApiCategoryGroup>(`category-groups?id=${encodeURIComponent(String(id))}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  return {
+    id: Number(updated.id),
+    name: String(updated.name),
+    description: updated.description ?? null,
+  };
+}
+
+export async function deleteCategoryGroup(id: number): Promise<CategoryGroupDeleteResponse> {
+  return fetchJSON<CategoryGroupDeleteResponse>(`category-groups?id=${encodeURIComponent(String(id))}`, {
+    method: "DELETE",
+  });
 }
 
 // Accounts

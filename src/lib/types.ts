@@ -22,6 +22,16 @@ export interface CategoryGroup {
   description?: string | null;
 }
 
+export interface CategoryGroupUpsertPayload {
+  name: string;
+  description?: string | null;
+}
+
+export interface CategoryGroupDeleteResponse {
+  ok: boolean;
+  rowCount: number;
+}
+
 export interface Transaction {
   id: string;
   date: string; // ISO date (YYYY-MM-DD)

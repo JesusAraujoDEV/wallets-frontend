@@ -11,6 +11,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
+import CategoryGroups from "./pages/CategoryGroups";
 import Accounts from "./pages/Accounts";
 import Profile from "./pages/Profile";
 import RequireAuth from "@/components/RequireAuth";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="dashboard" element={<Navigate to="/" replace />} />
             <Route path="transactions" element={<Transactions />} />
             <Route path="categories" element={<Categories />} />
+            <Route path="category-groups" element={<CategoryGroups />} />
             <Route path="accounts" element={<Accounts />} />
             <Route path="profile" element={<Profile />} />
           </Route>

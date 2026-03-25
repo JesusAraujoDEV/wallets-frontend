@@ -13,13 +13,14 @@ import { TrendLineChart } from "@/components/TrendLineChart";
 import { BudgetComparisonChart } from "@/components/BudgetComparisonChart";
 import { AccountSelector } from "@/components/AccountSelector";
 import CategoryMultiSelect from "@/components/CategoryMultiSelect";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AuthApi } from "@/lib/auth";
-import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
+import { AccountsStore, CategoriesStore, TransactionsStore, fetchCategoryGroups, onDataChange } from "@/lib/storage";
 import { useVESExchangeRate, convertToUSD } from "@/lib/rates";
 import { fetchIncomeMonthly, fetchExpenseMonthly, fetchGlobalBalance, type GlobalBalance } from "@/lib/summary";
 import { isBalanceAdjustmentCategory, isBalanceAdjustmentPlus } from "@/lib/utils";
-import type { Account, Category, Transaction, AuthUser } from "@/lib/types";
+import type { Account, Category, CategoryGroup, Transaction, AuthUser } from "@/lib/types";
 import { fetchNetCashFlow, fetchSpendingHeatmap, fetchExpenseVolatility, fetchComparativeMoM, fetchMonthlyForecast, fetchIncomeHeatmap, fetchIncomeVolatility, fetchComparativeMoMIncome } from "@/lib/stats";
 
 // Dashboard data is derived from localStorage (JSON DB)
@@ -32,8 +33,9 @@ const Index = () => {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [selectedIncomeCats, setSelectedIncomeCats] = useState<string[]>([]);
   const [selectedExpenseCats, setSelectedExpenseCats] = useState<string[]>([]);
+  const [groups, setGroups] = useState<CategoryGroup[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
   const { rate } = useVESExchangeRate();
-  const [statsScope, setStatsScope] = useState<"all" | "only" | "exclude">("all");
   // New stats datasets
   const [netFlowData, setNetFlowData] = useState<{ summary?: any; series: any[] }>({ summary: undefined, series: [] });
   const [heatmapData, setHeatmapData] = useState<{ categories: string[]; weekdays: string[]; data_points: any[] }>({ categories: [], weekdays: [], data_points: [] });
@@ -61,6 +63,23 @@ const Index = () => {
     TransactionsStore.refresh().catch(() => {});
     const off = onDataChange(load);
     return off;
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const list = await fetchCategoryGroups();
+        if (!alive) return;
+        setGroups(list);
+      } catch {
+        if (!alive) return;
+        setGroups([]);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
 
   // Restore persisted category filters once categories are loaded
@@ -109,13 +128,20 @@ const Index = () => {
   const txByAccount = useMemo(() => (
     transactions.filter(t => selectedAccount === "all" || t.accountId === selectedAccount)
   ), [transactions, selectedAccount]);
+  const selectedGroupNumber = selectedGroupId === "all" ? null : Number(selectedGroupId);
 
   const incomeFilterSet = useMemo(() => new Set(selectedIncomeCats), [selectedIncomeCats]);
   const expenseFilterSet = useMemo(() => new Set(selectedExpenseCats), [selectedExpenseCats]);
   const incomeCategories = useMemo(() => categories.filter(c => c.type === "income"), [categories]);
   const expenseCategories = useMemo(() => categories.filter(c => c.type === "expense"), [categories]);
-  const visibleIncomeCategories = useMemo(() => incomeCategories, [incomeCategories]);
-  const visibleExpenseCategories = useMemo(() => expenseCategories, [expenseCategories]);
+  const visibleIncomeCategories = useMemo(() => {
+    if (selectedGroupNumber === null) return incomeCategories;
+    return incomeCategories.filter((c) => c.groupId === selectedGroupNumber);
+  }, [incomeCategories, selectedGroupNumber]);
+  const visibleExpenseCategories = useMemo(() => {
+    if (selectedGroupNumber === null) return expenseCategories;
+    return expenseCategories.filter((c) => c.groupId === selectedGroupNumber);
+  }, [expenseCategories, selectedGroupNumber]);
   const visibleExpenseCategoryNames = useMemo(() => new Set(visibleExpenseCategories.map(c => c.name)), [visibleExpenseCategories]);
   const visibleIncomeCategoryNames = useMemo(() => new Set(visibleIncomeCategories.map(c => c.name)), [visibleIncomeCategories]);
   const selectedExpenseCategoryNames = useMemo(() => {
@@ -148,6 +174,7 @@ const Index = () => {
         const cat = categories.find(c => c.id === t.categoryId);
         // Exclude balance adjustment categories
         if (isBalanceAdjustmentCategory(cat?.name)) return false;
+        if (selectedGroupNumber !== null && cat?.groupId !== selectedGroupNumber) return false;
         return true; // all
       })
       .filter(t => (selectedExpenseCats.length > 0 ? expenseFilterSet.has(t.categoryId) : true));
@@ -167,7 +194,7 @@ const Index = () => {
         color: cat?.color || "hsl(var(--chart-6))",
       };
     });
-  }, [txByAccount, categories, accounts, rate, expenseFilterSet, selectedExpenseCats.length, statsScope]);
+  }, [txByAccount, categories, accounts, rate, expenseFilterSet, selectedExpenseCats.length, selectedGroupNumber]);
 
   const [trendData, setTrendData] = useState<{ month: string; income: number; expenses: number }[]>([]);
 
@@ -176,7 +203,7 @@ const Index = () => {
     const accountIds = selectedAccount !== "all" ? [selectedAccount] : undefined;
     (async () => {
       try {
-        const summary = await fetchGlobalBalance({ month: monthKey, accountIds });
+        const summary = await fetchGlobalBalance({ month: monthKey, accountIds, groupId: selectedGroupNumber ?? undefined });
         if (!alive) return;
         setBalanceSummary(summary);
       } catch {
@@ -185,7 +212,7 @@ const Index = () => {
       }
     })();
     return () => { alive = false; };
-  }, [monthKey, selectedAccount]);
+  }, [monthKey, selectedAccount, selectedGroupNumber]);
 
   useEffect(() => {
     let alive = true;
@@ -206,7 +233,7 @@ const Index = () => {
       return d.toLocaleString(undefined, { month: 'short' });
     };
     const accountIds = selectedAccount !== 'all' ? [selectedAccount] : undefined;
-    const includeParam = statsScope === 'only' ? true : statsScope === 'exclude' ? false : undefined;
+    const groupId = selectedGroupNumber ?? undefined;
     const visibleIncomeSet = new Set(visibleIncomeCategories.map(c => c.id));
     const visibleExpenseSet = new Set(visibleExpenseCategories.map(c => c.id));
     const incomeCategoryIds = (selectedIncomeCats && selectedIncomeCats.length)
@@ -218,8 +245,8 @@ const Index = () => {
     (async () => {
       try {
         const [incSeries, expSeries] = await Promise.all([
-          fetchIncomeMonthly({ fromMonth, toMonth, includeInStats: includeParam, accountIds, categoryIds: incomeCategoryIds }),
-          fetchExpenseMonthly({ fromMonth, toMonth, includeInStats: includeParam, accountIds, categoryIds: expenseCategoryIds }),
+          fetchIncomeMonthly({ fromMonth, toMonth, accountIds, categoryIds: incomeCategoryIds, groupId }),
+          fetchExpenseMonthly({ fromMonth, toMonth, accountIds, categoryIds: expenseCategoryIds, groupId }),
         ]);
         if (!alive) return;
         const data = monthsKeys.map((k) => ({
@@ -234,12 +261,12 @@ const Index = () => {
       }
     })();
     return () => { alive = false; };
-  }, [selectedAccount, selectedIncomeCats.join(','), selectedExpenseCats.join(','), visibleIncomeCategories.length, visibleExpenseCategories.length, statsScope]);
+  }, [selectedAccount, selectedIncomeCats.join(','), selectedExpenseCats.join(','), visibleIncomeCategories.length, visibleExpenseCategories.length, selectedGroupNumber]);
 
   // Fetch new stats datasets
   useEffect(() => {
     let alive = true;
-    const includeParam = statsScope === 'only' ? true : statsScope === 'exclude' ? false : undefined;
+    const groupId = selectedGroupNumber ?? undefined;
     const accountId = selectedAccount !== 'all' ? selectedAccount : undefined;
     // last 6 months range -> convert to from_date/to_date (YYYY-MM-DD)
     const endMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -251,26 +278,25 @@ const Index = () => {
     (async () => {
       try {
         const [net, heat, vol, mom, fc, incHeat, incVol, incMom] = await Promise.all([
-          fetchNetCashFlow({ includeInStats: includeParam, accountId, fromDate, toDate, timeUnit: 'month' }),
-          fetchSpendingHeatmap({ includeInStats: includeParam, accountId, fromDate, toDate }),
-          fetchExpenseVolatility({ includeInStats: includeParam, accountId, fromDate, toDate, topN: 8 }),
-          fetchComparativeMoM({ includeInStats: includeParam, accountId, date: toDate }),
-          fetchMonthlyForecast({ includeInStats: includeParam, accountId, date: now.toISOString().slice(0,10) }),
-          fetchIncomeHeatmap({ includeInStats: includeParam, accountId, fromDate, toDate }),
-          fetchIncomeVolatility({ includeInStats: includeParam, accountId, fromDate, toDate, topN: 8 }),
-          fetchComparativeMoMIncome({ includeInStats: includeParam, accountId, date: toDate }),
+          fetchNetCashFlow({ accountId, fromDate, toDate, timeUnit: 'month', groupId }),
+          fetchSpendingHeatmap({ accountId, fromDate, toDate, groupId }),
+          fetchExpenseVolatility({ accountId, fromDate, toDate, topN: 8, groupId }),
+          fetchComparativeMoM({ accountId, date: toDate, groupId }),
+          fetchMonthlyForecast({ accountId, date: now.toISOString().slice(0,10), groupId }),
+          fetchIncomeHeatmap({ accountId, fromDate, toDate, groupId }),
+          fetchIncomeVolatility({ accountId, fromDate, toDate, topN: 8, groupId }),
+          fetchComparativeMoMIncome({ accountId, date: toDate, groupId }),
         ]);
         if (!alive) return;
         setNetFlowData({ summary: net?.summary, series: net?.time_series || [] });
 
-        // Ensure category-scoped charts reflect the includeInStats tab strictly, even if backend returns broader sets
+        // Ensure category-scoped charts reflect selected group and category filters strictly
         // 1) Spending Heatmap: filter categories and reindex data_points
         const rawHeatCategories = heat?.categories || [];
         const rawHeatWeekdays = heat?.weekdays || [];
         const rawHeatPoints = heat?.data_points || [];
         const allowedName = (name: string) => {
-          // Respect includeInStats scope
-          if (statsScope !== 'all' && !visibleExpenseCategoryNames.has(name)) return false;
+          if (!visibleExpenseCategoryNames.has(name)) return false;
           // Also respect explicit selected categories (if any)
           if (selectedExpenseCategoryNames.size > 0 && !selectedExpenseCategoryNames.has(name)) return false;
           return true;
@@ -306,7 +332,7 @@ const Index = () => {
         const rawIncHeatWeekdays = incHeat?.weekdays || [];
         const rawIncHeatPoints = incHeat?.data_points || [];
         const allowedIncome = (name: string) => {
-          if (statsScope !== 'all' && !visibleIncomeCategoryNames.has(name)) return false;
+          if (!visibleIncomeCategoryNames.has(name)) return false;
           if (selectedIncomeCategoryNames.size > 0 && !selectedIncomeCategoryNames.has(name)) return false;
           return true;
         };
@@ -338,7 +364,7 @@ const Index = () => {
       }
     })();
     return () => { alive = false; };
-  }, [statsScope, selectedAccount, monthKey, visibleExpenseCategoryNames, selectedExpenseCats.join(','), visibleIncomeCategoryNames, selectedIncomeCats.join(','), categories.length]);
+  }, [selectedAccount, monthKey, visibleExpenseCategoryNames, selectedExpenseCats.join(','), visibleIncomeCategoryNames, selectedIncomeCats.join(','), categories.length, selectedGroupNumber]);
 
   const budgetData = useMemo(() => {
     // Placeholder budgets (0) with actual monthly expenses per category
@@ -347,6 +373,7 @@ const Index = () => {
       .filter(t => {
         const cat = categories.find(c => c.id === t.categoryId);
         if (isBalanceAdjustmentCategory(cat?.name)) return false;
+        if (selectedGroupNumber !== null && cat?.groupId !== selectedGroupNumber) return false;
         return true;
       })
       .filter(t => (selectedExpenseCats.length > 0 ? expenseFilterSet.has(t.categoryId) : true));
@@ -361,7 +388,7 @@ const Index = () => {
       const cat = categories.find(c => c.id === categoryId);
       return { category: cat?.name || "Uncategorized", budget: 0, actual };
     });
-  }, [txByAccount, categories, accounts, rate, expenseFilterSet, selectedExpenseCats.length, statsScope]);
+  }, [txByAccount, categories, accounts, rate, expenseFilterSet, selectedExpenseCats.length, selectedGroupNumber]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -380,17 +407,19 @@ const Index = () => {
       <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
         <AccountSelector selectedAccount={selectedAccount} onAccountChange={setSelectedAccount} />
 
-        <div>
-          <Tabs value={statsScope} onValueChange={(value) => setStatsScope(value as typeof statsScope)}>
-            <TabsList className="h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-0">
-              <TabsTrigger className="w-full sm:w-auto" value="all">All categories</TabsTrigger>
-              <TabsTrigger className="w-full sm:w-auto" value="only">Only included in stats</TabsTrigger>
-              <TabsTrigger className="w-full sm:w-auto" value="exclude">Only excluded in stats</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <p className="my-4 text-sm text-slate-500">
-            Tabs and selected categories filter pie, budget, trends and advanced charts.
-          </p>
+        <div className="space-y-2">
+          <Label htmlFor="group-filter">Grupo de Categoría</Label>
+          <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+            <SelectTrigger id="group-filter" className="w-full sm:max-w-sm">
+              <SelectValue placeholder="Todos los grupos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los grupos</SelectItem>
+              {groups.map((group) => (
+                <SelectItem key={group.id} value={String(group.id)}>{group.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {selectedAccount === "all" ? (

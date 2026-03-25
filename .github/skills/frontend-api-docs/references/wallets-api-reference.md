@@ -928,6 +928,63 @@ Query: none
 ]
 ```
 
+### POST /category-groups
+Purpose: Create category group.
+
+Body:
+```json
+{
+  "name": "string",
+  "description": "string"
+}
+```
+
+201 response:
+```json
+{
+  "id": 0,
+  "name": "string",
+  "description": "string"
+}
+```
+
+### PATCH /category-groups
+Purpose: Partial category group update.
+
+Query:
+- `id` (integer, required)
+
+Body:
+```json
+{
+  "name": "string",
+  "description": "string"
+}
+```
+
+200 response:
+```json
+{
+  "id": 0,
+  "name": "string",
+  "description": "string"
+}
+```
+
+### DELETE /category-groups
+Purpose: Delete category group.
+
+Query:
+- `id` (integer, required)
+
+200 response:
+```json
+{
+  "ok": true,
+  "rowCount": 1
+}
+```
+
 ---
 
 ## Telegram

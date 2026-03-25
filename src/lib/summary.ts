@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/http";
 
-export async function fetchIncomeSummary(params: { month?: string; date?: string; dateFrom?: string; dateTo?: string; includeInStats?: boolean; accountIds?: string[]; categoryIds?: string[]; q?: string; }): Promise<number> {
+export async function fetchIncomeSummary(params: { month?: string; date?: string; dateFrom?: string; dateTo?: string; includeInStats?: boolean; accountIds?: string[]; categoryIds?: string[]; q?: string; groupId?: number; }): Promise<number> {
   const sp = new URLSearchParams();
   // API now supports from_month/to_month; if month provided, use same for both to request that month only
   if (params.month) {
@@ -15,6 +15,7 @@ export async function fetchIncomeSummary(params: { month?: string; date?: string
   if (params.accountIds && params.accountIds.length) sp.set("accountId", params.accountIds.join(","));
   if (params.categoryIds && params.categoryIds.length) sp.set("categoryId", params.categoryIds.join(","));
   if (params.q && params.q.trim()) sp.set("q", params.q.trim());
+  if (typeof params.groupId === "number") sp.set("groupId", String(params.groupId));
   const res = await apiFetch<any>(`summary/income?${sp.toString()}`);
   if (typeof res === 'number') return res;
   if (res && typeof res.income_total === 'number') return res.income_total;
@@ -23,7 +24,7 @@ export async function fetchIncomeSummary(params: { month?: string; date?: string
   return 0;
 }
 
-export async function fetchExpenseSummary(params: { month?: string; date?: string; dateFrom?: string; dateTo?: string; includeInStats?: boolean; accountIds?: string[]; categoryIds?: string[]; q?: string; }): Promise<number> {
+export async function fetchExpenseSummary(params: { month?: string; date?: string; dateFrom?: string; dateTo?: string; includeInStats?: boolean; accountIds?: string[]; categoryIds?: string[]; q?: string; groupId?: number; }): Promise<number> {
   const sp = new URLSearchParams();
   if (params.month) {
     sp.set("from_month", params.month);
@@ -37,6 +38,7 @@ export async function fetchExpenseSummary(params: { month?: string; date?: strin
   if (params.accountIds && params.accountIds.length) sp.set("accountId", params.accountIds.join(","));
   if (params.categoryIds && params.categoryIds.length) sp.set("categoryId", params.categoryIds.join(","));
   if (params.q && params.q.trim()) sp.set("q", params.q.trim());
+  if (typeof params.groupId === "number") sp.set("groupId", String(params.groupId));
   const res = await apiFetch<any>(`summary/expense?${sp.toString()}`);
   if (typeof res === 'number') return res;
   if (res && typeof res.expense_total === 'number') return res.expense_total;
@@ -45,7 +47,7 @@ export async function fetchExpenseSummary(params: { month?: string; date?: strin
   return 0;
 }
 
-export async function fetchBalanceSummary(params: { month?: string; date?: string; dateFrom?: string; dateTo?: string; includeInStats?: boolean; accountIds?: string[]; categoryIds?: string[]; q?: string; }): Promise<number> {
+export async function fetchBalanceSummary(params: { month?: string; date?: string; dateFrom?: string; dateTo?: string; includeInStats?: boolean; accountIds?: string[]; categoryIds?: string[]; q?: string; groupId?: number; }): Promise<number> {
   const sp = new URLSearchParams();
   if (params.month) sp.set("month", params.month);
   if (params.date) sp.set("date", params.date);
@@ -56,6 +58,7 @@ export async function fetchBalanceSummary(params: { month?: string; date?: strin
   if (params.accountIds && params.accountIds.length) sp.set("accountId", params.accountIds.join(","));
   if (params.categoryIds && params.categoryIds.length) sp.set("categoryId", params.categoryIds.join(","));
   if (params.q && params.q.trim()) sp.set("q", params.q.trim());
+  if (typeof params.groupId === "number") sp.set("groupId", String(params.groupId));
   const res = await apiFetch<any>(`summary/balance?${sp.toString()}`);
   if (typeof res === 'number') return res;
   if (res && res.balance && typeof res.balance.net_total_usd === 'number') return res.balance.net_total_usd;
@@ -71,7 +74,7 @@ export interface GlobalBalance {
   net_total_usd: number;
 }
 
-export async function fetchGlobalBalance(params?: { month?: string; date?: string; dateFrom?: string; dateTo?: string; includeInStats?: boolean; accountIds?: string[]; categoryIds?: string[]; q?: string; }): Promise<GlobalBalance> {
+export async function fetchGlobalBalance(params?: { month?: string; date?: string; dateFrom?: string; dateTo?: string; includeInStats?: boolean; accountIds?: string[]; categoryIds?: string[]; q?: string; groupId?: number; }): Promise<GlobalBalance> {
   const sp = new URLSearchParams();
   if (params?.month) sp.set("month", params.month);
   if (params?.date) sp.set("date", params.date);
@@ -82,6 +85,7 @@ export async function fetchGlobalBalance(params?: { month?: string; date?: strin
   if (params?.accountIds && params.accountIds.length) sp.set("accountId", params.accountIds.join(","));
   if (params?.categoryIds && params.categoryIds.length) sp.set("categoryId", params.categoryIds.join(","));
   if (params?.q && params.q.trim()) sp.set("q", params.q.trim());
+  if (typeof params?.groupId === "number") sp.set("groupId", String(params.groupId));
   const qs = sp.toString();
   const url = qs ? `summary/balance?${qs}` : `summary/balance`;
   const res = await apiFetch<any>(url);
@@ -110,7 +114,7 @@ function extractMonthly(obj: any, prefix: string): MonthlySeries {
   return out;
 }
 
-export async function fetchIncomeMonthly(params: { fromMonth: string; toMonth?: string; includeInStats?: boolean; accountIds?: string[]; categoryIds?: string[]; q?: string; }): Promise<MonthlySeries> {
+export async function fetchIncomeMonthly(params: { fromMonth: string; toMonth?: string; includeInStats?: boolean; accountIds?: string[]; categoryIds?: string[]; q?: string; groupId?: number; }): Promise<MonthlySeries> {
   const sp = new URLSearchParams();
   sp.set("from_month", params.fromMonth);
   if (params.toMonth) sp.set("to_month", params.toMonth);
@@ -119,12 +123,13 @@ export async function fetchIncomeMonthly(params: { fromMonth: string; toMonth?: 
   if (params.accountIds && params.accountIds.length) sp.set("accountId", params.accountIds.join(","));
   if (params.categoryIds && params.categoryIds.length) sp.set("categoryId", params.categoryIds.join(","));
   if (params.q && params.q.trim()) sp.set("q", params.q.trim());
+  if (typeof params.groupId === "number") sp.set("groupId", String(params.groupId));
   const res = await apiFetch<any>(`summary/income?${sp.toString()}`);
   const first = Array.isArray(res?.income) ? res.income[0] : null;
   return extractMonthly(first, "income");
 }
 
-export async function fetchExpenseMonthly(params: { fromMonth: string; toMonth?: string; includeInStats?: boolean; accountIds?: string[]; categoryIds?: string[]; q?: string; }): Promise<MonthlySeries> {
+export async function fetchExpenseMonthly(params: { fromMonth: string; toMonth?: string; includeInStats?: boolean; accountIds?: string[]; categoryIds?: string[]; q?: string; groupId?: number; }): Promise<MonthlySeries> {
   const sp = new URLSearchParams();
   sp.set("from_month", params.fromMonth);
   if (params.toMonth) sp.set("to_month", params.toMonth);
@@ -133,6 +138,7 @@ export async function fetchExpenseMonthly(params: { fromMonth: string; toMonth?:
   if (params.accountIds && params.accountIds.length) sp.set("accountId", params.accountIds.join(","));
   if (params.categoryIds && params.categoryIds.length) sp.set("categoryId", params.categoryIds.join(","));
   if (params.q && params.q.trim()) sp.set("q", params.q.trim());
+  if (typeof params.groupId === "number") sp.set("groupId", String(params.groupId));
   const res = await apiFetch<any>(`summary/expense?${sp.toString()}`);
   const first = Array.isArray(res?.expense) ? res.expense[0] : null;
   return extractMonthly(first, "expense");

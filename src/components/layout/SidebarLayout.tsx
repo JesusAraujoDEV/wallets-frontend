@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
+  Layers,
   LogOut,
   Menu,
   ReceiptText,
@@ -32,6 +33,7 @@ const navigationItems: NavigationItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/transactions", label: "Transacciones", icon: ReceiptText },
   { to: "/categories", label: "Categorías", icon: Tags },
+  { to: "/category-groups", label: "Grupos", icon: Layers },
   { to: "/accounts", label: "Cuentas", icon: WalletCards },
   { to: "/profile", label: "Perfil", icon: UserCircle2 },
 ];
