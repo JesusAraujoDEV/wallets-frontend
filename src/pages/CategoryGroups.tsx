@@ -35,6 +35,12 @@ const emptyForm: GroupForm = {
   analyticsBehavior: "include",
 };
 
+const mapGroupTypeToCategoryType = (groupType: CategoryGroup["type"]): Category["type"] | null => {
+  if (groupType === "ingreso") return "income";
+  if (groupType === "gasto") return "expense";
+  return null;
+};
+
 export default function CategoryGroups() {
   const queryClient = useQueryClient();
   const [groups, setGroups] = useState<CategoryGroup[]>([]);
@@ -51,6 +57,10 @@ export default function CategoryGroups() {
   const [assigningGroup, setAssigningGroup] = useState<CategoryGroup | null>(null);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   const [form, setForm] = useState<GroupForm>(emptyForm);
+  const selectedCategoryType = assigningGroup ? mapGroupTypeToCategoryType(assigningGroup.type) : null;
+  const filteredCategories = categories.filter(
+    (category) => selectedCategoryType !== null && category.type === selectedCategoryType,
+  );
 
   const loadGroups = async () => {
     try {
@@ -106,7 +116,11 @@ export default function CategoryGroups() {
       await CategoriesStore.refresh();
       const list = CategoriesStore.all();
       setCategories(list);
-      const initialSelection = list
+      const categoryType = mapGroupTypeToCategoryType(group.type);
+      const filteredList = list.filter(
+        (category) => categoryType !== null && category.type === categoryType,
+      );
+      const initialSelection = filteredList
         .filter((category) => Number(category.groupId) === group.id)
         .map((category) => Number(category.id));
       setSelectedCategoryIds(initialSelection);
@@ -390,11 +404,13 @@ export default function CategoryGroups() {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Cargando categorías...
               </div>
-            ) : categories.length === 0 ? (
-              <p className="text-sm text-slate-500">No hay categorías disponibles para asignar.</p>
+            ) : filteredCategories.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                No tienes categorías de tipo {assigningGroup?.type} disponibles para asignar.
+              </p>
             ) : (
               <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
-                {categories.map((category) => {
+                {filteredCategories.map((category) => {
                   const categoryId = Number(category.id);
                   const isChecked = selectedCategoryIds.includes(categoryId);
 
