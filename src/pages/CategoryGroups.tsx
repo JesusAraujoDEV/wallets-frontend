@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,12 +22,14 @@ import { createCategoryGroup, deleteCategoryGroup, fetchCategoryGroups, updateCa
 
 type GroupForm = {
   name: string;
-  description: string;
+  type: "ingreso" | "gasto" | "neutral";
+  analyticsBehavior: "include" | "exclude";
 };
 
 const emptyForm: GroupForm = {
   name: "",
-  description: "",
+  type: "gasto",
+  analyticsBehavior: "include",
 };
 
 export default function CategoryGroups() {
@@ -69,7 +72,8 @@ export default function CategoryGroups() {
     setEditingGroup(group);
     setForm({
       name: group.name,
-      description: group.description ?? "",
+      type: group.type,
+      analyticsBehavior: group.analyticsBehavior,
     });
     setDialogOpen(true);
   };
@@ -88,7 +92,8 @@ export default function CategoryGroups() {
 
     const payload: CategoryGroupUpsertPayload = {
       name: form.name.trim(),
-      description: form.description.trim() ? form.description.trim() : null,
+      type: form.type,
+      analyticsBehavior: form.analyticsBehavior,
     };
 
     try {
@@ -150,7 +155,7 @@ export default function CategoryGroups() {
                   <DialogTitle>{editingGroup ? "Editar Grupo" : "Crear Grupo"}</DialogTitle>
                   <DialogDescription>
                     {editingGroup
-                      ? "Actualiza el nombre y la descripción del grupo."
+                      ? "Actualiza el nombre, tipo y comportamiento analítico del grupo."
                       : "Crea un grupo para clasificar categorías y usarlo como filtro global."}
                   </DialogDescription>
                 </DialogHeader>
@@ -166,13 +171,37 @@ export default function CategoryGroups() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="group-description">Descripción (opcional)</Label>
-                    <Input
-                      id="group-description"
-                      placeholder="Ej. Servicios, renta y suscripciones"
-                      value={form.description}
-                      onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                    />
+                    <Label htmlFor="group-type">Tipo</Label>
+                    <Select
+                      value={form.type}
+                      onValueChange={(value: "ingreso" | "gasto" | "neutral") => setForm((prev) => ({ ...prev, type: value }))}
+                    >
+                      <SelectTrigger id="group-type">
+                        <SelectValue placeholder="Selecciona tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ingreso">Ingreso</SelectItem>
+                        <SelectItem value="gasto">Gasto</SelectItem>
+                        <SelectItem value="neutral">Neutral</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="group-analytics">Comportamiento en estadísticas</Label>
+                    <Select
+                      value={form.analyticsBehavior}
+                      onValueChange={(value: "include" | "exclude") =>
+                        setForm((prev) => ({ ...prev, analyticsBehavior: value }))
+                      }
+                    >
+                      <SelectTrigger id="group-analytics">
+                        <SelectValue placeholder="Selecciona comportamiento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="include">Incluir en estadísticas</SelectItem>
+                        <SelectItem value="exclude">Excluir de estadísticas</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -210,7 +239,10 @@ export default function CategoryGroups() {
                 <div key={group.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-slate-900">{group.name}</p>
-                    <p className="text-sm text-slate-500">{group.description || "Sin descripción"}</p>
+                    <p className="text-sm text-slate-500">Tipo: {group.type}</p>
+                    <p className="text-sm text-slate-500">
+                      Estadísticas: {group.analyticsBehavior === "include" ? "Incluir" : "Excluir"}
+                    </p>
                   </div>
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:gap-3">
                     <Button variant="outline" className="w-full sm:w-auto" onClick={() => openEditDialog(group)}>

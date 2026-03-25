@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthApi } from "@/lib/auth";
-import type { AuthProfileResponse } from "@/lib/types";
+import type { AuthProfileResponse, ChangePasswordPayload } from "@/lib/types";
 import { Loader2, PencilLine } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -115,6 +115,7 @@ export default function Profile() {
   const [unlinkPassword, setUnlinkPassword] = useState("");
   const [unlinkConfirmPassword, setUnlinkConfirmPassword] = useState("");
   const [unlinkLoading, setUnlinkLoading] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const { toast } = useToast();
   const {
     register,
@@ -126,6 +127,20 @@ export default function Profile() {
       name: "",
       email: "",
       username: "",
+    },
+  });
+
+  const {
+    register: registerPassword,
+    handleSubmit: handleSubmitPassword,
+    reset: resetPasswordForm,
+    watch: watchPassword,
+    formState: { errors: passwordErrors, isSubmitting: isChangingPassword },
+  } = useForm<{ currentPassword: string; newPassword: string; confirmPassword: string }>({
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
     },
   });
 
@@ -390,6 +405,26 @@ export default function Profile() {
     }
   };
 
+  const handleChangePassword = handleSubmitPassword(async (values) => {
+    const payload: ChangePasswordPayload = {
+      currentPassword: values.currentPassword.trim(),
+      newPassword: values.newPassword.trim(),
+    };
+
+    try {
+      await AuthApi.changePassword(payload);
+      toast({ title: "Contraseña actualizada", description: "Tu contraseña se cambió correctamente." });
+      setPasswordDialogOpen(false);
+      resetPasswordForm();
+    } catch (error) {
+      toast({
+        title: "No se pudo cambiar la contraseña",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        variant: "destructive",
+      });
+    }
+  });
+
   const isGoogleUser = user?.authProvider === "google";
 
   const userInitials = (user?.name || user?.username || "U")
@@ -526,6 +561,20 @@ export default function Profile() {
           )}
         </CardContent>
       </Card>
+
+      {user?.authProvider === "local" ? (
+        <Card className="border-slate-200 bg-white shadow-sm">
+          <CardHeader>
+            <CardTitle>Seguridad</CardTitle>
+            <CardDescription>Gestiona tu contraseña de acceso local.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button type="button" variant="outline" onClick={() => setPasswordDialogOpen(true)}>
+              Cambiar contraseña
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Dialog
         open={emailDialogOpen}
@@ -711,6 +760,80 @@ export default function Profile() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={passwordDialogOpen}
+        onOpenChange={(open) => {
+          setPasswordDialogOpen(open);
+          if (!open) {
+            resetPasswordForm();
+          }
+        }}
+      >
+        <DialogContent className="w-[95vw] max-w-md overflow-x-hidden max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Cambiar contraseña</DialogTitle>
+            <DialogDescription>Actualiza tu contraseña de acceso local.</DialogDescription>
+          </DialogHeader>
+
+          <form className="space-y-4" onSubmit={handleChangePassword}>
+            <div className="space-y-2">
+              <Label htmlFor="change-current-password">Contraseña actual</Label>
+              <Input
+                id="change-current-password"
+                type="password"
+                autoComplete="current-password"
+                {...registerPassword("currentPassword", { required: "La contraseña actual es obligatoria" })}
+              />
+              {passwordErrors.currentPassword ? <p className="text-xs text-red-500">{passwordErrors.currentPassword.message}</p> : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="change-new-password">Nueva contraseña</Label>
+              <Input
+                id="change-new-password"
+                type="password"
+                autoComplete="new-password"
+                {...registerPassword("newPassword", {
+                  required: "La nueva contraseña es obligatoria",
+                  minLength: { value: 6, message: "La contraseña debe tener al menos 6 caracteres" },
+                })}
+              />
+              {passwordErrors.newPassword ? <p className="text-xs text-red-500">{passwordErrors.newPassword.message}</p> : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="change-confirm-password">Confirmar nueva contraseña</Label>
+              <Input
+                id="change-confirm-password"
+                type="password"
+                autoComplete="new-password"
+                {...registerPassword("confirmPassword", {
+                  required: "Debes confirmar la nueva contraseña",
+                  validate: (value) => value === watchPassword("newPassword") || "Las contraseñas no coinciden",
+                })}
+              />
+              {passwordErrors.confirmPassword ? <p className="text-xs text-red-500">{passwordErrors.confirmPassword.message}</p> : null}
+            </div>
+
+            <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-4">
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setPasswordDialogOpen(false)} disabled={isChangingPassword}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="w-full sm:w-auto" disabled={isChangingPassword}>
+                {isChangingPassword ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Actualizar contraseña"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

@@ -724,6 +724,31 @@ Query: none
 200 response:
 - Logout success.
 
+### POST /auth/change-password
+Purpose: Change authenticated user local password.
+
+Body:
+```json
+{
+  "currentPassword": "string",
+  "newPassword": "string"
+}
+```
+
+200 response:
+```json
+{
+  "success": true,
+  "message": "Operacion completada correctamente.",
+  "data": {}
+}
+```
+
+Errors:
+- `400` invalid request or weak password
+- `401` unauthorized or invalid current password
+- `500` internal server error
+
 ### POST /auth/forgot-password
 Purpose: Request password recovery.
 
@@ -923,7 +948,8 @@ Query: none
   {
     "id": 0,
     "name": "string",
-    "description": "string"
+    "type": "ingreso",
+    "analyticsBehavior": "include"
   }
 ]
 ```
@@ -935,7 +961,8 @@ Body:
 ```json
 {
   "name": "string",
-  "description": "string"
+  "type": "ingreso",
+  "analyticsBehavior": "include"
 }
 ```
 
@@ -944,7 +971,8 @@ Body:
 {
   "id": 0,
   "name": "string",
-  "description": "string"
+  "type": "ingreso",
+  "analyticsBehavior": "include"
 }
 ```
 
@@ -958,7 +986,8 @@ Body:
 ```json
 {
   "name": "string",
-  "description": "string"
+  "type": "ingreso",
+  "analyticsBehavior": "include"
 }
 ```
 
@@ -967,7 +996,8 @@ Body:
 {
   "id": 0,
   "name": "string",
-  "description": "string"
+  "type": "ingreso",
+  "analyticsBehavior": "include"
 }
 ```
 

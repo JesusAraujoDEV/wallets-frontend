@@ -4,7 +4,9 @@ import { apiFetch } from "./http";
 type ApiCategoryGroup = {
   id: number;
   name: string;
-  description?: string | null;
+  type?: "ingreso" | "gasto" | "neutral";
+  analyticsBehavior?: "include" | "exclude";
+  analytics_behavior?: "include" | "exclude";
 };
 
 type ApiCategory = {
@@ -62,31 +64,57 @@ export async function fetchCategoryGroups(): Promise<CategoryGroup[]> {
   return (list || []).map((g) => ({
     id: Number(g.id),
     name: String(g.name),
-    description: g.description ?? null,
+    type: g.type === "ingreso" || g.type === "gasto" || g.type === "neutral" ? g.type : "neutral",
+    analyticsBehavior:
+      g.analyticsBehavior === "include" || g.analyticsBehavior === "exclude"
+        ? g.analyticsBehavior
+        : g.analytics_behavior === "include" || g.analytics_behavior === "exclude"
+          ? g.analytics_behavior
+          : "include",
   }));
 }
 
 export async function createCategoryGroup(payload: CategoryGroupUpsertPayload): Promise<CategoryGroup> {
   const created = await fetchJSON<ApiCategoryGroup>(`category-groups`, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      name: payload.name,
+      type: payload.type,
+      analyticsBehavior: payload.analyticsBehavior,
+    }),
   });
   return {
     id: Number(created.id),
     name: String(created.name),
-    description: created.description ?? null,
+    type: created.type === "ingreso" || created.type === "gasto" || created.type === "neutral" ? created.type : "neutral",
+    analyticsBehavior:
+      created.analyticsBehavior === "include" || created.analyticsBehavior === "exclude"
+        ? created.analyticsBehavior
+        : created.analytics_behavior === "include" || created.analytics_behavior === "exclude"
+          ? created.analytics_behavior
+          : "include",
   };
 }
 
 export async function updateCategoryGroup(id: number, payload: CategoryGroupUpsertPayload): Promise<CategoryGroup> {
   const updated = await fetchJSON<ApiCategoryGroup>(`category-groups?id=${encodeURIComponent(String(id))}`, {
     method: "PATCH",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      name: payload.name,
+      type: payload.type,
+      analyticsBehavior: payload.analyticsBehavior,
+    }),
   });
   return {
     id: Number(updated.id),
     name: String(updated.name),
-    description: updated.description ?? null,
+    type: updated.type === "ingreso" || updated.type === "gasto" || updated.type === "neutral" ? updated.type : "neutral",
+    analyticsBehavior:
+      updated.analyticsBehavior === "include" || updated.analyticsBehavior === "exclude"
+        ? updated.analyticsBehavior
+        : updated.analytics_behavior === "include" || updated.analytics_behavior === "exclude"
+          ? updated.analytics_behavior
+          : "include",
   };
 }
 
@@ -147,7 +175,13 @@ export const CategoriesStore = {
         ? {
             id: Number(c.group.id),
             name: String(c.group.name),
-            description: c.group.description ?? null,
+            type: c.group.type === "ingreso" || c.group.type === "gasto" || c.group.type === "neutral" ? c.group.type : "neutral",
+            analyticsBehavior:
+              c.group.analyticsBehavior === "include" || c.group.analyticsBehavior === "exclude"
+                ? c.group.analyticsBehavior
+                : c.group.analytics_behavior === "include" || c.group.analytics_behavior === "exclude"
+                  ? c.group.analytics_behavior
+                  : "include",
           }
         : undefined,
     }));

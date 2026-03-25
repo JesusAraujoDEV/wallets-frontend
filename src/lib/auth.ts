@@ -4,6 +4,7 @@ import type {
   AuthProfileResponse,
   AuthSession,
   AuthUser,
+  ChangePasswordPayload,
   ConfirmNewEmailPayload,
   GenericSuccessResponse,
   RequestEmailChangePayload,
@@ -105,6 +106,12 @@ export const AuthApi = {
   },
   async unlinkGoogle(payload: UnlinkGooglePayload): Promise<void> {
     await apiFetch<unknown>(`auth/unlink-google`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  async changePassword(payload: ChangePasswordPayload): Promise<GenericSuccessResponse> {
+    return apiFetch<GenericSuccessResponse>(`auth/change-password`, {
       method: "POST",
       body: JSON.stringify(payload),
     });

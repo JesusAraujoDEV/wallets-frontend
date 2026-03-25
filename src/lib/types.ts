@@ -16,15 +16,20 @@ export interface Category {
   group?: CategoryGroup;
 }
 
+export type CategoryGroupType = "ingreso" | "gasto" | "neutral";
+export type CategoryGroupAnalyticsBehavior = "include" | "exclude";
+
 export interface CategoryGroup {
   id: number;
   name: string;
-  description?: string | null;
+  type: CategoryGroupType;
+  analyticsBehavior: CategoryGroupAnalyticsBehavior;
 }
 
 export interface CategoryGroupUpsertPayload {
   name: string;
-  description?: string | null;
+  type: CategoryGroupType;
+  analyticsBehavior: CategoryGroupAnalyticsBehavior;
 }
 
 export interface CategoryGroupDeleteResponse {
@@ -93,6 +98,11 @@ export interface ConfirmNewEmailPayload {
 }
 
 export interface UnlinkGooglePayload {
+  newPassword: string;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
   newPassword: string;
 }
 
