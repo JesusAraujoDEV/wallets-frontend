@@ -2,6 +2,7 @@ import { apiFetch } from "@/lib/http";
 import type {
   Budget,
   BudgetDeleteResponse,
+  BudgetPeriod,
   BudgetStatus,
   CreateBudgetPayload,
   UpdateBudgetPayload,
@@ -19,6 +20,8 @@ type ApiBudgetStatus = {
   id: number | string;
   category: ApiBudgetCategory | string;
   budgeted: number;
+  period?: BudgetPeriod | string;
+  specific_month?: string | null;
   spent: number;
   remaining: number;
   percentageUsed: number;
@@ -30,8 +33,17 @@ type ApiBudget = {
   category_id?: number | string | null;
   amount?: number;
   budgeted?: number;
-  month?: string;
+  period?: BudgetPeriod | string;
+  specific_month?: string | null;
 };
+
+function normalizeBudgetPeriod(period?: string): BudgetPeriod {
+  if (period === "yearly" || period === "one_time") {
+    return period;
+  }
+
+  return "monthly";
+}
 
 function mapBudgetStatus(item: ApiBudgetStatus): BudgetStatus {
   const category = typeof item.category === "string"
@@ -54,6 +66,8 @@ function mapBudgetStatus(item: ApiBudgetStatus): BudgetStatus {
     id: String(item.id),
     category,
     budgeted: Number(item.budgeted || 0),
+    period: normalizeBudgetPeriod(item.period),
+    specific_month: item.specific_month ?? null,
     spent: Number(item.spent || 0),
     remaining: Number(item.remaining || 0),
     percentageUsed: Number(item.percentageUsed || 0),
@@ -65,7 +79,8 @@ function mapBudget(item: ApiBudget): Budget {
     id: String(item.id),
     categoryId: String(item.categoryId ?? item.category_id ?? ""),
     budgeted: Number(item.amount ?? item.budgeted ?? 0),
-    month: item.month,
+    period: normalizeBudgetPeriod(item.period),
+    specific_month: item.specific_month ?? null,
   };
 }
 

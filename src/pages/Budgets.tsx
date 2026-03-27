@@ -1,4 +1,5 @@
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast";
 import { createBudget, fetchBudgetsStatus } from "@/lib/budgets";
 import { CategoriesStore } from "@/lib/storage";
-import type { BudgetStatus, Category, CreateBudgetPayload } from "@/lib/types";
+import type { BudgetPeriod, BudgetStatus, Category, CreateBudgetPayload } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Loader2, PiggyBank } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -18,7 +19,8 @@ import { useForm } from "react-hook-form";
 type BudgetFormValues = {
   categoryId: string;
   amount: number;
-  month: string;
+  period: BudgetPeriod;
+  specific_month: string;
 };
 
 function formatMoney(value: number) {
@@ -31,8 +33,19 @@ function progressColorClass(percentageUsed: number) {
   return "[&>div]:bg-red-500";
 }
 
+function periodBadgeLabel(period: BudgetPeriod, specificMonth?: string | null) {
+  if (period === "yearly") {
+    return "Anual";
+  }
+
+  if (period === "one_time") {
+    return specificMonth ? `Solo ${specificMonth}` : "Solo (sin mes)";
+  }
+
+  return "Mensual";
+}
+
 export default function Budgets() {
-  const currentMonth = new Date().toISOString().slice(0, 7);
   const [budgets, setBudgets] = useState<BudgetStatus[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,11 +64,13 @@ export default function Budgets() {
     defaultValues: {
       categoryId: "global",
       amount: undefined as unknown as number,
-      month: currentMonth,
+      period: "monthly",
+      specific_month: "",
     },
   });
 
   const selectedCategoryId = watch("categoryId");
+  const selectedPeriod = watch("period");
 
   const expenseCategories = useMemo(
     () => categories.filter((category) => category.type === "expense"),
@@ -94,10 +109,10 @@ export default function Budgets() {
       return;
     }
 
-    if (!/^\d{4}-\d{2}$/.test(values.month)) {
+    if (values.period === "one_time" && !/^\d{4}-\d{2}$/.test(values.specific_month)) {
       toast({
-        title: "Mes inválido",
-        description: "El mes debe tener formato YYYY-MM.",
+        title: "Mes específico inválido",
+        description: "Para presupuestos de única vez debes indicar un mes con formato YYYY-MM.",
         variant: "destructive",
       });
       return;
@@ -105,7 +120,8 @@ export default function Budgets() {
 
     const payload: CreateBudgetPayload = {
       amount: values.amount,
-      month: values.month,
+      period: values.period,
+      specific_month: values.period === "one_time" ? values.specific_month : null,
       categoryId: values.categoryId === "global" ? null : Number(values.categoryId),
     };
 
@@ -118,7 +134,12 @@ export default function Budgets() {
         description: "El presupuesto se guardó correctamente.",
       });
       setCreateDialogOpen(false);
-      reset({ categoryId: "global", amount: undefined as unknown as number, month: currentMonth });
+      reset({
+        categoryId: "global",
+        amount: undefined as unknown as number,
+        period: "monthly",
+        specific_month: "",
+      });
       await loadBudgetsData();
     } catch (error) {
       toast({
@@ -188,7 +209,12 @@ export default function Budgets() {
                       />
                     </div>
                     <div className="min-w-0">
-                      <CardTitle className="truncate text-lg text-card-foreground">{budget.category.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="truncate text-lg text-card-foreground">{budget.category.name}</CardTitle>
+                        <Badge variant="outline" className="whitespace-nowrap">
+                          {periodBadgeLabel(budget.period, budget.specific_month)}
+                        </Badge>
+                      </div>
                       <CardDescription>
                         {formatMoney(Number(budget.spent || 0))} / {formatMoney(Number(budget.budgeted || 0))}
                       </CardDescription>
@@ -219,14 +245,19 @@ export default function Budgets() {
         onOpenChange={(open) => {
           setCreateDialogOpen(open);
           if (!open) {
-            reset({ categoryId: "global", amount: undefined as unknown as number, month: currentMonth });
+            reset({
+              categoryId: "global",
+              amount: undefined as unknown as number,
+              period: "monthly",
+              specific_month: "",
+            });
           }
         }}
       >
         <DialogContent className="w-[95vw] max-w-md sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Crear Presupuesto</DialogTitle>
-            <DialogDescription>Asigna un límite mensual para controlar tus gastos por categoría.</DialogDescription>
+            <DialogDescription>Asigna límites por período para controlar tus gastos por categoría.</DialogDescription>
           </DialogHeader>
 
           <form className="space-y-4" onSubmit={onCreateBudget}>
@@ -273,22 +304,54 @@ export default function Budgets() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="budget-month">Mes</Label>
-              <input
-                id="budget-month"
-                type="month"
+              <Label htmlFor="budget-period">Período</Label>
+              <Select
+                value={selectedPeriod}
+                onValueChange={(value: BudgetPeriod) => {
+                  setValue("period", value, { shouldValidate: true });
+                  if (value !== "one_time") {
+                    setValue("specific_month", "", { shouldValidate: true });
+                  }
+                }}
                 disabled={createLoading}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                {...register("month", {
-                  required: "El mes es obligatorio.",
-                  pattern: {
-                    value: /^\d{4}-\d{2}$/,
-                    message: "El mes debe tener formato YYYY-MM.",
-                  },
-                })}
-              />
-              {errors.month ? <p className="text-xs text-red-500">{errors.month.message}</p> : null}
+              >
+                <SelectTrigger id="budget-period">
+                  <SelectValue placeholder="Selecciona un período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Mensual</SelectItem>
+                  <SelectItem value="yearly">Anual</SelectItem>
+                  <SelectItem value="one_time">Única Vez</SelectItem>
+                </SelectContent>
+              </Select>
+              <input type="hidden" {...register("period")} />
             </div>
+
+            {selectedPeriod === "one_time" ? (
+              <div className="space-y-2">
+                <Label htmlFor="budget-specific-month">Mes específico</Label>
+                <input
+                  id="budget-specific-month"
+                  type="month"
+                  disabled={createLoading}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  {...register("specific_month", {
+                    validate: (value) => {
+                      if (selectedPeriod !== "one_time") {
+                        return true;
+                      }
+
+                      if (!value) {
+                        return "El mes específico es obligatorio para presupuestos de única vez.";
+                      }
+
+                      return /^\d{4}-\d{2}$/.test(value) || "El mes específico debe tener formato YYYY-MM.";
+                    },
+                  })}
+                />
+                {errors.specific_month ? <p className="text-xs text-red-500">{errors.specific_month.message}</p> : null}
+              </div>
+            ) : null}
 
             <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-4">
               <Button

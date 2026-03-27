@@ -140,27 +140,34 @@ export interface BudgetStatus {
   id: string;
   category: BudgetCategorySummary;
   budgeted: number;
+  period: BudgetPeriod;
+  specific_month?: string | null;
   spent: number;
   remaining: number;
   percentageUsed: number;
 }
 
+export type BudgetPeriod = "monthly" | "yearly" | "one_time";
+
 export interface Budget {
   id: string;
   categoryId: string;
   budgeted: number;
-  month?: string;
+  period: BudgetPeriod;
+  specific_month?: string | null;
 }
 
 export interface CreateBudgetPayload {
   amount: number;
-  month: string;
+  period: BudgetPeriod;
+  specific_month?: string | null;
   categoryId?: number | null;
 }
 
 export interface UpdateBudgetPayload {
   amount?: number;
-  month?: string;
+  period: BudgetPeriod;
+  specific_month?: string | null;
   categoryId?: number | null;
 }
 
