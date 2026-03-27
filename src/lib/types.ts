@@ -127,3 +127,45 @@ export interface GenericSuccessResponse {
   message: string;
   data: Record<string, never>;
 }
+
+export interface BudgetCategorySummary {
+  id: string;
+  name: string;
+  icon?: string | null;
+  color?: string;
+  colorName?: string;
+}
+
+export interface BudgetStatus {
+  id: string;
+  category: BudgetCategorySummary;
+  budgeted: number;
+  spent: number;
+  remaining: number;
+  percentageUsed: number;
+}
+
+export interface Budget {
+  id: string;
+  categoryId: string;
+  budgeted: number;
+  month?: string;
+}
+
+export interface CreateBudgetPayload {
+  amount: number;
+  month: string;
+  categoryId?: number | null;
+}
+
+export interface UpdateBudgetPayload {
+  amount?: number;
+  month?: string;
+  categoryId?: number | null;
+}
+
+export interface BudgetDeleteResponse {
+  ok?: boolean;
+  success?: boolean;
+  message?: string;
+}

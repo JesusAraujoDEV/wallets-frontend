@@ -14,6 +14,7 @@ import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
 import CategoryGroups from "./pages/CategoryGroups";
 import Accounts from "./pages/Accounts";
+import Budgets from "./pages/Budgets";
 import Profile from "./pages/Profile";
 import RequireAuth from "@/components/RequireAuth";
 import GlobalLoadingBar from "@/components/GlobalLoadingBar";
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="categories" element={<Categories />} />
               <Route path="category-groups" element={<CategoryGroups />} />
               <Route path="accounts" element={<Accounts />} />
+              <Route path="budgets" element={<Budgets />} />
               <Route path="profile" element={<Profile />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

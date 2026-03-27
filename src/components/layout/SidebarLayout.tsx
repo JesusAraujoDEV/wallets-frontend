@@ -15,6 +15,7 @@ import {
   Layers,
   LogOut,
   Menu,
+  PiggyBank,
   ReceiptText,
   Tags,
   UserCircle2,
@@ -33,6 +34,7 @@ type NavigationItem = {
 const navigationItems: NavigationItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/transactions", label: "Transacciones", icon: ReceiptText },
+  { to: "/budgets", label: "Presupuestos", icon: PiggyBank },
   { to: "/categories", label: "Categorías", icon: Tags },
   { to: "/category-groups", label: "Grupos", icon: Layers },
   { to: "/accounts", label: "Cuentas", icon: WalletCards },
