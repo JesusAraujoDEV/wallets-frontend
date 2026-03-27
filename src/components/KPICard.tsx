@@ -14,9 +14,9 @@ interface KPICardProps {
 
 export const KPICard = ({ title, value, icon: Icon, trend, colorScheme }: KPICardProps) => {
   const colorClasses = {
-    primary: "bg-primary-light text-primary-foreground",
-    secondary: "bg-secondary-light text-secondary-foreground",
-    accent: "bg-accent-light text-accent-foreground",
+    primary: "bg-primary-light text-slate-900",
+    secondary: "bg-secondary-light text-slate-900",
+    accent: "bg-accent-light text-slate-900",
   };
 
   return (

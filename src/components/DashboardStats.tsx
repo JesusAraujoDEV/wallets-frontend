@@ -77,7 +77,7 @@ export function DashboardStats({ transactions, accounts, rate, balanceSummary }:
             <h3 className="text-3xl font-bold text-foreground mb-2">${displayTotalBalance.toFixed(2)}</h3>
             <p className="text-sm font-medium text-primary">+</p>
           </div>
-          <div className="p-3 rounded-xl bg-primary-light text-primary-foreground">
+          <div className="p-3 rounded-xl bg-primary-light text-slate-900">
             <Wallet className="w-6 h-6" />
           </div>
         </div>
@@ -90,7 +90,7 @@ export function DashboardStats({ transactions, accounts, rate, balanceSummary }:
             <h3 className="text-3xl font-bold text-foreground mb-2">${displayMonthlyIncome.toFixed(2)}</h3>
             <p className="text-sm font-medium text-primary">+</p>
           </div>
-          <div className="p-3 rounded-xl bg-secondary-light text-secondary-foreground">
+          <div className="p-3 rounded-xl bg-secondary-light text-slate-900">
             <TrendingUp className="w-6 h-6" />
           </div>
         </div>
@@ -103,7 +103,7 @@ export function DashboardStats({ transactions, accounts, rate, balanceSummary }:
             <h3 className="text-3xl font-bold text-foreground mb-2">${displayMonthlyExpenses.toFixed(2)}</h3>
             <p className="text-sm font-medium text-destructive"></p>
           </div>
-          <div className="p-3 rounded-xl bg-accent-light text-accent-foreground">
+          <div className="p-3 rounded-xl bg-accent-light text-slate-900">
             <TrendingDown className="w-6 h-6" />
           </div>
         </div>

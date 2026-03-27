@@ -189,7 +189,7 @@ export const AccountManager = () => {
           <Card key={account.id} className="p-6 shadow-md border-0 hover:shadow-lg transition-all duration-300">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-primary-light text-primary-foreground">
+                <div className="p-3 rounded-xl bg-primary-light text-emerald-950">
                   <Wallet className="w-6 h-6" />
                 </div>
                 <div>
