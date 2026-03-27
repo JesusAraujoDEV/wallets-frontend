@@ -116,6 +116,12 @@ export interface ChangePasswordPayload {
   newPassword: string;
 }
 
+export interface ChangePasswordResponse {
+  success: boolean;
+  message: string;
+  data: Record<string, never>;
+}
+
 export interface GenericSuccessResponse {
   success: boolean;
   message: string;

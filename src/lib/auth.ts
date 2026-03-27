@@ -5,6 +5,7 @@ import type {
   AuthSession,
   AuthUser,
   ChangePasswordPayload,
+  ChangePasswordResponse,
   ConfirmNewEmailPayload,
   GenericSuccessResponse,
   RequestEmailChangePayload,
@@ -110,8 +111,8 @@ export const AuthApi = {
       body: JSON.stringify(payload),
     });
   },
-  async changePassword(payload: ChangePasswordPayload): Promise<GenericSuccessResponse> {
-    return apiFetch<GenericSuccessResponse>(`auth/change-password`, {
+  async changePassword(payload: ChangePasswordPayload): Promise<ChangePasswordResponse> {
+    return apiFetch<ChangePasswordResponse>(`auth/change-password`, {
       method: "POST",
       body: JSON.stringify(payload),
     });

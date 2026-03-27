@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthApi } from "@/lib/auth";
-import type { AuthProfileResponse, ChangePasswordPayload } from "@/lib/types";
+import type { AuthProfileResponse } from "@/lib/types";
 import { Loader2, PencilLine } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -116,6 +116,10 @@ export default function Profile() {
   const [unlinkConfirmPassword, setUnlinkConfirmPassword] = useState("");
   const [unlinkLoading, setUnlinkLoading] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [passwordCurrent, setPasswordCurrent] = useState("");
+  const [passwordNew, setPasswordNew] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const { toast } = useToast();
   const {
     register,
@@ -127,20 +131,6 @@ export default function Profile() {
       name: "",
       email: "",
       username: "",
-    },
-  });
-
-  const {
-    register: registerPassword,
-    handleSubmit: handleSubmitPassword,
-    reset: resetPasswordForm,
-    watch: watchPassword,
-    formState: { errors: passwordErrors, isSubmitting: isChangingPassword },
-  } = useForm<{ currentPassword: string; newPassword: string; confirmPassword: string }>({
-    defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
     },
   });
 
@@ -405,25 +395,56 @@ export default function Profile() {
     }
   };
 
-  const handleChangePassword = handleSubmitPassword(async (values) => {
-    const payload: ChangePasswordPayload = {
-      currentPassword: values.currentPassword.trim(),
-      newPassword: values.newPassword.trim(),
-    };
+  const resetPasswordInputs = () => {
+    setPasswordCurrent("");
+    setPasswordNew("");
+    setPasswordConfirm("");
+  };
 
+  const handleChangePassword = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const currentPassword = passwordCurrent.trim();
+    const newPassword = passwordNew.trim();
+    const confirmPassword = passwordConfirm.trim();
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast({
+        title: "Completa todos los campos",
+        description: "Debes ingresar y confirmar la nueva contraseña.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Las contraseñas no coinciden",
+        description: "Verifica la nueva contraseña y su confirmación.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsChangingPassword(true);
     try {
-      await AuthApi.changePassword(payload);
-      toast({ title: "Contraseña actualizada", description: "Tu contraseña se cambió correctamente." });
+      await AuthApi.changePassword({ currentPassword, newPassword });
+      toast({
+        title: "Contraseña actualizada correctamente",
+        className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+      });
       setPasswordDialogOpen(false);
-      resetPasswordForm();
+      resetPasswordInputs();
     } catch (error) {
       toast({
         title: "No se pudo cambiar la contraseña",
         description: error instanceof Error ? error.message : "Intenta nuevamente.",
         variant: "destructive",
       });
+    } finally {
+      setIsChangingPassword(false);
     }
-  });
+  };
 
   const isGoogleUser = user?.authProvider === "google";
 
@@ -768,7 +789,7 @@ export default function Profile() {
         onOpenChange={(open) => {
           setPasswordDialogOpen(open);
           if (!open) {
-            resetPasswordForm();
+            resetPasswordInputs();
           }
         }}
       >
@@ -785,9 +806,10 @@ export default function Profile() {
                 id="change-current-password"
                 type="password"
                 autoComplete="current-password"
-                {...registerPassword("currentPassword", { required: "La contraseña actual es obligatoria" })}
+                value={passwordCurrent}
+                onChange={(event) => setPasswordCurrent(event.target.value)}
+                disabled={isChangingPassword}
               />
-              {passwordErrors.currentPassword ? <p className="text-xs text-red-500">{passwordErrors.currentPassword.message}</p> : null}
             </div>
 
             <div className="space-y-2">
@@ -796,12 +818,10 @@ export default function Profile() {
                 id="change-new-password"
                 type="password"
                 autoComplete="new-password"
-                {...registerPassword("newPassword", {
-                  required: "La nueva contraseña es obligatoria",
-                  minLength: { value: 6, message: "La contraseña debe tener al menos 6 caracteres" },
-                })}
+                value={passwordNew}
+                onChange={(event) => setPasswordNew(event.target.value)}
+                disabled={isChangingPassword}
               />
-              {passwordErrors.newPassword ? <p className="text-xs text-red-500">{passwordErrors.newPassword.message}</p> : null}
             </div>
 
             <div className="space-y-2">
@@ -810,12 +830,10 @@ export default function Profile() {
                 id="change-confirm-password"
                 type="password"
                 autoComplete="new-password"
-                {...registerPassword("confirmPassword", {
-                  required: "Debes confirmar la nueva contraseña",
-                  validate: (value) => value === watchPassword("newPassword") || "Las contraseñas no coinciden",
-                })}
+                value={passwordConfirm}
+                onChange={(event) => setPasswordConfirm(event.target.value)}
+                disabled={isChangingPassword}
               />
-              {passwordErrors.confirmPassword ? <p className="text-xs text-red-500">{passwordErrors.confirmPassword.message}</p> : null}
             </div>
 
             <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-4">
