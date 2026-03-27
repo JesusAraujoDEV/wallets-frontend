@@ -15,7 +15,6 @@ This document is the canonical contract for frontend HTTP/API functions.
   - `YYYY-MM-DD` for day-level params.
   - `YYYY-MM` for month-level params.
 - CSV filters use comma-separated ids in a single string (`"1,2"`).
-- `includeInStats` accepts: `0 | 1 | true | false` (string values in query).
 
 ---
 
@@ -229,6 +228,69 @@ Query:
 
 ---
 
+## Budgets
+
+### GET /budgets/status
+Purpose: Get current month budget status crossed with real expenses.
+
+Query:
+- `month` (string, optional) `YYYY-MM` (defaults to current month)
+
+200 response:
+```json
+[
+  {
+    "id": 1,
+    "category": {
+      "id": 5,
+      "name": "Comida"
+    },
+    "budgeted": 200,
+    "spent": 150,
+    "remaining": 50,
+    "percentageUsed": 75
+  }
+]
+```
+
+### GET /budgets
+Purpose: List all configured budgets.
+
+200 response: Array of Budget objects.
+
+### POST /budgets
+Purpose: Create a new budget.
+
+Body:
+```json
+{
+  "amount": 200,
+  "month": "2026-03",
+  "categoryId": 5
+}
+```
+
+### PATCH /budgets
+Purpose: Update a budget amount.
+
+Query:
+- `id` (integer, required)
+
+Body:
+```json
+{
+  "amount": 250
+}
+```
+
+### DELETE /budgets
+Purpose: Delete a budget.
+
+Query:
+- `id` (integer, required)
+
+---
+
 ## Status
 
 ### GET /status
@@ -288,9 +350,9 @@ Purpose: Income summary by month or total.
 Query:
 - `from_month` (string, optional) `YYYY-MM`
 - `to_month` (string, optional) `YYYY-MM` (inclusive; if omitted uses `from_month`)
-- `includeInStats` (string, optional): `0 | 1 | true | false`
 - `categoryId` (string, optional): csv ids
 - `accountId` (string, optional): csv ids
+- `groupId` (integer, optional): Filtrar por ID de grupo de categoría
 
 200 response example:
 ```json
@@ -312,7 +374,7 @@ Purpose: Expense summary by month or total.
 Query:
 - `from_month` (string, optional) `YYYY-MM`
 - `to_month` (string, optional) `YYYY-MM`
-- `includeInStats` (string, optional): `0 | 1 | true | false`
+- `groupId` (integer, optional): Filtrar por ID de grupo de categoría
 
 200 response example:
 ```json
@@ -347,8 +409,7 @@ Query:
 - `dateFrom` (string $date, optional)
 - `dateTo` (string $date, optional)
 - `month` (string, optional) `YYYY-MM`
-- `includeInStats` (string, optional): `0 | 1 | true | false`
-
+- `groupId` (integer, optional): Filtrar por ID de grupo de categoría
 200 response:
 - Non-grouped list or grouped response by day (`GroupedTransactionsResponse`).
 
