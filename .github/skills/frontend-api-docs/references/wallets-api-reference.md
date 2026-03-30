@@ -245,6 +245,9 @@ Query:
       "id": 5,
       "name": "Comida"
     },
+    "amount": 200,
+    "period": "monthly",
+    "specific_month": null,
     "budgeted": 200,
     "spent": 150,
     "remaining": 50,
@@ -256,7 +259,7 @@ Query:
 ### GET /budgets
 Purpose: List all configured budgets.
 
-200 response: Array of Budget objects.
+200 response: Array of Budget objects (including period and specific_month).
 
 ### POST /budgets
 Purpose: Create a new budget.
@@ -265,13 +268,16 @@ Body:
 ```json
 {
   "amount": 200,
-  "month": "2026-03",
-  "categoryId": 5
+  "categoryId": 5,
+  "period": "one_time",
+  "specific_month": "2026-03"
 }
 ```
 
+Note: categoryId is optional/null for global budgets. specific_month is required ONLY if period is "one_time". Valid periods: "monthly" | "yearly" | "one_time".
+
 ### PATCH /budgets
-Purpose: Update a budget amount.
+Purpose: Update a budget amount and period.
 
 Query:
 - `id` (integer, required)
@@ -279,7 +285,9 @@ Query:
 Body:
 ```json
 {
-  "amount": 250
+  "amount": 250,
+  "period": "monthly",
+  "specific_month": null
 }
 ```
 

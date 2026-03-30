@@ -165,10 +165,10 @@ export interface CreateBudgetPayload {
 }
 
 export interface UpdateBudgetPayload {
-  amount?: number;
+  amount: number;
   period: BudgetPeriod;
-  specific_month?: string | null;
-  categoryId?: number | null;
+  specific_month: string | null;
+  categoryId: number | null;
 }
 
 export interface BudgetDeleteResponse {

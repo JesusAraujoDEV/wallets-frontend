@@ -2,17 +2,33 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { createBudget, fetchBudgetsStatus } from "@/lib/budgets";
+import { createBudget, deleteBudget, fetchBudgetsStatus, updateBudget } from "@/lib/budgets";
 import { CategoriesStore } from "@/lib/storage";
-import type { BudgetPeriod, BudgetStatus, Category, CreateBudgetPayload } from "@/lib/types";
+import type { BudgetPeriod, BudgetStatus, Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Loader2, PiggyBank } from "lucide-react";
+import { Loader2, MoreVertical, Pencil, PiggyBank, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -49,8 +65,11 @@ export default function Budgets() {
   const [budgets, setBudgets] = useState<BudgetStatus[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [createLoading, setCreateLoading] = useState(false);
+  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<BudgetStatus | null>(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [confirmDeleteBudgetId, setConfirmDeleteBudgetId] = useState<string | null>(null);
+  const [deletingBudgetId, setDeletingBudgetId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const {
@@ -71,11 +90,37 @@ export default function Budgets() {
 
   const selectedCategoryId = watch("categoryId");
   const selectedPeriod = watch("period");
+  const isEditing = editingBudget !== null;
 
   const expenseCategories = useMemo(
     () => categories.filter((category) => category.type === "expense"),
     [categories],
   );
+
+  const budgetPendingDelete = useMemo(
+    () => budgets.find((budget) => budget.id === confirmDeleteBudgetId) ?? null,
+    [budgets, confirmDeleteBudgetId],
+  );
+
+  const resetBudgetForm = useCallback(() => {
+    reset({
+      categoryId: "global",
+      amount: undefined as unknown as number,
+      period: "monthly",
+      specific_month: "",
+    });
+  }, [reset]);
+
+  const getBudgetFormValues = useCallback((budget: BudgetStatus): BudgetFormValues => {
+    const categoryId = budget.category.id ? String(budget.category.id) : "global";
+
+    return {
+      categoryId,
+      amount: Number(budget.budgeted || 0),
+      period: budget.period,
+      specific_month: budget.specific_month ?? "",
+    };
+  }, []);
 
   const loadBudgetsData = useCallback(async () => {
     setLoading(true);
@@ -99,7 +144,7 @@ export default function Budgets() {
     void loadBudgetsData();
   }, [loadBudgetsData]);
 
-  const onCreateBudget = handleSubmit(async (values) => {
+  const onSubmitBudget = handleSubmit(async (values) => {
     if (!Number.isFinite(values.amount) || values.amount <= 0) {
       toast({
         title: "Monto inválido",
@@ -118,39 +163,76 @@ export default function Budgets() {
       return;
     }
 
-    const payload: CreateBudgetPayload = {
-      amount: values.amount,
-      period: values.period,
-      specific_month: values.period === "one_time" ? values.specific_month : null,
-      categoryId: values.categoryId === "global" ? null : Number(values.categoryId),
-    };
-
-    setCreateLoading(true);
+    setSubmitLoading(true);
     try {
-      console.log(payload);
-      await createBudget(payload);
+      const payload = {
+        amount: values.amount,
+        period: values.period,
+        specific_month: values.period === "one_time" ? values.specific_month : null,
+        categoryId: values.categoryId === "global" ? null : Number(values.categoryId),
+      };
+
+      if (isEditing && editingBudget) {
+        await updateBudget(editingBudget.id, payload);
+      } else {
+        await createBudget(payload);
+      }
+
       toast({
-        title: "Presupuesto creado",
-        description: "El presupuesto se guardó correctamente.",
+        title: isEditing ? "Presupuesto actualizado" : "Presupuesto creado",
+        description: isEditing ? "El monto se actualizó correctamente." : "El presupuesto se guardó correctamente.",
       });
-      setCreateDialogOpen(false);
-      reset({
-        categoryId: "global",
-        amount: undefined as unknown as number,
-        period: "monthly",
-        specific_month: "",
-      });
+      setBudgetDialogOpen(false);
+      setEditingBudget(null);
+      resetBudgetForm();
       await loadBudgetsData();
     } catch (error) {
       toast({
-        title: "No se pudo crear el presupuesto",
+        title: isEditing ? "No se pudo actualizar el presupuesto" : "No se pudo crear el presupuesto",
         description: error instanceof Error ? error.message : "Intenta nuevamente.",
         variant: "destructive",
       });
     } finally {
-      setCreateLoading(false);
+      setSubmitLoading(false);
     }
   });
+
+  const openCreateDialog = useCallback(() => {
+    setEditingBudget(null);
+    resetBudgetForm();
+    setBudgetDialogOpen(true);
+  }, [resetBudgetForm]);
+
+  const openEditDialog = useCallback((budget: BudgetStatus) => {
+    setEditingBudget(budget);
+    reset(getBudgetFormValues(budget));
+    setBudgetDialogOpen(true);
+  }, [getBudgetFormValues, reset]);
+
+  const handleDeleteBudget = useCallback(async () => {
+    if (!confirmDeleteBudgetId) {
+      return;
+    }
+
+    setDeletingBudgetId(confirmDeleteBudgetId);
+    try {
+      await deleteBudget(confirmDeleteBudgetId);
+      toast({
+        title: "Presupuesto eliminado",
+        description: "La tarjeta se eliminó correctamente.",
+      });
+      setConfirmDeleteBudgetId(null);
+      await loadBudgetsData();
+    } catch (error) {
+      toast({
+        title: "No se pudo eliminar el presupuesto",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingBudgetId(null);
+    }
+  }, [confirmDeleteBudgetId, loadBudgetsData, toast]);
 
   return (
     <div className="space-y-6">
@@ -163,7 +245,7 @@ export default function Budgets() {
                 Controla tus límites por categoría y detecta en segundos cuándo estás por quedarte sin margen.
               </CardDescription>
             </div>
-            <Button type="button" className="w-full sm:w-auto" onClick={() => setCreateDialogOpen(true)}>
+            <Button type="button" className="w-full sm:w-auto" onClick={openCreateDialog}>
               Crear Presupuesto
             </Button>
           </div>
@@ -193,31 +275,97 @@ export default function Budgets() {
             const percentage = Math.max(0, Math.min(100, Number(budget.percentageUsed || 0)));
             const overBudget = Number(budget.remaining) < 0;
             const remainingAmount = Math.abs(Number(budget.remaining || 0));
+            const isDeleting = deletingBudgetId === budget.id;
 
             return (
               <Card key={budget.id} className="border-border bg-card shadow-sm">
                 <CardHeader className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="flex h-11 w-11 items-center justify-center rounded-lg"
-                      style={{ backgroundColor: budget.category.color ? `${budget.category.color}22` : "hsl(var(--muted))" }}
-                    >
-                      <CategoryIcon
-                        name={budget.category.icon}
-                        color={budget.category.color || "hsl(var(--chart-2))"}
-                        className="h-5 w-5"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="truncate text-lg text-card-foreground">{budget.category.name}</CardTitle>
-                        <Badge variant="outline" className="whitespace-nowrap">
-                          {periodBadgeLabel(budget.period, budget.specific_month)}
-                        </Badge>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        className="flex h-11 w-11 items-center justify-center rounded-lg"
+                        style={{ backgroundColor: budget.category.color ? `${budget.category.color}22` : "hsl(var(--muted))" }}
+                      >
+                        <CategoryIcon
+                          name={budget.category.icon}
+                          color={budget.category.color || "hsl(var(--chart-2))"}
+                          className="h-5 w-5"
+                        />
                       </div>
-                      <CardDescription>
-                        {formatMoney(Number(budget.spent || 0))} / {formatMoney(Number(budget.budgeted || 0))}
-                      </CardDescription>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="truncate text-lg text-card-foreground">{budget.category.name}</CardTitle>
+                          <Badge variant="outline" className="whitespace-nowrap">
+                            {periodBadgeLabel(budget.period, budget.specific_month)}
+                          </Badge>
+                        </div>
+                        <CardDescription>
+                          {formatMoney(Number(budget.spent || 0))} / {formatMoney(Number(budget.budgeted || 0))}
+                        </CardDescription>
+                      </div>
+                    </div>
+
+                    <div className="hidden md:flex gap-2 items-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        aria-label="Editar presupuesto"
+                        onClick={() => openEditDialog(budget)}
+                        disabled={isDeleting}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        aria-label="Eliminar presupuesto"
+                        onClick={() => setConfirmDeleteBudgetId(budget.id)}
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </Button>
+                    </div>
+
+                    <div className="flex md:hidden">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0"
+                            aria-label="Acciones del presupuesto"
+                            disabled={isDeleting}
+                          >
+                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreVertical className="h-4 w-4" />}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem
+                            disabled={isDeleting}
+                            onSelect={(event) => {
+                              event.preventDefault();
+                              openEditDialog(budget);
+                            }}
+                          >
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={isDeleting}
+                            className="text-destructive focus:text-destructive"
+                            onSelect={(event) => {
+                              event.preventDefault();
+                              setConfirmDeleteBudgetId(budget.id);
+                            }}
+                          >
+                            Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </CardHeader>
@@ -241,26 +389,26 @@ export default function Budgets() {
       )}
 
       <Dialog
-        open={createDialogOpen}
+        open={budgetDialogOpen}
         onOpenChange={(open) => {
-          setCreateDialogOpen(open);
+          setBudgetDialogOpen(open);
           if (!open) {
-            reset({
-              categoryId: "global",
-              amount: undefined as unknown as number,
-              period: "monthly",
-              specific_month: "",
-            });
+            setEditingBudget(null);
+            resetBudgetForm();
           }
         }}
       >
         <DialogContent className="w-[95vw] max-w-md sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Crear Presupuesto</DialogTitle>
-            <DialogDescription>Asigna límites por período para controlar tus gastos por categoría.</DialogDescription>
+            <DialogTitle>{isEditing ? "Editar Presupuesto" : "Crear Presupuesto"}</DialogTitle>
+            <DialogDescription>
+              {isEditing
+                ? "Actualiza categoría, período y monto del presupuesto seleccionado."
+                : "Asigna límites por período para controlar tus gastos por categoría."}
+            </DialogDescription>
           </DialogHeader>
 
-          <form className="space-y-4" onSubmit={onCreateBudget}>
+          <form className="space-y-4" onSubmit={onSubmitBudget}>
             <div className="space-y-2">
               <Label htmlFor="budget-category">Categoría</Label>
               <Select
@@ -268,7 +416,7 @@ export default function Budgets() {
                 onValueChange={(value) => {
                   setValue("categoryId", value, { shouldValidate: true });
                 }}
-                disabled={createLoading}
+                disabled={submitLoading}
               >
                 <SelectTrigger id="budget-category">
                   <SelectValue placeholder="Selecciona una categoría" />
@@ -293,7 +441,7 @@ export default function Budgets() {
                 min="0"
                 step="0.01"
                 placeholder="0.00"
-                disabled={createLoading}
+                disabled={submitLoading}
                 {...register("amount", {
                   valueAsNumber: true,
                   required: "El monto es obligatorio.",
@@ -313,7 +461,7 @@ export default function Budgets() {
                     setValue("specific_month", "", { shouldValidate: true });
                   }
                 }}
-                disabled={createLoading}
+                disabled={submitLoading}
               >
                 <SelectTrigger id="budget-period">
                   <SelectValue placeholder="Selecciona un período" />
@@ -333,7 +481,7 @@ export default function Budgets() {
                 <input
                   id="budget-specific-month"
                   type="month"
-                  disabled={createLoading}
+                  disabled={submitLoading}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   {...register("specific_month", {
                     validate: (value) => {
@@ -358,25 +506,65 @@ export default function Budgets() {
                 type="button"
                 variant="outline"
                 className="w-full sm:w-auto"
-                onClick={() => setCreateDialogOpen(false)}
-                disabled={createLoading}
+                onClick={() => setBudgetDialogOpen(false)}
+                disabled={submitLoading}
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="w-full sm:w-auto" disabled={createLoading} aria-busy={createLoading}>
-                {createLoading ? (
+              <Button type="submit" className="w-full sm:w-auto" disabled={submitLoading} aria-busy={submitLoading}>
+                {submitLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Guardando...
                   </>
                 ) : (
-                  "Guardar presupuesto"
+                  isEditing ? "Actualizar presupuesto" : "Guardar presupuesto"
                 )}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={confirmDeleteBudgetId !== null}
+        onOpenChange={(open) => {
+          if (!open && !deletingBudgetId) {
+            setConfirmDeleteBudgetId(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar presupuesto</AlertDialogTitle>
+            <AlertDialogDescription>
+              {budgetPendingDelete
+                ? `Se eliminará el presupuesto de ${budgetPendingDelete.category.name}. Esta acción no se puede deshacer.`
+                : "Esta acción no se puede deshacer."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-4">
+            <AlertDialogCancel disabled={Boolean(deletingBudgetId)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteBudget();
+              }}
+              disabled={Boolean(deletingBudgetId)}
+            >
+              {deletingBudgetId ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Eliminando...
+                </span>
+              ) : (
+                "Eliminar"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
