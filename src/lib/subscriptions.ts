@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/http";
 import type {
   ConfirmPendingTransactionPayload,
+  PayNowRecurringResponse,
   RecurringTransaction,
   RecurringTransactionPayload,
   Transaction,
@@ -60,7 +61,7 @@ export async function createRecurringTransaction(payload: RecurringTransactionPa
 }
 
 export async function updateRecurringTransaction(id: string, payload: Partial<RecurringTransactionPayload>): Promise<RecurringTransaction> {
-  const response = await apiFetch<ApiRecurringTransaction>(`recurring-transactions?id=${encodeURIComponent(id)}`, {
+  const response = await apiFetch<ApiRecurringTransaction>(`recurring-transactions/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   });
@@ -68,7 +69,7 @@ export async function updateRecurringTransaction(id: string, payload: Partial<Re
 }
 
 export async function deleteRecurringTransaction(id: string): Promise<{ ok?: boolean; success?: boolean; message?: string }> {
-  return apiFetch<{ ok?: boolean; success?: boolean; message?: string }>(`recurring-transactions?id=${encodeURIComponent(id)}`, {
+  return apiFetch<{ ok?: boolean; success?: boolean; message?: string }>(`recurring-transactions/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
 }
@@ -101,4 +102,13 @@ export async function fetchPendingTransactions(): Promise<Transaction[]> {
   return list
     .map(mapServerTransaction)
     .filter((tx) => tx.status === "pending");
+}
+
+export async function payNowRecurringTransaction(
+  id: string,
+): Promise<PayNowRecurringResponse> {
+  return apiFetch<PayNowRecurringResponse>(
+    `recurring-transactions/${encodeURIComponent(id)}/pay-now`,
+    { method: "POST" },
+  );
 }

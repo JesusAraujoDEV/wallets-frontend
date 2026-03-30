@@ -98,6 +98,12 @@ export interface TriggerRecurringResponse {
   processed?: number;
 }
 
+export interface PayNowRecurringResponse {
+  ok?: boolean;
+  success?: boolean;
+  message?: string;
+}
+
 export interface ConfirmPendingTransactionPayload {
   date: string;
   accountId: number;

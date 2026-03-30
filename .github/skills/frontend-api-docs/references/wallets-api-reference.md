@@ -1,6 +1,6 @@
 # Wallets API Reference (Frontend Contract)
 
-Version: 1.1.0 (OAS 3.0)
+Version: 1.1.1 (OAS 3.0)
 Server (development): `http://localhost:3001/api`
 Frontend base URL source: `VITE_BACKEND_URL` from `.env`
 
@@ -368,6 +368,28 @@ Purpose: Manually execute the cronjob/worker for the authenticated user to proce
   "success": true,
   "processedCount": 1,
   "message": "Suscripciones procesadas"
+}
+```
+
+### POST /recurring-transactions/:id/pay-now
+Purpose: Trigger a recurring subscription payment before its scheduled date. This creates the transaction (expense/income) and updates the subscription `next_date`.
+
+Body (optional):
+```json
+{
+  "date": "2026-03-15",
+  "accountId": 2
+}
+```
+
+Note: You can pass a specific payment date or account. If none are provided, it uses the current date and the subscription's default account.
+
+200 response:
+```json
+{
+  "success": true,
+  "message": "Pago adelantado procesado correctamente",
+  "subscription": { "...": "updated subscription object" }
 }
 ```
 
@@ -1053,6 +1075,8 @@ Body:
   "groupId": 0
 }
 ```
+
+Note: `groupId` is now strictly optional. You can omit it or pass `null`.
 
 201 response:
 ```json

@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CalendarClock, Loader2, Plus, Repeat, Zap } from "lucide-react";
+import { AlertCircle, CalendarClock, CreditCard, Loader2, MoreVertical, Plus, Repeat, Zap } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -22,6 +23,7 @@ import {
   deleteRecurringTransaction,
   fetchPendingTransactions,
   fetchRecurringTransactions,
+  payNowRecurringTransaction,
   PENDING_TRANSACTIONS_QUERY_KEY,
   RECURRING_TRANSACTIONS_QUERY_KEY,
   triggerRecurringTransactions,
@@ -197,6 +199,27 @@ export default function Subscriptions() {
     onError: (error) => {
       toast({
         title: "No se pudo forzar el cronjob",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const payNowMutation = useMutation({
+    mutationFn: (id: string) => payNowRecurringTransaction(id),
+    onSuccess: async () => {
+      toast({
+        title: "Pago adelantado",
+        description: "Se generó la transacción pendiente. Confírmala en la sección de alertas de pago.",
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: PENDING_TRANSACTIONS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY }),
+      ]);
+    },
+    onError: (error) => {
+      toast({
+        title: "No se pudo adelantar el pago",
         description: error instanceof Error ? error.message : "Intenta nuevamente.",
         variant: "destructive",
       });
@@ -396,16 +419,40 @@ export default function Subscriptions() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="default"
+                        size="sm"
                         className="w-full sm:w-auto"
-                        onClick={() => deleteMutation.mutate(item.id)}
-                        disabled={deleteMutation.isPending}
+                        disabled={!item.is_active || payNowMutation.isPending}
+                        onClick={() => payNowMutation.mutate(item.id)}
                       >
-                        Eliminar
+                        {payNowMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <CreditCard className="mr-2 h-4 w-4" />
+                        )}
+                        Adelantar Pago
                       </Button>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Más opciones</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => deleteMutation.mutate(item.id)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            Eliminar suscripción
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </CardContent>
                 </Card>
