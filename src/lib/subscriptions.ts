@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/http";
 import type {
   ConfirmPendingTransactionPayload,
+  PayNowRecurringPayload,
   PayNowRecurringResponse,
   RecurringTransaction,
   RecurringTransactionPayload,
@@ -106,9 +107,10 @@ export async function fetchPendingTransactions(): Promise<Transaction[]> {
 
 export async function payNowRecurringTransaction(
   id: string,
+  payload?: PayNowRecurringPayload,
 ): Promise<PayNowRecurringResponse> {
   return apiFetch<PayNowRecurringResponse>(
     `recurring-transactions/${encodeURIComponent(id)}/pay-now`,
-    { method: "POST" },
+    { method: "POST", body: JSON.stringify(payload ?? {}) },
   );
 }

@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { CategorySelector } from "@/components/CategorySelector";
 import { ConfirmPaymentModal, formatAmountWithCurrency } from "@/components/ConfirmPaymentModal";
+import { PayNowModal } from "@/components/PayNowModal";
 import { CategoriesStore, AccountsStore, onDataChange } from "@/lib/storage";
 import {
   createRecurringTransaction,
@@ -29,7 +30,7 @@ import {
   triggerRecurringTransactions,
   updateRecurringTransaction,
 } from "@/lib/subscriptions";
-import type { Account, Category, RecurringExecutionMode, RecurringTransactionPayload, Transaction } from "@/lib/types";
+import type { Account, Category, PayNowRecurringPayload, RecurringExecutionMode, RecurringTransaction, RecurringTransactionPayload, Transaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const FREQUENCY_OPTIONS = [
@@ -64,6 +65,8 @@ export default function Subscriptions() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedPendingTx, setSelectedPendingTx] = useState<Transaction | null>(null);
+  const [payNowDialogOpen, setPayNowDialogOpen] = useState(false);
+  const [selectedPayNowSub, setSelectedPayNowSub] = useState<RecurringTransaction | null>(null);
 
   const {
     register,
@@ -153,18 +156,41 @@ export default function Subscriptions() {
     },
   });
 
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const toggleActiveMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      updateRecurringTransaction(id, { is_active: isActive }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY });
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => {
+      setTogglingId(id);
+      return updateRecurringTransaction(id, { is_active: isActive });
     },
-    onError: (error) => {
+    onMutate: async ({ id, isActive }) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY });
+
+      // Snapshot previous value
+      const previous = queryClient.getQueryData<RecurringTransaction[]>(RECURRING_TRANSACTIONS_QUERY_KEY);
+
+      // Optimistically update the cache
+      queryClient.setQueryData<RecurringTransaction[]>(RECURRING_TRANSACTIONS_QUERY_KEY, (old) =>
+        old?.map((item) => (item.id === id ? { ...item, is_active: isActive } : item)) ?? [],
+      );
+
+      return { previous };
+    },
+    onError: (error, _vars, context) => {
+      setTogglingId(null);
+      // Rollback on error
+      if (context?.previous) {
+        queryClient.setQueryData(RECURRING_TRANSACTIONS_QUERY_KEY, context.previous);
+      }
       toast({
         title: "No se pudo actualizar la suscripción",
         description: error instanceof Error ? error.message : "Intenta nuevamente.",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      setTogglingId(null);
+      void queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY });
     },
   });
 
@@ -206,15 +232,17 @@ export default function Subscriptions() {
   });
 
   const payNowMutation = useMutation({
-    mutationFn: (id: string) => payNowRecurringTransaction(id),
+    mutationFn: ({ id, payload }: { id: string; payload: PayNowRecurringPayload }) =>
+      payNowRecurringTransaction(id, payload),
     onSuccess: async () => {
       toast({
         title: "Pago adelantado",
-        description: "Se generó la transacción pendiente. Confírmala en la sección de alertas de pago.",
+        description: "La transacción se registró correctamente.",
       });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: PENDING_TRANSACTIONS_QUERY_KEY }),
         queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: ["summary"] }),
       ]);
     },
     onError: (error) => {
@@ -413,8 +441,11 @@ export default function Subscriptions() {
                         <Switch
                           id={`active-${item.id}`}
                           checked={item.is_active}
-                          onCheckedChange={(checked) => toggleActiveMutation.mutate({ id: item.id, isActive: checked })}
-                          disabled={toggleActiveMutation.isPending}
+                          onCheckedChange={(checked) => {
+                            toggleActiveMutation.mutate({ id: item.id, isActive: checked });
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          disabled={toggleActiveMutation.isPending && togglingId === item.id}
                         />
                       </div>
                     </div>
@@ -425,14 +456,14 @@ export default function Subscriptions() {
                         variant="default"
                         size="sm"
                         className="w-full sm:w-auto"
-                        disabled={!item.is_active || payNowMutation.isPending}
-                        onClick={() => payNowMutation.mutate(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setSelectedPayNowSub(item);
+                          setPayNowDialogOpen(true);
+                        }}
                       >
-                        {payNowMutation.isPending ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <CreditCard className="mr-2 h-4 w-4" />
-                        )}
+                        <CreditCard className="mr-2 h-4 w-4" />
                         Adelantar Pago
                       </Button>
 
@@ -647,6 +678,22 @@ export default function Subscriptions() {
             queryClient.invalidateQueries({ queryKey: PENDING_TRANSACTIONS_QUERY_KEY }),
             queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY }),
           ]);
+        }}
+      />
+
+      {/* Pay now modal */}
+      <PayNowModal
+        open={payNowDialogOpen}
+        onOpenChange={setPayNowDialogOpen}
+        subscription={selectedPayNowSub}
+        accounts={accounts}
+        onConfirm={async (payload) => {
+          if (!selectedPayNowSub) return;
+          await payNowMutation.mutateAsync({
+            id: selectedPayNowSub.id,
+            payload: { accountId: payload.accountId, date: payload.date },
+          });
+          setSelectedPayNowSub(null);
         }}
       />
     </div>
