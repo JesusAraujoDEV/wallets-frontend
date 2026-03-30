@@ -162,26 +162,10 @@ export default function Subscriptions() {
       setTogglingId(id);
       return updateRecurringTransaction(id, { is_active: isActive });
     },
-    onMutate: async ({ id, isActive }) => {
-      // Cancel any outgoing refetches so they don't overwrite our optimistic update
-      await queryClient.cancelQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY });
-
-      // Snapshot previous value
-      const previous = queryClient.getQueryData<RecurringTransaction[]>(RECURRING_TRANSACTIONS_QUERY_KEY);
-
-      // Optimistically update the cache
-      queryClient.setQueryData<RecurringTransaction[]>(RECURRING_TRANSACTIONS_QUERY_KEY, (old) =>
-        old?.map((item) => (item.id === id ? { ...item, is_active: isActive } : item)) ?? [],
-      );
-
-      return { previous };
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY });
     },
-    onError: (error, _vars, context) => {
-      setTogglingId(null);
-      // Rollback on error
-      if (context?.previous) {
-        queryClient.setQueryData(RECURRING_TRANSACTIONS_QUERY_KEY, context.previous);
-      }
+    onError: (error) => {
       toast({
         title: "No se pudo actualizar la suscripción",
         description: error instanceof Error ? error.message : "Intenta nuevamente.",
@@ -190,7 +174,6 @@ export default function Subscriptions() {
     },
     onSettled: () => {
       setTogglingId(null);
-      void queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY });
     },
   });
 
@@ -691,7 +674,12 @@ export default function Subscriptions() {
           if (!selectedPayNowSub) return;
           await payNowMutation.mutateAsync({
             id: selectedPayNowSub.id,
-            payload: { accountId: payload.accountId, date: payload.date },
+            payload: {
+              accountId: payload.accountId,
+              date: payload.date,
+              amount: payload.amount,
+              currency: payload.currency,
+            },
           });
           setSelectedPayNowSub(null);
         }}

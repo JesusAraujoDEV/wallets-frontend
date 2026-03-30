@@ -21,9 +21,8 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import {
   calculateConvertedAmount,
-  formatAmountWithCurrency,
 } from "@/components/ConfirmPaymentModal";
-import { getRateByDate, type ExchangeSnapshot } from "@/lib/rates";
+import { getRateByDate } from "@/lib/rates";
 import type { Account, RecurringTransaction } from "@/lib/types";
 
 type Currency = "USD" | "EUR" | "VES";
@@ -50,6 +49,7 @@ export function PayNowModal({
 }: PayNowModalProps) {
   const { toast } = useToast();
   const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [editableReference, setEditableReference] = useState("");
   const [finalAmount, setFinalAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(() =>
     new Date().toISOString().slice(0, 10),
@@ -67,6 +67,7 @@ export function PayNowModal({
   useEffect(() => {
     if (open && subscription) {
       setSelectedAccountId("");
+      setEditableReference(String(subscription.amount ?? 0));
       setFinalAmount("");
       setPaymentDate(new Date().toISOString().slice(0, 10));
     }
@@ -74,8 +75,13 @@ export function PayNowModal({
 
   const doAutoCalc = useCallback(
     async (accountCurrency: Currency, date: string) => {
+      const baseAmount = Number(editableReference) || 0;
+      if (baseAmount <= 0) {
+        setFinalAmount("");
+        return;
+      }
       if (accountCurrency === referenceCurrency) {
-        setFinalAmount(referenceAmount.toFixed(2));
+        setFinalAmount(baseAmount.toFixed(2));
         return;
       }
       try {
@@ -83,7 +89,7 @@ export function PayNowModal({
         const snap = await getRateByDate(date);
         if (!snap) throw new Error("No se pudo obtener la tasa BCV.");
         const converted = calculateConvertedAmount(
-          referenceAmount,
+          baseAmount,
           referenceCurrency,
           accountCurrency,
           snap,
@@ -102,10 +108,10 @@ export function PayNowModal({
         setLoadingRate(false);
       }
     },
-    [referenceCurrency, referenceAmount, toast],
+    [referenceCurrency, editableReference, toast],
   );
 
-  // Auto-calc when account or date changes
+  // Auto-calc when account, date, or editable reference changes
   useEffect(() => {
     if (!selectedAccount || !open) return;
     doAutoCalc(selectedAccount.currency, paymentDate);
@@ -161,18 +167,29 @@ export function PayNowModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Subscription info */}
-          <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
-            <p className="text-sm font-medium text-foreground">
-              {subscription?.description || "Suscripción"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Próximo cobro: {subscription?.next_date}
-            </p>
-            <p className="text-sm font-semibold text-foreground">
-              Referencia:{" "}
-              {formatAmountWithCurrency(referenceAmount, referenceCurrency)}
-            </p>
+          {/* Subscription info + editable reference */}
+          <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">
+                {subscription?.description || "Suscripción"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Próximo cobro: {subscription?.next_date}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="paynow-reference-amount" className="text-xs text-muted-foreground">
+                Base de referencia ({referenceCurrency})
+              </Label>
+              <Input
+                id="paynow-reference-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={editableReference}
+                onChange={(e) => setEditableReference(e.target.value)}
+              />
+            </div>
           </div>
 
           {/* Account selector */}
