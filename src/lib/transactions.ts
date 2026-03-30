@@ -59,7 +59,9 @@ export function mapServerTransaction(t: any): Transaction {
   const categoryId = String(t.category_id ?? t.categoryId);
   const accountId = String(t.account_id ?? t.accountId);
   const rawType = t.type;
-  const type: 'income' | 'expense' = rawType === 'ingreso' ? 'income' : rawType === 'gasto' ? 'expense' : (rawType as any) || 'expense';
+  const type: 'income' | 'expense' = rawType === 'ingreso' ? 'income' : rawType === 'gasto' ? 'expense' : rawType === 'income' ? 'income' : 'expense';
+  const statusRaw = String(t.status ?? '').toLowerCase();
+  const status: Transaction['status'] = statusRaw === 'pending' ? 'pending' : statusRaw === 'completed' ? 'completed' : undefined;
   const amount = Number(t.amount ?? 0);
   const amountUsd = t.amount_usd != null ? Number(t.amount_usd) : (t.amountUsd != null ? Number(t.amountUsd) : null);
   const exchangeRateUsed = t.exchange_rate_used != null ? Number(t.exchange_rate_used) : (t.exchangeRateUsed != null ? Number(t.exchangeRateUsed) : null);
@@ -74,5 +76,6 @@ export function mapServerTransaction(t: any): Transaction {
     categoryId,
     accountId,
     type,
+    status,
   } as Transaction;
 }

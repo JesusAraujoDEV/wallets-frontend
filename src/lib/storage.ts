@@ -250,6 +250,12 @@ export const TransactionsStore = {
         : (rawType === 'expense' || rawType === 'gasto')
           ? 'expense'
           : (cat?.type ?? 'expense');
+      const statusRaw = String(t.status ?? '').toLowerCase();
+      const status: Transaction['status'] = statusRaw === 'pending'
+        ? 'pending'
+        : statusRaw === 'completed'
+          ? 'completed'
+          : undefined;
       return {
         id: String(t.id),
         date: String(t.date),
@@ -258,6 +264,7 @@ export const TransactionsStore = {
         accountId,
         amount: Number(t.amount || 0),
         type,
+        status,
         currency: (t.currency || undefined),
         amountUsd: t.amount_usd ?? t.amountUsd ?? null,
         exchangeRateUsed: t.exchange_rate_used ?? t.exchangeRateUsed ?? null,

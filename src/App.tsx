@@ -15,6 +15,7 @@ import Categories from "./pages/Categories";
 import CategoryGroups from "./pages/CategoryGroups";
 import Accounts from "./pages/Accounts";
 import Budgets from "./pages/Budgets";
+import Subscriptions from "./pages/Subscriptions";
 import Profile from "./pages/Profile";
 import RequireAuth from "@/components/RequireAuth";
 import GlobalLoadingBar from "@/components/GlobalLoadingBar";
@@ -45,6 +46,7 @@ const App = () => (
               <Route index element={<Index />} />
               <Route path="dashboard" element={<Navigate to="/" replace />} />
               <Route path="transactions" element={<Transactions />} />
+              <Route path="subscriptions" element={<Subscriptions />} />
               <Route path="categories" element={<Categories />} />
               <Route path="category-groups" element={<CategoryGroups />} />
               <Route path="accounts" element={<Accounts />} />

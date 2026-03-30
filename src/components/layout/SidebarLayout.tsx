@@ -1,6 +1,9 @@
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthApi } from "@/lib/auth";
+import { useQuery } from "@tanstack/react-query";
+import { fetchPendingTransactions, PENDING_TRANSACTIONS_QUERY_KEY } from "@/lib/subscriptions";
 import {
   Sheet,
   SheetContent,
@@ -16,6 +19,7 @@ import {
   LogOut,
   Menu,
   PiggyBank,
+  Repeat,
   ReceiptText,
   Tags,
   UserCircle2,
@@ -29,22 +33,13 @@ type NavigationItem = {
   label: string;
   icon: typeof LayoutDashboard;
   end?: boolean;
+  badgeCount?: number;
 };
 
-const navigationItems: NavigationItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/transactions", label: "Transacciones", icon: ReceiptText },
-  { to: "/budgets", label: "Presupuestos", icon: PiggyBank },
-  { to: "/categories", label: "Categorías", icon: Tags },
-  { to: "/category-groups", label: "Grupos", icon: Layers },
-  { to: "/accounts", label: "Cuentas", icon: WalletCards },
-  { to: "/profile", label: "Perfil", icon: UserCircle2 },
-];
-
-function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarNav({ items, onNavigate }: { items: NavigationItem[]; onNavigate?: () => void }) {
   return (
     <nav className="flex flex-col gap-2">
-      {navigationItems.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon;
 
         return (
@@ -60,8 +55,13 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               )
             }
           >
-            <Icon className="h-4 w-4" />
-            <span>{item.label}</span>
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="truncate">{item.label}</span>
+            {item.badgeCount && item.badgeCount > 0 ? (
+              <Badge variant="destructive" className="ml-auto min-w-5 justify-center px-1.5 py-0 text-[10px]">
+                {item.badgeCount}
+              </Badge>
+            ) : null}
           </NavLink>
         );
       })}
@@ -72,6 +72,23 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 export default function SidebarLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
+  const pendingQuery = useQuery({
+    queryKey: PENDING_TRANSACTIONS_QUERY_KEY,
+    queryFn: fetchPendingTransactions,
+    staleTime: 30_000,
+  });
+  const pendingCount = pendingQuery.data?.length ?? 0;
+
+  const navigationItems: NavigationItem[] = [
+    { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+    { to: "/transactions", label: "Transacciones", icon: ReceiptText },
+    { to: "/subscriptions", label: "Suscripciones", icon: Repeat, badgeCount: pendingCount },
+    { to: "/budgets", label: "Presupuestos", icon: PiggyBank },
+    { to: "/categories", label: "Categorías", icon: Tags },
+    { to: "/category-groups", label: "Grupos", icon: Layers },
+    { to: "/accounts", label: "Cuentas", icon: WalletCards },
+    { to: "/profile", label: "Perfil", icon: UserCircle2 },
+  ];
 
   const handleLogout = async () => {
     await AuthApi.logout();
@@ -100,7 +117,7 @@ export default function SidebarLayout() {
                 <SheetDescription>Navega entre dashboard, movimientos, catálogos y perfil.</SheetDescription>
               </SheetHeader>
               <div className="flex-1 px-4 py-6">
-                <SidebarNav onNavigate={() => setMobileOpen(false)} />
+                <SidebarNav items={navigationItems} onNavigate={() => setMobileOpen(false)} />
               </div>
               <div className="border-t border-border p-4 space-y-2">
                 <ThemeToggle />
@@ -123,7 +140,7 @@ export default function SidebarLayout() {
           </div>
 
           <div className="flex-1 px-4 py-6">
-            <SidebarNav />
+            <SidebarNav items={navigationItems} />
           </div>
 
           <div className="mt-auto border-t border-border p-4 space-y-2">

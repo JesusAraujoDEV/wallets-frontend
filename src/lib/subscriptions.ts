@@ -1,0 +1,100 @@
+import { apiFetch } from "@/lib/http";
+import type {
+  ConfirmPendingTransactionPayload,
+  RecurringTransaction,
+  RecurringTransactionPayload,
+  Transaction,
+  TriggerRecurringResponse,
+} from "@/lib/types";
+import { mapServerTransaction } from "@/lib/transactions";
+
+export const RECURRING_TRANSACTIONS_QUERY_KEY = ["subscriptions", "recurring-transactions"] as const;
+export const PENDING_TRANSACTIONS_QUERY_KEY = ["subscriptions", "pending-transactions"] as const;
+
+type ApiRecurringTransaction = {
+  id: number | string;
+  amount: number | string;
+  description: string;
+  frequency: string;
+  next_date: string;
+  execution_mode: "auto" | "manual" | string;
+  is_active: boolean;
+  categoryId?: number | string;
+  accountId?: number | string;
+  category_id?: number | string;
+  account_id?: number | string;
+};
+
+function mapRecurringTransaction(item: ApiRecurringTransaction): RecurringTransaction {
+  return {
+    id: String(item.id),
+    amount: Number(item.amount || 0),
+    description: String(item.description || ""),
+    frequency: String(item.frequency || "monthly"),
+    next_date: String(item.next_date || ""),
+    execution_mode: item.execution_mode === "auto" ? "auto" : "manual",
+    is_active: Boolean(item.is_active),
+    categoryId: String(item.categoryId ?? item.category_id ?? ""),
+    accountId: String(item.accountId ?? item.account_id ?? ""),
+  };
+}
+
+export async function fetchRecurringTransactions(): Promise<RecurringTransaction[]> {
+  const response = await apiFetch<ApiRecurringTransaction[] | { data?: ApiRecurringTransaction[] }>("recurring-transactions", {
+    method: "GET",
+  });
+  const list = Array.isArray(response) ? response : response?.data ?? [];
+  return list.map(mapRecurringTransaction);
+}
+
+export async function createRecurringTransaction(payload: RecurringTransactionPayload): Promise<RecurringTransaction> {
+  const response = await apiFetch<ApiRecurringTransaction>("recurring-transactions", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return mapRecurringTransaction(response);
+}
+
+export async function updateRecurringTransaction(id: string, payload: Partial<RecurringTransactionPayload>): Promise<RecurringTransaction> {
+  const response = await apiFetch<ApiRecurringTransaction>(`recurring-transactions?id=${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  return mapRecurringTransaction(response);
+}
+
+export async function deleteRecurringTransaction(id: string): Promise<{ ok?: boolean; success?: boolean; message?: string }> {
+  return apiFetch<{ ok?: boolean; success?: boolean; message?: string }>(`recurring-transactions?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function triggerRecurringTransactions(): Promise<TriggerRecurringResponse> {
+  return apiFetch<TriggerRecurringResponse>("recurring-transactions/trigger", {
+    method: "POST",
+  });
+}
+
+export async function confirmPendingTransaction(id: string, payload: ConfirmPendingTransactionPayload): Promise<Transaction> {
+  const response = await apiFetch<unknown>(`transactions/${encodeURIComponent(id)}/confirm`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  return mapServerTransaction(response);
+}
+
+export async function fetchPendingTransactions(): Promise<Transaction[]> {
+  const response = await apiFetch<unknown>("transactions?grouped=0", {
+    method: "GET",
+  });
+
+  const list = Array.isArray(response)
+    ? response
+    : typeof response === "object" && response !== null && "items" in response
+      ? ((response as { items?: unknown[] }).items ?? [])
+      : [];
+
+  return list
+    .map(mapServerTransaction)
+    .filter((tx) => tx.status === "pending");
+}

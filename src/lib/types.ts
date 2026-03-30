@@ -55,10 +55,47 @@ export interface Transaction {
   accountId: string;  // references Account.id
   amount: number;
   type: "income" | "expense";
+  status?: "pending" | "completed";
   // Optional server-enriched fields
   currency?: "USD" | "EUR" | "VES";
   amountUsd?: number | null;
   exchangeRateUsed?: number | null;
+}
+
+export type RecurringExecutionMode = "auto" | "manual";
+
+export interface RecurringTransaction {
+  id: string;
+  amount: number;
+  description: string;
+  frequency: string;
+  next_date: string;
+  execution_mode: RecurringExecutionMode;
+  is_active: boolean;
+  categoryId: string;
+  accountId: string;
+}
+
+export interface RecurringTransactionPayload {
+  amount: number;
+  description: string;
+  frequency: string;
+  next_date: string;
+  execution_mode: RecurringExecutionMode;
+  is_active: boolean;
+  categoryId: number;
+  accountId: number;
+}
+
+export interface TriggerRecurringResponse {
+  ok?: boolean;
+  success?: boolean;
+  message?: string;
+  processed?: number;
+}
+
+export interface ConfirmPendingTransactionPayload {
+  date: string;
 }
 
 export interface DataBundle {
