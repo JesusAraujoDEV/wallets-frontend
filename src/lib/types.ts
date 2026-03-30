@@ -74,6 +74,7 @@ export interface RecurringTransaction {
   is_active: boolean;
   categoryId: string;
   accountId: string;
+  currency: "USD" | "EUR" | "VES";
 }
 
 export interface RecurringTransactionPayload {
@@ -84,7 +85,8 @@ export interface RecurringTransactionPayload {
   execution_mode: RecurringExecutionMode;
   is_active: boolean;
   categoryId: number;
-  accountId: number;
+  accountId?: number;
+  currency: "USD" | "EUR" | "VES";
 }
 
 export interface TriggerRecurringResponse {
@@ -96,6 +98,9 @@ export interface TriggerRecurringResponse {
 
 export interface ConfirmPendingTransactionPayload {
   date: string;
+  accountId: number;
+  amount: number;
+  currency: "USD" | "EUR" | "VES";
 }
 
 export interface DataBundle {

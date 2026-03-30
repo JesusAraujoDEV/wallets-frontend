@@ -23,9 +23,12 @@ type ApiRecurringTransaction = {
   accountId?: number | string;
   category_id?: number | string;
   account_id?: number | string;
+  currency?: string;
 };
 
 function mapRecurringTransaction(item: ApiRecurringTransaction): RecurringTransaction {
+  const raw = item.currency;
+  const currency: "USD" | "EUR" | "VES" = raw === "EUR" ? "EUR" : raw === "VES" ? "VES" : "USD";
   return {
     id: String(item.id),
     amount: Number(item.amount || 0),
@@ -36,6 +39,7 @@ function mapRecurringTransaction(item: ApiRecurringTransaction): RecurringTransa
     is_active: Boolean(item.is_active),
     categoryId: String(item.categoryId ?? item.category_id ?? ""),
     accountId: String(item.accountId ?? item.account_id ?? ""),
+    currency,
   };
 }
 

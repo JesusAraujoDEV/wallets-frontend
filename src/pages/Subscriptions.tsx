@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, CalendarClock, Loader2, Plus, Repeat, Zap } from "lucide-react";
@@ -10,12 +10,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
+import { CategorySelector } from "@/components/CategorySelector";
+import { ConfirmPaymentModal, formatAmountWithCurrency } from "@/components/ConfirmPaymentModal";
 import { CategoriesStore, AccountsStore } from "@/lib/storage";
 import {
-  confirmPendingTransaction,
   createRecurringTransaction,
   deleteRecurringTransaction,
   fetchPendingTransactions,
@@ -26,6 +28,7 @@ import {
   updateRecurringTransaction,
 } from "@/lib/subscriptions";
 import type { Account, Category, RecurringExecutionMode, RecurringTransactionPayload, Transaction } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 const FREQUENCY_OPTIONS = [
   { value: "daily", label: "Diaria" },
@@ -43,14 +46,11 @@ type CreateSubscriptionForm = {
   is_active: boolean;
   categoryId: string;
   accountId: string;
+  currency: "USD" | "EUR" | "VES";
 };
 
-function formatMoney(value: number) {
-  return `$${Math.abs(value || 0).toFixed(2)}`;
-}
-
 function modeLabel(mode: RecurringExecutionMode) {
-  return mode === "auto" ? "Auto-pago" : "Manual (requiere confirmación)";
+  return mode === "auto" ? "Automático" : "Recordatorio";
 }
 
 export default function Subscriptions() {
@@ -62,7 +62,6 @@ export default function Subscriptions() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedPendingTx, setSelectedPendingTx] = useState<Transaction | null>(null);
-  const [confirmDate, setConfirmDate] = useState(new Date().toISOString().slice(0, 10));
 
   const {
     register,
@@ -81,17 +80,13 @@ export default function Subscriptions() {
       is_active: true,
       categoryId: "",
       accountId: "",
+      currency: "USD",
     },
   });
 
   const selectedMode = watch("execution_mode");
   const selectedIsActive = watch("is_active");
   const selectedFrequency = watch("frequency");
-
-  const expenseCategories = useMemo(
-    () => categories.filter((category) => category.type === "expense"),
-    [categories],
-  );
 
   useEffect(() => {
     async function loadReferenceData() {
@@ -136,6 +131,7 @@ export default function Subscriptions() {
         is_active: true,
         categoryId: "",
         accountId: "",
+        currency: "USD",
       });
       await queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY });
     },
@@ -200,40 +196,11 @@ export default function Subscriptions() {
     },
   });
 
-  const confirmMutation = useMutation({
-    mutationFn: ({ id, date }: { id: string; date: string }) => confirmPendingTransaction(id, { date }),
-    onSuccess: async () => {
-      toast({
-        title: "Pago confirmado",
-        description: "La transacción cambió a estado completed.",
-      });
-      setConfirmDialogOpen(false);
-      setSelectedPendingTx(null);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: PENDING_TRANSACTIONS_QUERY_KEY }),
-        queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY }),
-      ]);
-    },
-    onError: (error) => {
-      toast({
-        title: "No se pudo confirmar el pago",
-        description: error instanceof Error ? error.message : "Intenta nuevamente.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const openConfirmDialog = (tx: Transaction) => {
-    setSelectedPendingTx(tx);
-    setConfirmDate(new Date().toISOString().slice(0, 10));
-    setConfirmDialogOpen(true);
-  };
-
   const onSubmitCreate = handleSubmit((values) => {
-    if (!values.categoryId || !values.accountId) {
+    if (!values.categoryId) {
       toast({
         title: "Campos incompletos",
-        description: "Selecciona cuenta y categoría para crear la suscripción.",
+        description: "Selecciona una categoría para crear la suscripción.",
         variant: "destructive",
       });
       return;
@@ -247,7 +214,8 @@ export default function Subscriptions() {
       execution_mode: values.execution_mode,
       is_active: values.is_active,
       categoryId: Number(values.categoryId),
-      accountId: Number(values.accountId),
+      accountId: values.accountId ? Number(values.accountId) : undefined,
+      currency: values.currency,
     });
   });
 
@@ -256,6 +224,7 @@ export default function Subscriptions() {
 
   return (
     <div className="space-y-6">
+      {/* Header card */}
       <Card className="border-border bg-card shadow-sm">
         <CardHeader className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -289,6 +258,7 @@ export default function Subscriptions() {
         </CardHeader>
       </Card>
 
+      {/* Pending transactions section */}
       <Card className="border-border bg-card shadow-sm">
         <CardHeader>
           <CardTitle className="text-xl">Alertas de pago</CardTitle>
@@ -325,8 +295,17 @@ export default function Subscriptions() {
                       </div>
 
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm font-semibold text-foreground">{formatMoney(tx.amount)}</p>
-                        <Button type="button" className="w-full sm:w-auto" onClick={() => openConfirmDialog(tx)}>
+                        <p className="text-sm font-semibold text-foreground">
+                          {formatAmountWithCurrency(tx.amount, (tx.currency as "USD" | "EUR" | "VES") || "USD")}
+                        </p>
+                        <Button
+                          type="button"
+                          className="w-full sm:w-auto"
+                          onClick={() => {
+                            setSelectedPendingTx(tx);
+                            setConfirmDialogOpen(true);
+                          }}
+                        >
                           Confirmar Pago
                         </Button>
                       </div>
@@ -347,6 +326,7 @@ export default function Subscriptions() {
         </CardContent>
       </Card>
 
+      {/* Recurring transactions management section */}
       <Card className="border-border bg-card shadow-sm">
         <CardHeader>
           <CardTitle className="text-xl">Gestión de suscripciones</CardTitle>
@@ -391,7 +371,9 @@ export default function Subscriptions() {
                     </div>
 
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-lg font-semibold text-foreground">{formatMoney(item.amount)}</p>
+                      <p className="text-lg font-semibold text-foreground">
+                        {formatAmountWithCurrency(item.amount, item.currency)}
+                      </p>
                       <div className="flex items-center gap-3">
                         <Label htmlFor={`active-${item.id}`} className="text-sm text-muted-foreground">
                           {item.is_active ? "Pausar" : "Reanudar"}
@@ -424,6 +406,7 @@ export default function Subscriptions() {
         </CardContent>
       </Card>
 
+      {/* Create subscription dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="w-[95vw] sm:w-full max-w-md sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-xl">
           <DialogHeader>
@@ -444,56 +427,71 @@ export default function Subscriptions() {
               {errors.description ? <p className="text-xs text-destructive">{errors.description.message}</p> : null}
             </div>
 
+            {/* Amount + Currency grid */}
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <div className="space-y-2">
+                <Label htmlFor="amount">Monto</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...register("amount", {
+                    valueAsNumber: true,
+                    required: "El monto es obligatorio.",
+                    min: { value: 0.01, message: "El monto debe ser mayor a cero." },
+                  })}
+                />
+                {errors.amount ? <p className="text-xs text-destructive">{errors.amount.message}</p> : null}
+              </div>
+              <div className="space-y-2">
+                <Label>Moneda</Label>
+                <Select value={watch("currency")} onValueChange={(v) => setValue("currency", v as "USD" | "EUR" | "VES")}>
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="VES">VES</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Category selector */}
             <div className="space-y-2">
-              <Label htmlFor="amount">Monto</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0"
-                {...register("amount", {
-                  valueAsNumber: true,
-                  required: "El monto es obligatorio.",
-                  min: { value: 0.01, message: "El monto debe ser mayor a cero." },
-                })}
+              <Label>Categoría</Label>
+              <CategorySelector
+                value={watch("categoryId")}
+                onChange={(id) => setValue("categoryId", id, { shouldValidate: true })}
+                filterType="expense"
+                categories={categories}
               />
-              {errors.amount ? <p className="text-xs text-destructive">{errors.amount.message}</p> : null}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Cuenta</Label>
-                <Select value={watch("accountId")} onValueChange={(value) => setValue("accountId", value, { shouldValidate: true })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar cuenta" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id}>
-                        {account.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Categoría</Label>
-                <Select value={watch("categoryId")} onValueChange={(value) => setValue("categoryId", value, { shouldValidate: true })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {expenseCategories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Account selector (optional) */}
+            <div className="space-y-2">
+              <Label>Cuenta</Label>
+              <Select
+                value={watch("accountId") || "__none__"}
+                onValueChange={(v) => setValue("accountId", v === "__none__" ? "" : v, { shouldValidate: true })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin cuenta asignada (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sin cuenta asignada</SelectItem>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
+            {/* Frequency + Start date */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Frecuencia</Label>
@@ -517,29 +515,42 @@ export default function Subscriptions() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border p-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Modo de ejecución</p>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedMode === "auto"
-                      ? "Auto-pago: el backend crea transacciones completed automáticamente."
-                      : "Manual: crea pending para confirmar luego la fecha real de pago."}
+            {/* Execution mode radio cards */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">¿Cómo pagas esto?</Label>
+              <RadioGroup
+                value={selectedMode}
+                onValueChange={(v) => setValue("execution_mode", v as RecurringExecutionMode)}
+                className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+              >
+                <label
+                  className={cn(
+                    "cursor-pointer rounded-lg border p-4 transition-colors",
+                    selectedMode === "auto" && "border-primary ring-2 ring-primary/30",
+                  )}
+                >
+                  <RadioGroupItem value="auto" className="sr-only" />
+                  <p className="font-medium text-foreground">Automático</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Platica lo registrará solo cada mes (ideal para débitos automáticos).
                   </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="execution-toggle" className="text-sm text-muted-foreground">
-                    {selectedMode === "auto" ? "Auto" : "Manual"}
-                  </Label>
-                  <Switch
-                    id="execution-toggle"
-                    checked={selectedMode === "auto"}
-                    onCheckedChange={(checked) => setValue("execution_mode", checked ? "auto" : "manual")}
-                  />
-                </div>
-              </div>
+                </label>
+                <label
+                  className={cn(
+                    "cursor-pointer rounded-lg border p-4 transition-colors",
+                    selectedMode === "manual" && "border-primary ring-2 ring-primary/30",
+                  )}
+                >
+                  <RadioGroupItem value="manual" className="sr-only" />
+                  <p className="font-medium text-foreground">Recordatorio</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Platica te avisará para que confirmes la fecha, el monto y de qué cuenta lo pagaste.
+                  </p>
+                </label>
+              </RadioGroup>
             </div>
 
+            {/* Active toggle */}
             <div className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -566,47 +577,22 @@ export default function Subscriptions() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-        <DialogContent className="w-[95vw] sm:w-full max-w-md sm:max-w-md max-h-[85vh] overflow-y-auto rounded-xl">
-          <DialogHeader>
-            <DialogTitle>Confirmar pago</DialogTitle>
-            <DialogDescription>
-              Marca el movimiento manual como completed usando la fecha real en que se pagó.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3">
-            <div className="rounded-lg border border-border p-3">
-              <p className="text-sm font-medium text-foreground">{selectedPendingTx?.description || "Transacción"}</p>
-              <p className="text-xs text-muted-foreground">Monto: {formatMoney(selectedPendingTx?.amount || 0)}</p>
-              <p className="text-xs text-muted-foreground">Estado actual: pending</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirm-date">Fecha real de pago</Label>
-              <Input id="confirm-date" type="date" value={confirmDate} onChange={(event) => setConfirmDate(event.target.value)} />
-            </div>
-          </div>
-
-          <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-3">
-            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setConfirmDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              className="w-full sm:w-auto"
-              disabled={!selectedPendingTx || confirmMutation.isPending}
-              onClick={() => {
-                if (!selectedPendingTx) return;
-                confirmMutation.mutate({ id: selectedPendingTx.id, date: confirmDate });
-              }}
-            >
-              {confirmMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Confirmar Pago
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Confirm payment modal */}
+      <ConfirmPaymentModal
+        open={confirmDialogOpen}
+        onOpenChange={setConfirmDialogOpen}
+        pendingTx={selectedPendingTx}
+        referenceCurrency={selectedPendingTx?.currency as "USD" | "EUR" | "VES" ?? "USD"}
+        referenceAmount={selectedPendingTx?.amount ?? 0}
+        accounts={accounts}
+        onConfirmed={async () => {
+          setSelectedPendingTx(null);
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: PENDING_TRANSACTIONS_QUERY_KEY }),
+            queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY }),
+          ]);
+        }}
+      />
     </div>
   );
 }
