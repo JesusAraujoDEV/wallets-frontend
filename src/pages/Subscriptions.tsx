@@ -211,6 +211,8 @@ export default function Subscriptions() {
       amount: Number(values.amount),
       frequency: values.frequency,
       next_date: values.next_date,
+      start_date: values.next_date,
+      type: "gasto",
       execution_mode: values.execution_mode,
       is_active: values.is_active,
       categoryId: Number(values.categoryId),

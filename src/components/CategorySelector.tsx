@@ -47,7 +47,7 @@ export function CategorySelector({ value, onChange, filterType, categories, clas
     setNewCatColor("hsl(var(--chart-6))");
     setNewCatColorName("Sky Blue");
     setNewCatIcon(null);
-    setNewCatGroupId(categoryGroups.length > 0 ? String(categoryGroups[0].id) : "");
+    setNewCatGroupId("");
   };
 
   useEffect(() => {
@@ -56,7 +56,6 @@ export function CategorySelector({ value, onChange, filterType, categories, clas
         setCategoryGroupsLoading(true);
         const groups = await fetchCategoryGroups();
         setCategoryGroups(groups);
-        setNewCatGroupId(groups.length > 0 ? String(groups[0].id) : "");
       } catch (error) {
         toast({ title: "Error loading category groups", description: String(error), variant: "destructive" });
       } finally {
@@ -72,16 +71,13 @@ export function CategorySelector({ value, onChange, filterType, categories, clas
       toast({ title: "Nombre requerido", description: "Ingresa un nombre para la categoría.", variant: "destructive" });
       return;
     }
-    if (!newCatGroupId) {
-      toast({ title: "Grupo requerido", description: "Selecciona un grupo de categoría.", variant: "destructive" });
-      return;
-    }
     try {
       setCreatingCat(true);
       const tempId = newId();
       await CategoriesStore.upsert({
         id: tempId, name, type: pickerType, color: newCatColor,
-        colorName: newCatColorName, icon: newCatIcon ?? undefined, groupId: Number(newCatGroupId),
+        colorName: newCatColorName, icon: newCatIcon ?? undefined,
+        ...(newCatGroupId && newCatGroupId !== "__none__" ? { groupId: Number(newCatGroupId) } : { groupId: null }),
       });
       const created = CategoriesStore.all().find(
         (c) => c.name.toLowerCase() === name.toLowerCase() && c.type === pickerType,
@@ -198,7 +194,7 @@ export function CategorySelector({ value, onChange, filterType, categories, clas
                   type="button"
                   className="w-full sm:w-auto"
                   onClick={handleCreateInlineCategory}
-                  disabled={creatingCat || categoryGroupsLoading || categoryGroups.length === 0 || !newCatGroupId}
+                  disabled={creatingCat}
                 >
                   {creatingCat ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Crear</> : "Crear"}
                 </Button>
@@ -207,19 +203,17 @@ export function CategorySelector({ value, onChange, filterType, categories, clas
 
             <div className="space-y-2">
               <Label htmlFor="cs-newCatGroupId">Grupo de categoría</Label>
-              <Select value={newCatGroupId} onValueChange={setNewCatGroupId}>
-                <SelectTrigger id="cs-newCatGroupId" disabled={categoryGroupsLoading || categoryGroups.length === 0}>
-                  <SelectValue placeholder={categoryGroupsLoading ? "Cargando grupos..." : "Seleccionar grupo"} />
+              <Select value={newCatGroupId || "__none__"} onValueChange={(v) => setNewCatGroupId(v === "__none__" ? "" : v)}>
+                <SelectTrigger id="cs-newCatGroupId" disabled={categoryGroupsLoading}>
+                  <SelectValue placeholder={categoryGroupsLoading ? "Cargando grupos..." : "Ninguno / Sin grupo (Opcional)"} />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__none__">Ninguno / Sin grupo (Opcional)</SelectItem>
                   {categoryGroups.map((group) => (
                     <SelectItem key={group.id} value={String(group.id)}>{group.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {categoryGroups.length === 0 && !categoryGroupsLoading ? (
-                <p className="text-sm text-destructive">Necesitas al menos un grupo de categoría.</p>
-              ) : null}
             </div>
 
             <div className="space-y-2">

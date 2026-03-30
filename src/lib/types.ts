@@ -12,7 +12,7 @@ export interface Category {
   icon?: string | null;
   color: string; // CSS color value
   colorName: string;
-  groupId: number;
+  groupId?: number | null;
   group?: CategoryGroup;
 }
 
@@ -82,6 +82,8 @@ export interface RecurringTransactionPayload {
   description: string;
   frequency: string;
   next_date: string;
+  start_date: string;
+  type: "gasto" | "ingreso";
   execution_mode: RecurringExecutionMode;
   is_active: boolean;
   categoryId: number;

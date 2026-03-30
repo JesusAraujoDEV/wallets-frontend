@@ -209,14 +209,16 @@ export const CategoriesStore = {
   },
   async upsert(category: Category): Promise<void> {
     const exists = categoriesCache.some(c => c.id === category.id);
-    const payload = {
+    const payload: Record<string, unknown> = {
       name: category.name,
       type: category.type,
       icon: category.icon ?? null,
       color: category.color,
       colorName: category.colorName,
-      groupId: Number(category.groupId),
     };
+    if (category.groupId != null) {
+      payload.groupId = Number(category.groupId);
+    }
     if (exists) {
       await fetchJSON(`categories?id=${encodeURIComponent(category.id)}`, { method: "PATCH", body: JSON.stringify(payload) });
     } else {
