@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { CategorySelector } from "@/components/CategorySelector";
 import { ConfirmPaymentModal, formatAmountWithCurrency } from "@/components/ConfirmPaymentModal";
-import { CategoriesStore, AccountsStore } from "@/lib/storage";
+import { CategoriesStore, AccountsStore, onDataChange } from "@/lib/storage";
 import {
   createRecurringTransaction,
   deleteRecurringTransaction,
@@ -102,6 +102,13 @@ export default function Subscriptions() {
         variant: "destructive",
       });
     });
+
+    // Sync local state when CategoriesStore emits changes (e.g. new category created)
+    const off = onDataChange(() => {
+      setAccounts(AccountsStore.all());
+      setCategories(CategoriesStore.all());
+    });
+    return off;
   }, [toast]);
 
   const pendingQuery = useQuery({
