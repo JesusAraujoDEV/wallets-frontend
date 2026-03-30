@@ -61,7 +61,7 @@ export function CategoryEditorDialog({
   const iconOptions = getIconOptionsForType(value.type);
   const isCustomColor = !presetColors.some((c) => c.value === value.color);
   const selectedColorLabel = isCustomColor ? value.color : value.colorName;
-  const saveDisabled = !!submitting || groupsLoading || groups.length === 0 || !value.groupId;
+  const saveDisabled = !!submitting || groupsLoading;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -94,19 +94,17 @@ export function CategoryEditorDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="category-group">Category Group</Label>
-            <Select value={value.groupId} onValueChange={(next) => onChange({ ...value, groupId: next })}>
-              <SelectTrigger id="category-group" disabled={groupsLoading || groups.length === 0}>
-                <SelectValue placeholder={groupsLoading ? "Loading groups..." : "Select a category group"} />
+            <Select value={value.groupId || "__none__"} onValueChange={(next) => onChange({ ...value, groupId: next === "__none__" ? "" : next })}>
+              <SelectTrigger id="category-group" disabled={groupsLoading}>
+                <SelectValue placeholder={groupsLoading ? "Loading groups..." : "Ninguno / Sin grupo (Opcional)"} />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__none__">Ninguno / Sin grupo (Opcional)</SelectItem>
                 {groups.map((group) => (
                   <SelectItem key={group.id} value={String(group.id)}>{group.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {groups.length === 0 ? (
-              <p className="text-sm text-destructive">You need at least one category group before creating or editing categories.</p>
-            ) : null}
           </div>
           <div className="space-y-2">
             <Label>Color</Label>

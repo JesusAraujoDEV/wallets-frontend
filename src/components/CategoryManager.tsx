@@ -48,14 +48,6 @@ export const CategoryManager = () => {
     }
 
     if (!formData.color) return;
-    if (!formData.groupId) {
-      toast({
-        title: "Error",
-        description: "Category group is required",
-        variant: "destructive",
-      });
-      return;
-    }
 
     try {
       setIsSubmitting(true);
@@ -67,7 +59,7 @@ export const CategoryManager = () => {
           color: formData.color,
           colorName: formData.colorName,
           icon: formData.icon ?? null,
-          groupId: Number(formData.groupId),
+          ...(formData.groupId ? { groupId: Number(formData.groupId) } : { groupId: null }),
         });
         toast({ title: "Category Updated", description: `${formData.name} has been updated successfully.` });
       } else {
@@ -78,7 +70,7 @@ export const CategoryManager = () => {
           color: formData.color,
           colorName: formData.colorName,
           icon: formData.icon ?? null,
-          groupId: Number(formData.groupId),
+          ...(formData.groupId ? { groupId: Number(formData.groupId) } : { groupId: null }),
         };
         await CategoriesStore.upsert(newCategory);
         toast({ title: "Category Created", description: `${formData.name} has been added successfully.` });
@@ -124,9 +116,6 @@ export const CategoryManager = () => {
       setGroupsLoading(true);
       const nextGroups = await fetchCategoryGroups();
       setGroups(nextGroups);
-      if (nextGroups.length > 0 && !editingCategory) {
-        setFormData((prev) => ({ ...prev, groupId: prev.groupId || String(nextGroups[0].id) }));
-      }
     } catch (error) {
       toast({ title: "Error", description: `Unable to load category groups: ${String(error)}`, variant: "destructive" });
     } finally {
