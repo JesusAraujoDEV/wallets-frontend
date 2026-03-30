@@ -28,17 +28,18 @@ type ApiRecurringTransaction = {
   currency?: string;
 };
 
-function mapRecurringTransaction(item: ApiRecurringTransaction): RecurringTransaction {
-  const raw = item.currency;
-  const currency: "USD" | "EUR" | "VES" = raw === "EUR" ? "EUR" : raw === "VES" ? "VES" : "USD";
+function mapRecurringTransaction(item: any): RecurringTransaction {
+  // Soporta tanto snake_case como camelCase
+  const rawCurrency = item.currency;
+  const currency: "USD" | "EUR" | "VES" = rawCurrency === "EUR" ? "EUR" : rawCurrency === "VES" ? "VES" : "USD";
   return {
     id: String(item.id),
     amount: Number(item.amount || 0),
     description: String(item.description || ""),
-    frequency: String(item.frequency || "monthly"),
-    next_date: String(item.next_date || ""),
-    execution_mode: item.execution_mode === "auto" ? "auto" : "manual",
-    is_active: Boolean(item.is_active),
+    frequency: String(item.frequency || item.frequency || "monthly"),
+    next_date: String(item.next_date ?? item.nextDate ?? ""),
+    execution_mode: (item.execution_mode ?? item.executionMode) === "auto" ? "auto" : "manual",
+    is_active: Boolean(item.is_active ?? item.isActive),
     categoryId: String(item.categoryId ?? item.category_id ?? ""),
     accountId: String(item.accountId ?? item.account_id ?? ""),
     currency,
