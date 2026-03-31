@@ -247,3 +247,59 @@ export interface BudgetDeleteResponse {
   success?: boolean;
   message?: string;
 }
+
+// ── Debts (Fase 3) ──────────────────────────────────────────────────────────
+
+export type DebtType = "payable" | "receivable";
+export type DebtStatus = "pending" | "partial" | "paid";
+
+export interface Debt {
+  id: string;
+  type: DebtType;
+  contactName: string;
+  description: string;
+  totalAmount: number;
+  currency: "USD" | "EUR" | "VES";
+  dueDate: string;
+  status: DebtStatus;
+  paidAmount: number;
+  remaining: number;
+}
+
+export interface CreateDebtPayload {
+  type: DebtType;
+  contactName: string;
+  description: string;
+  totalAmount: number;
+  currency: "USD" | "EUR" | "VES";
+  dueDate: string;
+}
+
+export interface UpdateDebtPayload {
+  type?: DebtType;
+  contactName?: string;
+  description?: string;
+  totalAmount?: number;
+  currency?: "USD" | "EUR" | "VES";
+  dueDate?: string;
+}
+
+export interface PayDebtPayload {
+  amount: number;
+  currency: string;
+  accountId: number;
+  date: string;
+  categoryId?: number;
+}
+
+export interface PayDebtResponse {
+  success?: boolean;
+  ok?: boolean;
+  message?: string;
+}
+
+export interface DebtDeleteResponse {
+  ok?: boolean;
+  success?: boolean;
+  message?: string;
+}

@@ -15,6 +15,7 @@ import Categories from "./pages/Categories";
 import CategoryGroups from "./pages/CategoryGroups";
 import Accounts from "./pages/Accounts";
 import Budgets from "./pages/Budgets";
+import Debts from "./pages/Debts";
 import Subscriptions from "./pages/Subscriptions";
 import Profile from "./pages/Profile";
 import RequireAuth from "@/components/RequireAuth";
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="category-groups" element={<CategoryGroups />} />
               <Route path="accounts" element={<Accounts />} />
               <Route path="budgets" element={<Budgets />} />
+              <Route path="debts" element={<Debts />} />
               <Route path="profile" element={<Profile />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
