@@ -27,13 +27,13 @@ import { DebtCard } from "@/components/DebtCard";
 import { DebtFormDialog } from "@/components/DebtFormDialog";
 import type { DebtFormValues } from "@/components/DebtFormDialog";
 import { DebtPayDialog } from "@/components/DebtPayDialog";
+import { LinkTransactionsDialog } from "@/components/LinkTransactionsDialog";
 
 import {
   createDebt,
   DEBTS_QUERY_KEY,
   deleteDebt,
   fetchDebts,
-  linkPastTransactions,
   payDebt,
   updateDebt,
 } from "@/lib/debts";
@@ -58,6 +58,8 @@ export default function Debts() {
   const [payingDebt, setPayingDebt] = useState<Debt | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletingDebt, setDeletingDebt] = useState<Debt | null>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkingDebt, setLinkingDebt] = useState<Debt | null>(null);
 
   useEffect(() => {
     Promise.all([AccountsStore.refresh(), CategoriesStore.refresh()])
@@ -155,25 +157,6 @@ export default function Debts() {
     },
   });
 
-  const linkPastMutation = useMutation({
-    mutationFn: (id: string) => linkPastTransactions(id),
-    onSuccess: async (data) => {
-      const count = data.linked ?? 0;
-      toast({
-        title: "Vinculación completada",
-        description: `Se han vinculado ${count} transacciones anteriores a esta deuda.`,
-      });
-      await queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY });
-    },
-    onError: (error) => {
-      toast({
-        title: "No se pudieron vincular transacciones",
-        description: error instanceof Error ? error.message : "Intenta nuevamente.",
-        variant: "destructive",
-      });
-    },
-  });
-
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   function handleFormSubmit(values: DebtFormValues) {
@@ -227,7 +210,8 @@ export default function Debts() {
   }
 
   function handleLinkPast(debt: Debt) {
-    linkPastMutation.mutate(debt.id);
+    setLinkingDebt(debt);
+    setLinkOpen(true);
   }
 
   // ── Render helpers ─────────────────────────────────────────────────────────
@@ -358,6 +342,20 @@ export default function Debts() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Cherry-pick link transactions dialog */}
+      <LinkTransactionsDialog
+        open={linkOpen}
+        onOpenChange={setLinkOpen}
+        debt={linkingDebt}
+        onLinked={async (count) => {
+          toast({
+            title: "Vinculación completada",
+            description: `Se han vinculado ${count} transacciones anteriores a esta deuda.`,
+          });
+          await queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY });
+        }}
+      />
     </div>
   );
 }

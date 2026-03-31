@@ -297,6 +297,17 @@ export interface LinkPastTransactionsResponse {
   linked?: number;
 }
 
+export interface LinkTransactionsPayload {
+  transactionIds: number[];
+}
+
+export interface LinkTransactionsResponse {
+  success?: boolean;
+  ok?: boolean;
+  message?: string;
+  linked?: number;
+}
+
 export interface PayDebtPayload {
   amount: number;
   currency: string;

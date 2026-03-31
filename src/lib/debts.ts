@@ -6,8 +6,11 @@ import type {
   DebtStatus,
   DebtType,
   LinkPastTransactionsResponse,
+  LinkTransactionsPayload,
+  LinkTransactionsResponse,
   PayDebtPayload,
   PayDebtResponse,
+  Transaction,
   UpdateDebtPayload,
 } from "@/lib/types";
 
@@ -103,5 +106,35 @@ export async function linkPastTransactions(id: string): Promise<LinkPastTransact
   return apiFetch<LinkPastTransactionsResponse>(
     `debts/${encodeURIComponent(id)}/link-past-transactions`,
     { method: "POST" },
+  );
+}
+
+export async function fetchUnlinkedTransactions(categoryId: string): Promise<Transaction[]> {
+  const response = await apiFetch<unknown>(
+    `transactions?categoryId=${encodeURIComponent(categoryId)}&debtId=null&grouped=0`,
+    { method: "GET" },
+  );
+  const list = Array.isArray(response)
+    ? response
+    : typeof response === "object" && response !== null && "items" in response
+      ? ((response as { items?: unknown[] }).items ?? [])
+      : [];
+  return list.map((t: Record<string, unknown>) => ({
+    id: String(t.id),
+    date: String(t.date ?? ""),
+    description: String(t.description ?? ""),
+    categoryId: String(t.categoryId ?? t.category_id ?? ""),
+    accountId: String(t.accountId ?? t.account_id ?? ""),
+    amount: Number(t.amount ?? 0),
+    type: (String(t.type ?? "").toLowerCase() === "income" || String(t.type ?? "").toLowerCase() === "ingreso") ? "income" as const : "expense" as const,
+    status: undefined,
+    currency: (t.currency as "USD" | "EUR" | "VES") || undefined,
+  }));
+}
+
+export async function linkTransactions(debtId: string, payload: LinkTransactionsPayload): Promise<LinkTransactionsResponse> {
+  return apiFetch<LinkTransactionsResponse>(
+    `debts/${encodeURIComponent(debtId)}/link-transactions`,
+    { method: "POST", body: JSON.stringify(payload) },
   );
 }

@@ -52,6 +52,7 @@ type CreateSubscriptionForm = {
   accountId: string;
   currency: "USD" | "EUR" | "VES";
   debtId: string;
+  subscriptionType: "gasto" | "ingreso";
 };
 
 function modeLabel(mode: RecurringExecutionMode) {
@@ -99,12 +100,14 @@ export default function Subscriptions() {
       accountId: "",
       currency: "USD",
       debtId: "",
+      subscriptionType: "gasto",
     },
   });
 
   const selectedMode = watch("execution_mode");
   const selectedIsActive = watch("is_active");
   const selectedFrequency = watch("frequency");
+  const selectedSubType = watch("subscriptionType");
 
   useEffect(() => {
     async function loadReferenceData() {
@@ -158,6 +161,7 @@ export default function Subscriptions() {
         accountId: "",
         currency: "USD",
         debtId: "",
+        subscriptionType: "gasto",
       });
       await queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY });
     },
@@ -223,12 +227,14 @@ export default function Subscriptions() {
       accountId: "",
       currency: "USD",
       debtId: "",
+      subscriptionType: "gasto",
     },
   });
 
   const editSelectedMode = editForm.watch("execution_mode");
   const editSelectedIsActive = editForm.watch("is_active");
   const editSelectedFrequency = editForm.watch("frequency");
+  const editSelectedSubType = editForm.watch("subscriptionType");
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateRecurringTransactionPayload }) =>
@@ -264,6 +270,7 @@ export default function Subscriptions() {
       accountId: sub.accountId,
       currency: sub.currency,
       debtId: sub.debtId || "",
+      subscriptionType: "gasto", // default; backend may provide this in future
     });
     setEditDialogOpen(true);
   }
@@ -303,6 +310,7 @@ export default function Subscriptions() {
     if (dirty.accountId) payload.accountId = values.accountId ? Number(values.accountId) : null;
     if (dirty.currency) payload.currency = values.currency;
     if (dirty.debtId) payload.debtId = values.debtId ? Number(values.debtId) : null;
+    if (dirty.subscriptionType) payload.type = values.subscriptionType;
 
     updateMutation.mutate({
       id: editingSubscription.id,
@@ -354,7 +362,7 @@ export default function Subscriptions() {
       frequency: values.frequency,
       next_date: values.next_date,
       start_date: values.next_date,
-      type: "gasto",
+      type: values.subscriptionType,
       execution_mode: values.execution_mode,
       is_active: values.is_active,
       categoryId: Number(values.categoryId),
@@ -618,6 +626,26 @@ export default function Subscriptions() {
               {errors.description ? <p className="text-xs text-destructive">{errors.description.message}</p> : null}
             </div>
 
+            {/* Subscription type toggle */}
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select
+                value={selectedSubType}
+                onValueChange={(v) => {
+                  setValue("subscriptionType", v as "gasto" | "ingreso");
+                  setValue("debtId", "");
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gasto">Gasto</SelectItem>
+                  <SelectItem value="ingreso">Ingreso</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Amount + Currency grid */}
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <div className="space-y-2">
@@ -656,7 +684,7 @@ export default function Subscriptions() {
               <CategorySelector
                 value={watch("categoryId")}
                 onChange={(id) => setValue("categoryId", id, { shouldValidate: true })}
-                filterType="expense"
+                filterType={selectedSubType === "ingreso" ? "income" : "expense"}
                 categories={categories}
               />
             </div>
@@ -695,7 +723,9 @@ export default function Subscriptions() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Sin deuda vinculada</SelectItem>
-                    {activeDebts.map((d: Debt) => (
+                    {activeDebts
+                      .filter((d: Debt) => selectedSubType === "ingreso" ? d.type === "receivable" : d.type === "payable")
+                      .map((d: Debt) => (
                       <SelectItem key={d.id} value={d.id}>
                         {d.contactName} — {d.type === "payable" ? "Por Pagar" : "Por Cobrar"}
                       </SelectItem>
@@ -850,6 +880,26 @@ export default function Subscriptions() {
               {editForm.formState.errors.description ? <p className="text-xs text-destructive">{editForm.formState.errors.description.message}</p> : null}
             </div>
 
+            {/* Subscription type toggle — edit */}
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select
+                value={editSelectedSubType}
+                onValueChange={(v) => {
+                  editForm.setValue("subscriptionType", v as "gasto" | "ingreso", { shouldDirty: true });
+                  editForm.setValue("debtId", "");
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gasto">Gasto</SelectItem>
+                  <SelectItem value="ingreso">Ingreso</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <div className="space-y-2">
                 <Label htmlFor="edit-amount">Monto</Label>
@@ -886,7 +936,7 @@ export default function Subscriptions() {
               <CategorySelector
                 value={editForm.watch("categoryId")}
                 onChange={(id) => editForm.setValue("categoryId", id, { shouldValidate: true })}
-                filterType="expense"
+                filterType={editSelectedSubType === "ingreso" ? "income" : "expense"}
                 categories={categories}
               />
             </div>
@@ -924,7 +974,9 @@ export default function Subscriptions() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Sin deuda vinculada</SelectItem>
-                    {activeDebts.map((d: Debt) => (
+                    {activeDebts
+                      .filter((d: Debt) => editSelectedSubType === "ingreso" ? d.type === "receivable" : d.type === "payable")
+                      .map((d: Debt) => (
                       <SelectItem key={d.id} value={d.id}>
                         {d.contactName} — {d.type === "payable" ? "Por Pagar" : "Por Cobrar"}
                       </SelectItem>

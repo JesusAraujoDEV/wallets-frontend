@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import {
+  CalendarDays,
   LayoutDashboard,
   Layers,
   LogOut,
@@ -86,6 +87,7 @@ export default function SidebarLayout() {
     { to: "/subscriptions", label: "Suscripciones", icon: Repeat, badgeCount: pendingCount },
     { to: "/budgets", label: "Presupuestos", icon: PiggyBank },
     { to: "/debts", label: "Deudas", icon: Handshake },
+    { to: "/calendar", label: "Calendario", icon: CalendarDays },
     { to: "/categories", label: "Categorías", icon: Tags },
     { to: "/category-groups", label: "Grupos", icon: Layers },
     { to: "/accounts", label: "Cuentas", icon: WalletCards },
