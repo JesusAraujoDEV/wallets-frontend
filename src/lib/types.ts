@@ -75,6 +75,7 @@ export interface RecurringTransaction {
   categoryId: string;
   accountId: string;
   currency: "USD" | "EUR" | "VES";
+  debtId: string | null;
 }
 
 export interface RecurringTransactionPayload {
@@ -89,6 +90,7 @@ export interface RecurringTransactionPayload {
   categoryId: number;
   accountId?: number;
   currency: "USD" | "EUR" | "VES";
+  debtId?: number | null;
 }
 
 export interface UpdateRecurringTransactionPayload {
@@ -103,6 +105,7 @@ export interface UpdateRecurringTransactionPayload {
   categoryId?: number;
   accountId?: number | null;
   currency?: "USD" | "EUR" | "VES";
+  debtId?: number | null;
 }
 
 export interface TriggerRecurringResponse {
@@ -260,10 +263,11 @@ export interface Debt {
   description: string;
   totalAmount: number;
   currency: "USD" | "EUR" | "VES";
-  dueDate: string;
+  dueDate: string | null;
   status: DebtStatus;
   paidAmount: number;
   remaining: number;
+  categoryId: string | null;
 }
 
 export interface CreateDebtPayload {
@@ -272,7 +276,8 @@ export interface CreateDebtPayload {
   description: string;
   totalAmount: number;
   currency: "USD" | "EUR" | "VES";
-  dueDate: string;
+  dueDate: string | null;
+  categoryId?: number | null;
 }
 
 export interface UpdateDebtPayload {
@@ -281,7 +286,15 @@ export interface UpdateDebtPayload {
   description?: string;
   totalAmount?: number;
   currency?: "USD" | "EUR" | "VES";
-  dueDate?: string;
+  dueDate?: string | null;
+  categoryId?: number | null;
+}
+
+export interface LinkPastTransactionsResponse {
+  success?: boolean;
+  ok?: boolean;
+  message?: string;
+  linked?: number;
 }
 
 export interface PayDebtPayload {

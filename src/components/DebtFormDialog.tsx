@@ -19,21 +19,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Debt, DebtType } from "@/lib/types";
+import { CategorySelector } from "@/components/CategorySelector";
+import type { Category, Debt, DebtType } from "@/lib/types";
 
-type DebtFormValues = {
+export type DebtFormValues = {
   contactName: string;
   description: string;
   totalAmount: number;
   currency: "USD" | "EUR" | "VES";
   type: DebtType;
   dueDate: string;
+  categoryId: string;
 };
 
 interface DebtFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  debt: Debt | null; // null = create mode
+  debt: Debt | null;
+  categories: Category[];
   submitting: boolean;
   onSubmit: (values: DebtFormValues) => void;
 }
@@ -42,6 +45,7 @@ export function DebtFormDialog({
   open,
   onOpenChange,
   debt,
+  categories,
   submitting,
   onSubmit,
 }: DebtFormDialogProps) {
@@ -61,7 +65,8 @@ export function DebtFormDialog({
       totalAmount: undefined as unknown as number,
       currency: "USD",
       type: "payable",
-      dueDate: new Date().toISOString().slice(0, 10),
+      dueDate: "",
+      categoryId: "",
     },
   });
 
@@ -74,7 +79,8 @@ export function DebtFormDialog({
           totalAmount: debt.totalAmount,
           currency: debt.currency,
           type: debt.type,
-          dueDate: debt.dueDate || new Date().toISOString().slice(0, 10),
+          dueDate: debt.dueDate || "",
+          categoryId: debt.categoryId || "",
         });
       } else {
         reset({
@@ -83,7 +89,8 @@ export function DebtFormDialog({
           totalAmount: undefined as unknown as number,
           currency: "USD",
           type: "payable",
-          dueDate: new Date().toISOString().slice(0, 10),
+          dueDate: "",
+          categoryId: "",
         });
       }
     }
@@ -183,9 +190,19 @@ export function DebtFormDialog({
             </Select>
           </div>
 
-          {/* Due date */}
+          {/* Category selector */}
           <div className="space-y-2">
-            <Label htmlFor="debt-due-date">Fecha límite</Label>
+            <Label>Categoría (opcional)</Label>
+            <CategorySelector
+              value={watch("categoryId")}
+              onChange={(id) => setValue("categoryId", id, { shouldValidate: true })}
+              categories={categories}
+            />
+          </div>
+
+          {/* Due date — optional */}
+          <div className="space-y-2">
+            <Label htmlFor="debt-due-date">Fecha límite (opcional)</Label>
             <Input id="debt-due-date" type="date" {...register("dueDate")} />
           </div>
 

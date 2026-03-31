@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CreditCard, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { CreditCard, Link2, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import type { Debt } from "@/lib/types";
 
 function statusBadge(status: Debt["status"]) {
@@ -35,9 +35,10 @@ interface DebtCardProps {
   onPay: (debt: Debt) => void;
   onEdit: (debt: Debt) => void;
   onDelete: (debt: Debt) => void;
+  onLinkPast: (debt: Debt) => void;
 }
 
-export function DebtCard({ debt, onPay, onEdit, onDelete }: DebtCardProps) {
+export function DebtCard({ debt, onPay, onEdit, onDelete, onLinkPast }: DebtCardProps) {
   const progress =
     debt.totalAmount > 0
       ? Math.min((debt.paidAmount / debt.totalAmount) * 100, 100)
@@ -104,6 +105,19 @@ export function DebtCard({ debt, onPay, onEdit, onDelete }: DebtCardProps) {
 
           {/* Desktop actions */}
           <div className="hidden items-center gap-1 md:flex">
+            {debt.categoryId && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => onLinkPast(debt)}
+                aria-label="Vincular pagos anteriores"
+                title="Vincular pagos anteriores"
+              >
+                <Link2 className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -140,6 +154,12 @@ export function DebtCard({ debt, onPay, onEdit, onDelete }: DebtCardProps) {
                   <DropdownMenuItem onClick={() => onPay(debt)}>
                     <CreditCard className="mr-2 h-4 w-4" />
                     Abonar / Pagar
+                  </DropdownMenuItem>
+                )}
+                {debt.categoryId && (
+                  <DropdownMenuItem onClick={() => onLinkPast(debt)}>
+                    <Link2 className="mr-2 h-4 w-4" />
+                    Vincular pagos anteriores
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => onEdit(debt)}>

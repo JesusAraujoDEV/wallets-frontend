@@ -30,7 +30,8 @@ import {
   RECURRING_TRANSACTIONS_QUERY_KEY,
   updateRecurringTransaction,
 } from "@/lib/subscriptions";
-import type { Account, Category, PayNowRecurringPayload, RecurringExecutionMode, RecurringTransaction, RecurringTransactionPayload, Transaction, UpdateRecurringTransactionPayload } from "@/lib/types";
+import { DEBTS_QUERY_KEY, fetchDebts } from "@/lib/debts";
+import type { Account, Category, Debt, PayNowRecurringPayload, RecurringExecutionMode, RecurringTransaction, RecurringTransactionPayload, Transaction, UpdateRecurringTransactionPayload } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const FREQUENCY_OPTIONS = [
@@ -50,6 +51,7 @@ type CreateSubscriptionForm = {
   categoryId: string;
   accountId: string;
   currency: "USD" | "EUR" | "VES";
+  debtId: string;
 };
 
 function modeLabel(mode: RecurringExecutionMode) {
@@ -72,6 +74,12 @@ export default function Subscriptions() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingSubscription, setDeletingSubscription] = useState<RecurringTransaction | null>(null);
 
+  const debtsQuery = useQuery({
+    queryKey: DEBTS_QUERY_KEY,
+    queryFn: fetchDebts,
+  });
+  const activeDebts = (debtsQuery.data ?? []).filter((d: Debt) => d.status !== "paid");
+
   const {
     register,
     handleSubmit,
@@ -90,6 +98,7 @@ export default function Subscriptions() {
       categoryId: "",
       accountId: "",
       currency: "USD",
+      debtId: "",
     },
   });
 
@@ -148,6 +157,7 @@ export default function Subscriptions() {
         categoryId: "",
         accountId: "",
         currency: "USD",
+        debtId: "",
       });
       await queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY });
     },
@@ -212,6 +222,7 @@ export default function Subscriptions() {
       categoryId: "",
       accountId: "",
       currency: "USD",
+      debtId: "",
     },
   });
 
@@ -252,6 +263,7 @@ export default function Subscriptions() {
       categoryId: sub.categoryId,
       accountId: sub.accountId,
       currency: sub.currency,
+      debtId: sub.debtId || "",
     });
     setEditDialogOpen(true);
   }
@@ -290,6 +302,7 @@ export default function Subscriptions() {
     if (dirty.categoryId) payload.categoryId = Number(values.categoryId);
     if (dirty.accountId) payload.accountId = values.accountId ? Number(values.accountId) : null;
     if (dirty.currency) payload.currency = values.currency;
+    if (dirty.debtId) payload.debtId = values.debtId ? Number(values.debtId) : null;
 
     updateMutation.mutate({
       id: editingSubscription.id,
@@ -347,6 +360,7 @@ export default function Subscriptions() {
       categoryId: Number(values.categoryId),
       accountId: values.accountId ? Number(values.accountId) : undefined,
       currency: values.currency,
+      debtId: values.debtId ? Number(values.debtId) : null,
     });
   });
 
@@ -668,6 +682,29 @@ export default function Subscriptions() {
               </Select>
             </div>
 
+            {/* Debt link (optional) */}
+            {activeDebts.length > 0 && (
+              <div className="space-y-2">
+                <Label>Vincular a Deuda (opcional)</Label>
+                <Select
+                  value={watch("debtId") || "__none__"}
+                  onValueChange={(v) => setValue("debtId", v === "__none__" ? "" : v, { shouldValidate: true })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin deuda vinculada" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin deuda vinculada</SelectItem>
+                    {activeDebts.map((d: Debt) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.contactName} — {d.type === "payable" ? "Por Pagar" : "Por Cobrar"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Frequency + Start date */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -873,6 +910,29 @@ export default function Subscriptions() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Debt link (optional) — edit dialog */}
+            {activeDebts.length > 0 && (
+              <div className="space-y-2">
+                <Label>Vincular a Deuda (opcional)</Label>
+                <Select
+                  value={editForm.watch("debtId") || "__none__"}
+                  onValueChange={(v) => editForm.setValue("debtId", v === "__none__" ? "" : v, { shouldValidate: true, shouldDirty: true })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin deuda vinculada" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin deuda vinculada</SelectItem>
+                    {activeDebts.map((d: Debt) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.contactName} — {d.type === "payable" ? "Por Pagar" : "Por Cobrar"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">

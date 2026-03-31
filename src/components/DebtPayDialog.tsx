@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
-import type { Account, Debt } from "@/lib/types";
+import { CategorySelector } from "@/components/CategorySelector";
+import type { Account, Category, Debt } from "@/lib/types";
 
 function formatCurrency(amount: number, currency: string) {
   return new Intl.NumberFormat("es", {
@@ -35,11 +36,13 @@ interface DebtPayDialogProps {
   onOpenChange: (open: boolean) => void;
   debt: Debt | null;
   accounts: Account[];
+  categories: Category[];
   onConfirm: (payload: {
     amount: number;
     currency: string;
     accountId: number;
     date: string;
+    categoryId?: number;
   }) => Promise<void>;
 }
 
@@ -48,11 +51,13 @@ export function DebtPayDialog({
   onOpenChange,
   debt,
   accounts,
+  categories,
   onConfirm,
 }: DebtPayDialogProps) {
   const { toast } = useToast();
   const [amount, setAmount] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [paymentDate, setPaymentDate] = useState(() =>
     new Date().toISOString().slice(0, 10),
   );
@@ -62,6 +67,7 @@ export function DebtPayDialog({
     if (open && debt) {
       setAmount(String(debt.remaining));
       setSelectedAccountId("");
+      setSelectedCategoryId(debt.categoryId || "");
       setPaymentDate(new Date().toISOString().slice(0, 10));
     }
   }, [open, debt]);
@@ -105,6 +111,7 @@ export function DebtPayDialog({
         currency: debt.currency,
         accountId: Number(selectedAccountId),
         date: paymentDate,
+        categoryId: selectedCategoryId ? Number(selectedCategoryId) : undefined,
       });
       onOpenChange(false);
     } catch (err) {
@@ -183,6 +190,18 @@ export function DebtPayDialog({
                 </p>
               )}
             </div>
+
+            {/* Category selector — pre-filled from debt */}
+            {categories.length > 0 && (
+              <div className="space-y-2">
+                <Label>Categoría (opcional)</Label>
+                <CategorySelector
+                  value={selectedCategoryId}
+                  onChange={setSelectedCategoryId}
+                  categories={categories}
+                />
+              </div>
+            )}
 
             {/* Payment date */}
             <div className="space-y-2">

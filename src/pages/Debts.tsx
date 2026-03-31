@@ -16,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -26,6 +25,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 import { DebtCard } from "@/components/DebtCard";
 import { DebtFormDialog } from "@/components/DebtFormDialog";
+import type { DebtFormValues } from "@/components/DebtFormDialog";
 import { DebtPayDialog } from "@/components/DebtPayDialog";
 
 import {
@@ -33,12 +33,14 @@ import {
   DEBTS_QUERY_KEY,
   deleteDebt,
   fetchDebts,
+  linkPastTransactions,
   payDebt,
   updateDebt,
 } from "@/lib/debts";
-import { AccountsStore, onDataChange } from "@/lib/storage";
+import { AccountsStore, CategoriesStore, onDataChange } from "@/lib/storage";
 import type {
   Account,
+  Category,
   CreateDebtPayload,
   Debt,
   UpdateDebtPayload,
@@ -49,6 +51,7 @@ export default function Debts() {
   const { toast } = useToast();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [payOpen, setPayOpen] = useState(false);
@@ -56,12 +59,17 @@ export default function Debts() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletingDebt, setDeletingDebt] = useState<Debt | null>(null);
 
-  // Load accounts
   useEffect(() => {
-    AccountsStore.refresh()
-      .then(() => setAccounts(AccountsStore.all()))
+    Promise.all([AccountsStore.refresh(), CategoriesStore.refresh()])
+      .then(() => {
+        setAccounts(AccountsStore.all());
+        setCategories(CategoriesStore.all());
+      })
       .catch(() => {});
-    const off = onDataChange(() => setAccounts(AccountsStore.all()));
+    const off = onDataChange(() => {
+      setAccounts(AccountsStore.all());
+      setCategories(CategoriesStore.all());
+    });
     return off;
   }, []);
 
@@ -129,7 +137,7 @@ export default function Debts() {
   });
 
   const payMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: { amount: number; currency: string; accountId: number; date: string } }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: { amount: number; currency: string; accountId: number; date: string; categoryId?: number } }) =>
       payDebt(id, payload),
     onSuccess: async () => {
       toast({ title: "Abono registrado", description: "El pago se registró correctamente." });
@@ -147,16 +155,31 @@ export default function Debts() {
     },
   });
 
+  const linkPastMutation = useMutation({
+    mutationFn: (id: string) => linkPastTransactions(id),
+    onSuccess: async (data) => {
+      const count = data.linked ?? 0;
+      toast({
+        title: "Vinculación completada",
+        description: `Se han vinculado ${count} transacciones anteriores a esta deuda.`,
+      });
+      await queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY });
+    },
+    onError: (error) => {
+      toast({
+        title: "No se pudieron vincular transacciones",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // ── Handlers ───────────────────────────────────────────────────────────────
 
-  function handleFormSubmit(values: {
-    contactName: string;
-    description: string;
-    totalAmount: number;
-    currency: "USD" | "EUR" | "VES";
-    type: "payable" | "receivable";
-    dueDate: string;
-  }) {
+  function handleFormSubmit(values: DebtFormValues) {
+    const dueDate = values.dueDate || null;
+    const categoryId = values.categoryId ? Number(values.categoryId) : null;
+
     if (editingDebt) {
       updateMutation.mutate({
         id: editingDebt.id,
@@ -166,7 +189,8 @@ export default function Debts() {
           totalAmount: values.totalAmount,
           currency: values.currency,
           type: values.type,
-          dueDate: values.dueDate,
+          dueDate,
+          categoryId,
         },
       });
     } else {
@@ -176,7 +200,8 @@ export default function Debts() {
         totalAmount: values.totalAmount,
         currency: values.currency,
         type: values.type,
-        dueDate: values.dueDate,
+        dueDate,
+        categoryId,
       });
     }
   }
@@ -199,6 +224,10 @@ export default function Debts() {
   function openDeleteConfirm(debt: Debt) {
     setDeletingDebt(debt);
     setDeleteOpen(true);
+  }
+
+  function handleLinkPast(debt: Debt) {
+    linkPastMutation.mutate(debt.id);
   }
 
   // ── Render helpers ─────────────────────────────────────────────────────────
@@ -232,6 +261,7 @@ export default function Debts() {
             onPay={openPay}
             onEdit={openEdit}
             onDelete={openDeleteConfirm}
+            onLinkPast={handleLinkPast}
           />
         ))}
       </div>
@@ -286,6 +316,7 @@ export default function Debts() {
         open={formOpen}
         onOpenChange={setFormOpen}
         debt={editingDebt}
+        categories={categories}
         submitting={createMutation.isPending || updateMutation.isPending}
         onSubmit={handleFormSubmit}
       />
@@ -296,6 +327,7 @@ export default function Debts() {
         onOpenChange={setPayOpen}
         debt={payingDebt}
         accounts={accounts}
+        categories={categories}
         onConfirm={async (payload) => {
           if (!payingDebt) return;
           await payMutation.mutateAsync({ id: payingDebt.id, payload });

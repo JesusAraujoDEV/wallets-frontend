@@ -27,6 +27,8 @@ type ApiRecurringTransaction = {
   category_id?: number | string;
   account_id?: number | string;
   currency?: string;
+  debtId?: number | string | null;
+  debt_id?: number | string | null;
 };
 
 function mapRecurringTransaction(item: any): RecurringTransaction {
@@ -44,6 +46,7 @@ function mapRecurringTransaction(item: any): RecurringTransaction {
     categoryId: String(item.categoryId ?? item.category_id ?? ""),
     accountId: String(item.accountId ?? item.account_id ?? ""),
     currency,
+    debtId: item.debtId ?? item.debt_id ? String(item.debtId ?? item.debt_id) : null,
   };
 }
 

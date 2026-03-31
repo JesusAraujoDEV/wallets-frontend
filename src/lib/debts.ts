@@ -5,6 +5,7 @@ import type {
   DebtDeleteResponse,
   DebtStatus,
   DebtType,
+  LinkPastTransactionsResponse,
   PayDebtPayload,
   PayDebtResponse,
   UpdateDebtPayload,
@@ -21,12 +22,14 @@ type ApiDebt = {
   totalAmount?: number | string;
   total_amount?: number | string;
   currency?: string;
-  dueDate?: string;
-  due_date?: string;
+  dueDate?: string | null;
+  due_date?: string | null;
   status?: string;
   paidAmount?: number | string;
   paid_amount?: number | string;
   remaining?: number | string;
+  categoryId?: number | string | null;
+  category_id?: number | string | null;
 };
 
 function mapDebt(item: ApiDebt): Debt {
@@ -51,10 +54,11 @@ function mapDebt(item: ApiDebt): Debt {
     description: String(item.description ?? ""),
     totalAmount,
     currency,
-    dueDate: String(item.dueDate ?? item.due_date ?? ""),
+    dueDate: item.dueDate ?? item.due_date ?? null,
     status,
     paidAmount,
     remaining: Number(item.remaining ?? totalAmount - paidAmount),
+    categoryId: item.categoryId ?? item.category_id ? String(item.categoryId ?? item.category_id) : null,
   };
 }
 
@@ -93,4 +97,11 @@ export async function payDebt(id: string, payload: PayDebtPayload): Promise<PayD
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function linkPastTransactions(id: string): Promise<LinkPastTransactionsResponse> {
+  return apiFetch<LinkPastTransactionsResponse>(
+    `debts/${encodeURIComponent(id)}/link-past-transactions`,
+    { method: "POST" },
+  );
 }
