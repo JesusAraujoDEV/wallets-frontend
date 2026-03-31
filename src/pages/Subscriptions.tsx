@@ -31,7 +31,7 @@ import {
   triggerRecurringTransactions,
   updateRecurringTransaction,
 } from "@/lib/subscriptions";
-import type { Account, Category, PayNowRecurringPayload, RecurringExecutionMode, RecurringTransaction, RecurringTransactionPayload, Transaction } from "@/lib/types";
+import type { Account, Category, PayNowRecurringPayload, RecurringExecutionMode, RecurringTransaction, RecurringTransactionPayload, Transaction, UpdateRecurringTransactionPayload } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const FREQUENCY_OPTIONS = [
@@ -165,7 +165,7 @@ export default function Subscriptions() {
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => {
       setTogglingId(id);
-      return updateRecurringTransaction(id, { is_active: isActive });
+      return updateRecurringTransaction(id, { isActive });
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY });
@@ -221,7 +221,7 @@ export default function Subscriptions() {
   const editSelectedFrequency = editForm.watch("frequency");
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<RecurringTransactionPayload> }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateRecurringTransactionPayload }) =>
       updateRecurringTransaction(id, payload),
     onSuccess: async () => {
       toast({
@@ -259,7 +259,18 @@ export default function Subscriptions() {
 
   const onSubmitEdit = editForm.handleSubmit((values) => {
     if (!editingSubscription) return;
-    if (!values.categoryId) {
+
+    const dirty = editForm.formState.dirtyFields;
+    const dirtyKeys = Object.keys(dirty) as (keyof CreateSubscriptionForm)[];
+
+    // Nothing changed — just close
+    if (dirtyKeys.length === 0) {
+      setEditDialogOpen(false);
+      setEditingSubscription(null);
+      return;
+    }
+
+    if (dirty.categoryId && !values.categoryId) {
       toast({
         title: "Campos incompletos",
         description: "Selecciona una categoría.",
@@ -267,21 +278,23 @@ export default function Subscriptions() {
       });
       return;
     }
+
+    // Build partial camelCase payload from dirty fields only
+    const payload: UpdateRecurringTransactionPayload = {};
+
+    if (dirty.description) payload.description = values.description.trim();
+    if (dirty.amount) payload.amount = Number(values.amount);
+    if (dirty.frequency) payload.frequency = values.frequency;
+    if (dirty.next_date) payload.nextDate = values.next_date;
+    if (dirty.execution_mode) payload.executionMode = values.execution_mode;
+    if (dirty.is_active) payload.isActive = values.is_active;
+    if (dirty.categoryId) payload.categoryId = Number(values.categoryId);
+    if (dirty.accountId) payload.accountId = values.accountId ? Number(values.accountId) : null;
+    if (dirty.currency) payload.currency = values.currency;
+
     updateMutation.mutate({
       id: editingSubscription.id,
-      payload: {
-        description: values.description.trim(),
-        amount: Number(values.amount),
-        frequency: values.frequency,
-        next_date: values.next_date,
-        start_date: values.next_date,
-        type: "gasto",
-        execution_mode: values.execution_mode,
-        is_active: values.is_active,
-        categoryId: Number(values.categoryId),
-        accountId: values.accountId ? Number(values.accountId) : undefined,
-        currency: values.currency,
-      },
+      payload,
     });
   });
 

@@ -91,6 +91,20 @@ export interface RecurringTransactionPayload {
   currency: "USD" | "EUR" | "VES";
 }
 
+export interface UpdateRecurringTransactionPayload {
+  description?: string;
+  amount?: number;
+  frequency?: string;
+  startDate?: string;
+  nextDate?: string;
+  type?: "gasto" | "ingreso";
+  executionMode?: RecurringExecutionMode;
+  isActive?: boolean;
+  categoryId?: number;
+  accountId?: number | null;
+  currency?: "USD" | "EUR" | "VES";
+}
+
 export interface TriggerRecurringResponse {
   ok?: boolean;
   success?: boolean;

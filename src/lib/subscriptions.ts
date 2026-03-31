@@ -7,6 +7,7 @@ import type {
   RecurringTransactionPayload,
   Transaction,
   TriggerRecurringResponse,
+  UpdateRecurringTransactionPayload,
 } from "@/lib/types";
 import { mapServerTransaction } from "@/lib/transactions";
 
@@ -62,7 +63,7 @@ export async function createRecurringTransaction(payload: RecurringTransactionPa
   return mapRecurringTransaction(response);
 }
 
-export async function updateRecurringTransaction(id: string, payload: Partial<RecurringTransactionPayload>): Promise<RecurringTransaction> {
+export async function updateRecurringTransaction(id: string, payload: UpdateRecurringTransactionPayload): Promise<RecurringTransaction> {
   const response = await apiFetch<ApiRecurringTransaction>(`recurring-transactions/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
