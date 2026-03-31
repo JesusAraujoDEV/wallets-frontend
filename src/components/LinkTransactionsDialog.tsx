@@ -54,14 +54,19 @@ export function LinkTransactionsDialog({
         .then((txs) => {
           setTransactions(txs);
           // Pre-select transactions already linked to this debt
+          // Use String() coercion on both sides — backend may return debtId as number
+          const debtIdStr = String(debt.id);
           const linked = new Set<string>();
           for (const tx of txs) {
-            if (tx.debtId === debt.id) {
+            if (tx.debtId != null && String(tx.debtId) === debtIdStr) {
               linked.add(tx.id);
             }
           }
-          setSelected(linked);
-          setInitialLinked(linked);
+          if (import.meta.env.DEV) {
+            console.log("[LinkTransactionsDialog] txs:", txs.length, "pre-linked:", linked.size, "debtId:", debtIdStr);
+          }
+          setSelected(new Set(linked));
+          setInitialLinked(new Set(linked));
         })
         .catch(() => {
           toast({
@@ -139,6 +144,7 @@ export function LinkTransactionsDialog({
           ) : (
             transactions.map((tx) => {
               const isLinked = initialLinked.has(tx.id);
+              const isChecked = selected.has(tx.id);
               const txCurrency = tx.currency || debt?.currency || "USD";
               const showUsdEquiv = txCurrency !== "USD" && tx.amountUsd != null;
 
@@ -148,7 +154,7 @@ export function LinkTransactionsDialog({
                   className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-accent/40 transition-colors"
                 >
                   <Checkbox
-                    checked={selected.has(tx.id)}
+                    checked={isChecked}
                     onCheckedChange={() => toggleSelection(tx.id)}
                     className="mt-0.5"
                   />

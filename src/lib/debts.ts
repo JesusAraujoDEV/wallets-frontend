@@ -123,7 +123,9 @@ function mapApiTransaction(t: ApiTransaction): Transaction {
     currency: (t.currency as "USD" | "EUR" | "VES") || undefined,
     amountUsd: t.amount_usd != null ? Number(t.amount_usd) : t.amountUsd != null ? Number(t.amountUsd) : null,
     exchangeRateUsed: t.exchange_rate_used != null ? Number(t.exchange_rate_used) : t.exchangeRateUsed != null ? Number(t.exchangeRateUsed) : null,
-    debtId: t.debtId != null ? String(t.debtId) : t.debt_id != null ? String(t.debt_id) : undefined,
+    debtId: "debtId" in t && t.debtId != null ? String(t.debtId)
+         : "debt_id" in t && t.debt_id != null ? String(t.debt_id)
+         : undefined,
   };
 }
 

@@ -353,7 +353,11 @@ export default function Debts() {
             title: "Vinculación completada",
             description: `Se han vinculado ${count} transacciones anteriores a esta deuda.`,
           });
-          await queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY });
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY }),
+            queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+            queryClient.invalidateQueries({ queryKey: ["summary"] }),
+          ]);
         }}
       />
     </div>
