@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CalendarClock, CreditCard, Loader2, MoreVertical, Plus, Repeat, Zap } from "lucide-react";
+import { AlertCircle, CalendarClock, CreditCard, Loader2, MoreVertical, Pencil, Plus, Repeat, Trash2, Zap } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,6 +68,10 @@ export default function Subscriptions() {
   const [selectedPendingTx, setSelectedPendingTx] = useState<Transaction | null>(null);
   const [payNowDialogOpen, setPayNowDialogOpen] = useState(false);
   const [selectedPayNowSub, setSelectedPayNowSub] = useState<RecurringTransaction | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingSubscription, setEditingSubscription] = useState<RecurringTransaction | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingSubscription, setDeletingSubscription] = useState<RecurringTransaction | null>(null);
 
   const {
     register,
@@ -184,6 +189,8 @@ export default function Subscriptions() {
         title: "Suscripción eliminada",
         description: "La suscripción se eliminó correctamente.",
       });
+      setDeleteConfirmOpen(false);
+      setDeletingSubscription(null);
       await queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY });
     },
     onError: (error) => {
@@ -194,6 +201,94 @@ export default function Subscriptions() {
       });
     },
   });
+
+  const editForm = useForm<CreateSubscriptionForm>({
+    defaultValues: {
+      description: "",
+      amount: undefined as unknown as number,
+      frequency: "monthly",
+      next_date: new Date().toISOString().slice(0, 10),
+      execution_mode: "manual",
+      is_active: true,
+      categoryId: "",
+      accountId: "",
+      currency: "USD",
+    },
+  });
+
+  const editSelectedMode = editForm.watch("execution_mode");
+  const editSelectedIsActive = editForm.watch("is_active");
+  const editSelectedFrequency = editForm.watch("frequency");
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<RecurringTransactionPayload> }) =>
+      updateRecurringTransaction(id, payload),
+    onSuccess: async () => {
+      toast({
+        title: "Suscripción actualizada",
+        description: "Los cambios se guardaron correctamente.",
+      });
+      setEditDialogOpen(false);
+      setEditingSubscription(null);
+      await queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY });
+    },
+    onError: (error) => {
+      toast({
+        title: "No se pudo actualizar la suscripción",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  function openEditDialog(sub: RecurringTransaction) {
+    setEditingSubscription(sub);
+    editForm.reset({
+      description: sub.description,
+      amount: sub.amount,
+      frequency: sub.frequency,
+      next_date: sub.next_date,
+      execution_mode: sub.execution_mode,
+      is_active: sub.is_active,
+      categoryId: sub.categoryId,
+      accountId: sub.accountId,
+      currency: sub.currency,
+    });
+    setEditDialogOpen(true);
+  }
+
+  const onSubmitEdit = editForm.handleSubmit((values) => {
+    if (!editingSubscription) return;
+    if (!values.categoryId) {
+      toast({
+        title: "Campos incompletos",
+        description: "Selecciona una categoría.",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateMutation.mutate({
+      id: editingSubscription.id,
+      payload: {
+        description: values.description.trim(),
+        amount: Number(values.amount),
+        frequency: values.frequency,
+        next_date: values.next_date,
+        start_date: values.next_date,
+        type: "gasto",
+        execution_mode: values.execution_mode,
+        is_active: values.is_active,
+        categoryId: Number(values.categoryId),
+        accountId: values.accountId ? Number(values.accountId) : undefined,
+        currency: values.currency,
+      },
+    });
+  });
+
+  function openDeleteConfirm(sub: RecurringTransaction) {
+    setDeletingSubscription(sub);
+    setDeleteConfirmOpen(true);
+  }
 
   const triggerMutation = useMutation({
     mutationFn: triggerRecurringTransactions,
@@ -394,7 +489,7 @@ export default function Subscriptions() {
           ) : (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {recurringTransactions.map((item) => (
-                <Card key={item.id} className="border-border bg-card">
+                <Card key={item.id} className={cn("border-border bg-card", !item.is_active && "opacity-60")}>
                   <CardContent className="space-y-4 p-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
@@ -450,23 +545,54 @@ export default function Subscriptions() {
                         Adelantar Pago
                       </Button>
 
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Más opciones</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => deleteMutation.mutate(item.id)}
-                            disabled={deleteMutation.isPending}
-                          >
-                            Eliminar suscripción
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {/* Desktop actions */}
+                      <div className="hidden items-center gap-1 md:flex">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => openEditDialog(item)}
+                          aria-label="Editar suscripción"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => openDeleteConfirm(item)}
+                          aria-label="Eliminar suscripción"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Mobile actions */}
+                      <div className="flex md:hidden">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                              <span className="sr-only">Más opciones</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditDialog(item)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => openDeleteConfirm(item)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -684,6 +810,200 @@ export default function Subscriptions() {
           setSelectedPayNowSub(null);
         }}
       />
+
+      {/* Edit subscription dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={(open) => { setEditDialogOpen(open); if (!open) setEditingSubscription(null); }}>
+        <DialogContent className="w-[95vw] sm:w-full max-w-md sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-xl">
+          <DialogHeader>
+            <DialogTitle>Editar suscripción</DialogTitle>
+            <DialogDescription>
+              Modifica los datos de la suscripción. Puedes pausarla sin eliminarla.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form className="space-y-4" onSubmit={onSubmitEdit}>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Descripción</Label>
+              <Input
+                id="edit-description"
+                placeholder="Ej. Netflix, Spotify, Renta"
+                {...editForm.register("description", { required: "La descripción es obligatoria." })}
+              />
+              {editForm.formState.errors.description ? <p className="text-xs text-destructive">{editForm.formState.errors.description.message}</p> : null}
+            </div>
+
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <div className="space-y-2">
+                <Label htmlFor="edit-amount">Monto</Label>
+                <Input
+                  id="edit-amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...editForm.register("amount", {
+                    valueAsNumber: true,
+                    required: "El monto es obligatorio.",
+                    min: { value: 0.01, message: "El monto debe ser mayor a cero." },
+                  })}
+                />
+                {editForm.formState.errors.amount ? <p className="text-xs text-destructive">{editForm.formState.errors.amount.message}</p> : null}
+              </div>
+              <div className="space-y-2">
+                <Label>Moneda</Label>
+                <Select value={editForm.watch("currency")} onValueChange={(v) => editForm.setValue("currency", v as "USD" | "EUR" | "VES")}>
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="VES">VES</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Categoría</Label>
+              <CategorySelector
+                value={editForm.watch("categoryId")}
+                onChange={(id) => editForm.setValue("categoryId", id, { shouldValidate: true })}
+                filterType="expense"
+                categories={categories}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Cuenta</Label>
+              <Select
+                value={editForm.watch("accountId") || "__none__"}
+                onValueChange={(v) => editForm.setValue("accountId", v === "__none__" ? "" : v, { shouldValidate: true })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin cuenta asignada (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sin cuenta asignada</SelectItem>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Frecuencia</Label>
+                <Select value={editSelectedFrequency} onValueChange={(value) => editForm.setValue("frequency", value, { shouldValidate: true })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar frecuencia" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FREQUENCY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-next_date">Próximo cobro</Label>
+                <Input id="edit-next_date" type="date" {...editForm.register("next_date", { required: true })} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">¿Cómo pagas esto?</Label>
+              <RadioGroup
+                value={editSelectedMode}
+                onValueChange={(v) => editForm.setValue("execution_mode", v as RecurringExecutionMode)}
+                className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+              >
+                <label
+                  className={cn(
+                    "cursor-pointer rounded-lg border p-4 transition-colors",
+                    editSelectedMode === "auto" && "border-primary ring-2 ring-primary/30",
+                  )}
+                >
+                  <RadioGroupItem value="auto" className="sr-only" />
+                  <p className="font-medium text-foreground">Automático</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Platica lo registrará solo cada mes (ideal para débitos automáticos).
+                  </p>
+                </label>
+                <label
+                  className={cn(
+                    "cursor-pointer rounded-lg border p-4 transition-colors",
+                    editSelectedMode === "manual" && "border-primary ring-2 ring-primary/30",
+                  )}
+                >
+                  <RadioGroupItem value="manual" className="sr-only" />
+                  <p className="font-medium text-foreground">Recordatorio</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Platica te avisará para que confirmes la fecha, el monto y de qué cuenta lo pagaste.
+                  </p>
+                </label>
+              </RadioGroup>
+            </div>
+
+            <div className="rounded-lg border border-border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Suscripción activa</p>
+                  <p className="text-xs text-muted-foreground">Puedes pausar y reactivar cuando quieras.</p>
+                </div>
+                <Switch
+                  checked={editSelectedIsActive}
+                  onCheckedChange={(checked) => editForm.setValue("is_active", checked)}
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-3">
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => { setEditDialogOpen(false); setEditingSubscription(null); }}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="w-full sm:w-auto" disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Guardar Cambios
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={(open) => { setDeleteConfirmOpen(open); if (!open) setDeletingSubscription(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar suscripción?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará permanentemente la suscripción{" "}
+              <span className="font-semibold">{deletingSubscription?.description}</span>.
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+              onClick={() => {
+                if (deletingSubscription) {
+                  deleteMutation.mutate(deletingSubscription.id);
+                }
+              }}
+            >
+              {deleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
