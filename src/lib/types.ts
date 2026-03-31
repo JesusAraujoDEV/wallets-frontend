@@ -60,6 +60,8 @@ export interface Transaction {
   currency?: "USD" | "EUR" | "VES";
   amountUsd?: number | null;
   exchangeRateUsed?: number | null;
+  /** Optional debt link for cherry-picking */
+  debtId?: string;
 }
 
 export type RecurringExecutionMode = "auto" | "manual";

@@ -15,7 +15,6 @@ import type {
 } from "@/lib/types";
 
 export const DEBTS_QUERY_KEY = ["debts"] as const;
-
 type ApiDebt = {
   id: number | string;
   type: string;
@@ -109,17 +108,10 @@ export async function linkPastTransactions(id: string): Promise<LinkPastTransact
   );
 }
 
-export async function fetchUnlinkedTransactions(categoryId: string): Promise<Transaction[]> {
-  const response = await apiFetch<unknown>(
-    `transactions?categoryId=${encodeURIComponent(categoryId)}&debtId=null&grouped=0`,
-    { method: "GET" },
-  );
-  const list = Array.isArray(response)
-    ? response
-    : typeof response === "object" && response !== null && "items" in response
-      ? ((response as { items?: unknown[] }).items ?? [])
-      : [];
-  return list.map((t: Record<string, unknown>) => ({
+type ApiTransaction = Record<string, unknown>;
+
+function mapApiTransaction(t: ApiTransaction): Transaction {
+  return {
     id: String(t.id),
     date: String(t.date ?? ""),
     description: String(t.description ?? ""),
@@ -129,7 +121,50 @@ export async function fetchUnlinkedTransactions(categoryId: string): Promise<Tra
     type: (String(t.type ?? "").toLowerCase() === "income" || String(t.type ?? "").toLowerCase() === "ingreso") ? "income" as const : "expense" as const,
     status: undefined,
     currency: (t.currency as "USD" | "EUR" | "VES") || undefined,
-  }));
+    amountUsd: t.amount_usd != null ? Number(t.amount_usd) : t.amountUsd != null ? Number(t.amountUsd) : null,
+    exchangeRateUsed: t.exchange_rate_used != null ? Number(t.exchange_rate_used) : t.exchangeRateUsed != null ? Number(t.exchangeRateUsed) : null,
+    debtId: t.debtId != null ? String(t.debtId) : t.debt_id != null ? String(t.debt_id) : undefined,
+  };
+}
+
+function parseTransactionList(response: unknown): Transaction[] {
+  const list = Array.isArray(response)
+    ? response
+    : typeof response === "object" && response !== null && "items" in response
+      ? ((response as { items?: unknown[] }).items ?? [])
+      : [];
+  return list.map((t) => mapApiTransaction(t as ApiTransaction));
+}
+
+/** Fetch both unlinked (debtId=null) and already-linked (debtId=debtId) transactions for a category */
+export async function fetchLinkableTransactions(categoryId: string, debtId: string): Promise<Transaction[]> {
+  const [unlinked, linked] = await Promise.all([
+    apiFetch<unknown>(
+      `transactions?categoryId=${encodeURIComponent(categoryId)}&debtId=null&grouped=0`,
+      { method: "GET" },
+    ),
+    apiFetch<unknown>(
+      `transactions?categoryId=${encodeURIComponent(categoryId)}&debtId=${encodeURIComponent(debtId)}&grouped=0`,
+      { method: "GET" },
+    ),
+  ]);
+
+  const unlinkedTxs = parseTransactionList(unlinked);
+  const linkedTxs = parseTransactionList(linked);
+
+  // Deduplicate by id (in case backend returns overlaps)
+  const seen = new Set<string>();
+  const merged: Transaction[] = [];
+  for (const tx of [...linkedTxs, ...unlinkedTxs]) {
+    if (!seen.has(tx.id)) {
+      seen.add(tx.id);
+      merged.push(tx);
+    }
+  }
+
+  // Sort by date descending
+  merged.sort((a, b) => b.date.localeCompare(a.date));
+  return merged;
 }
 
 export async function linkTransactions(debtId: string, payload: LinkTransactionsPayload): Promise<LinkTransactionsResponse> {
