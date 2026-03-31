@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CalendarClock, CreditCard, Loader2, MoreVertical, Pencil, Plus, Repeat, Trash2, Zap } from "lucide-react";
+import { AlertCircle, CalendarClock, CreditCard, Loader2, MoreVertical, Pencil, Plus, Repeat, Trash2 } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -28,7 +28,6 @@ import {
   payNowRecurringTransaction,
   PENDING_TRANSACTIONS_QUERY_KEY,
   RECURRING_TRANSACTIONS_QUERY_KEY,
-  triggerRecurringTransactions,
   updateRecurringTransaction,
 } from "@/lib/subscriptions";
 import type { Account, Category, PayNowRecurringPayload, RecurringExecutionMode, RecurringTransaction, RecurringTransactionPayload, Transaction, UpdateRecurringTransactionPayload } from "@/lib/types";
@@ -303,25 +302,6 @@ export default function Subscriptions() {
     setDeleteConfirmOpen(true);
   }
 
-  const triggerMutation = useMutation({
-    mutationFn: triggerRecurringTransactions,
-    onSuccess: (result) => {
-      toast({
-        title: "Cronjob ejecutado",
-        description: result.message || "El worker de suscripciones se ejecutó manualmente.",
-      });
-      void queryClient.invalidateQueries({ queryKey: PENDING_TRANSACTIONS_QUERY_KEY });
-      void queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY });
-    },
-    onError: (error) => {
-      toast({
-        title: "No se pudo forzar el cronjob",
-        description: error instanceof Error ? error.message : "Intenta nuevamente.",
-        variant: "destructive",
-      });
-    },
-  });
-
   const payNowMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: PayNowRecurringPayload }) =>
       payNowRecurringTransaction(id, payload),
@@ -389,22 +369,10 @@ export default function Subscriptions() {
               </CardDescription>
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full sm:w-auto"
-                onClick={() => triggerMutation.mutate()}
-                disabled={triggerMutation.isPending}
-              >
-                {triggerMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-                Forzar Cronjob
-              </Button>
-              <Button type="button" className="w-full sm:w-auto" onClick={() => setCreateDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nueva Suscripción
-              </Button>
-            </div>
+            <Button type="button" className="w-full sm:w-auto" onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva Suscripción
+            </Button>
           </div>
         </CardHeader>
       </Card>
