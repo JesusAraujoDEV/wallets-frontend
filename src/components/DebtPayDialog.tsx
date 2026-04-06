@@ -43,6 +43,7 @@ interface DebtPayDialogProps {
     accountId: number;
     date: string;
     categoryId?: number;
+    exchangeRate?: number;
   }) => Promise<void>;
 }
 
@@ -58,6 +59,7 @@ export function DebtPayDialog({
   const [amount, setAmount] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [exchangeRate, setExchangeRate] = useState("");
   const [paymentDate, setPaymentDate] = useState(() =>
     new Date().toISOString().slice(0, 10),
   );
@@ -68,6 +70,7 @@ export function DebtPayDialog({
       setAmount(String(debt.remaining));
       setSelectedAccountId("");
       setSelectedCategoryId(debt.categoryId || "");
+      setExchangeRate("");
       setPaymentDate(new Date().toISOString().slice(0, 10));
     }
   }, [open, debt]);
@@ -75,6 +78,18 @@ export function DebtPayDialog({
   const progress =
     debt && debt.totalAmount > 0
       ? Math.min((debt.paidAmount / debt.totalAmount) * 100, 100)
+      : 0;
+  const selectedAccount = accounts.find((acc) => acc.id === selectedAccountId);
+  const requiresConversion = Boolean(
+    debt && selectedAccount && selectedAccount.currency !== debt.currency,
+  );
+  const numExchangeRate = Number(exchangeRate);
+  const hasValidExchangeRate =
+    !requiresConversion ||
+    (Boolean(exchangeRate) && Number.isFinite(numExchangeRate) && numExchangeRate > 0);
+  const convertedAmountPreview =
+    Number(amount) > 0 && hasValidExchangeRate && requiresConversion
+      ? Number(amount) * numExchangeRate
       : 0;
 
   const handleConfirm = async () => {
@@ -104,6 +119,14 @@ export function DebtPayDialog({
       });
       return;
     }
+    if (requiresConversion && !hasValidExchangeRate) {
+      toast({
+        title: "Tasa de cambio requerida",
+        description: "Ingresa una tasa de cambio válida para continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       setSubmitting(true);
       await onConfirm({
@@ -112,6 +135,7 @@ export function DebtPayDialog({
         accountId: Number(selectedAccountId),
         date: paymentDate,
         categoryId: selectedCategoryId ? Number(selectedCategoryId) : undefined,
+        ...(requiresConversion ? { exchangeRate: numExchangeRate } : {}),
       });
       onOpenChange(false);
     } catch (err) {
@@ -191,6 +215,26 @@ export function DebtPayDialog({
               )}
             </div>
 
+            {requiresConversion && selectedAccount && (
+              <div className="space-y-2">
+                <Label htmlFor="debt-pay-exchange-rate">
+                  Tasa de Cambio ({debt.currency} {"->"} {selectedAccount.currency})
+                </Label>
+                <Input
+                  id="debt-pay-exchange-rate"
+                  type="number"
+                  step="0.000001"
+                  min="0"
+                  placeholder="0.000000"
+                  value={exchangeRate}
+                  onChange={(e) => setExchangeRate(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Se registrará un movimiento de {convertedAmountPreview.toFixed(2)} {selectedAccount.currency} en tu cuenta
+                </p>
+              </div>
+            )}
+
             {/* Category selector — pre-filled from debt */}
             {categories.length > 0 && (
               <div className="space-y-2">
@@ -228,7 +272,7 @@ export function DebtPayDialog({
           <Button
             type="button"
             className="w-full sm:w-auto"
-            disabled={!selectedAccountId || !amount || submitting}
+            disabled={!selectedAccountId || !amount || submitting || (requiresConversion && !hasValidExchangeRate)}
             onClick={handleConfirm}
           >
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

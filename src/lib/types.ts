@@ -316,6 +316,7 @@ export interface PayDebtPayload {
   accountId: number;
   date: string;
   categoryId?: number;
+  exchangeRate?: number;
 }
 
 export interface PayDebtResponse {

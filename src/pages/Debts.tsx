@@ -139,7 +139,7 @@ export default function Debts() {
   });
 
   const payMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: { amount: number; currency: string; accountId: number; date: string; categoryId?: number } }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: { amount: number; currency: string; accountId: number; date: string; categoryId?: number; exchangeRate?: number } }) =>
       payDebt(id, payload),
     onSuccess: async () => {
       toast({ title: "Abono registrado", description: "El pago se registró correctamente." });

@@ -38,6 +38,8 @@ interface DebtFormDialogProps {
   onOpenChange: (open: boolean) => void;
   debt: Debt | null;
   initialDate?: string;
+  initialType?: DebtType;
+  lockType?: boolean;
   categories: Category[];
   submitting: boolean;
   onSubmit: (values: DebtFormValues) => void;
@@ -48,6 +50,8 @@ export function DebtFormDialog({
   onOpenChange,
   debt,
   initialDate,
+  initialType,
+  lockType = false,
   categories,
   submitting,
   onSubmit,
@@ -91,13 +95,13 @@ export function DebtFormDialog({
           description: "",
           totalAmount: undefined as unknown as number,
           currency: "USD",
-          type: "payable",
+          type: initialType ?? "payable",
           dueDate: initialDate ?? "",
           categoryId: "",
         });
       }
     }
-  }, [open, debt, initialDate, reset]);
+  }, [open, debt, initialDate, initialType, reset]);
 
   const onFormSubmit = handleSubmit((values) => {
     onSubmit(values);
@@ -181,6 +185,7 @@ export function DebtFormDialog({
             <Label>Tipo</Label>
             <Select
               value={watch("type")}
+              disabled={lockType}
               onValueChange={(v) => setValue("type", v as DebtType)}
             >
               <SelectTrigger>

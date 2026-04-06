@@ -13,10 +13,14 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 import {
+  AlertTriangle,
+  ArrowDownCircle,
+  ArrowUpCircle,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  HandCoins,
   Loader2,
   Plus,
 } from "lucide-react";
@@ -32,12 +36,15 @@ import {
 import {
   fetchPendingTransactions,
   fetchRecurringTransactions,
+  payNowRecurringTransaction,
   PENDING_TRANSACTIONS_QUERY_KEY,
   RECURRING_TRANSACTIONS_QUERY_KEY,
 } from "@/lib/subscriptions";
-import { createDebt, DEBTS_QUERY_KEY, fetchDebts } from "@/lib/debts";
+import { createDebt, DEBTS_QUERY_KEY, fetchDebts, payDebt } from "@/lib/debts";
 import { ConfirmPaymentModal, formatAmountWithCurrency } from "@/components/ConfirmPaymentModal";
 import { DebtFormDialog, type DebtFormValues } from "@/components/DebtFormDialog";
+import { DebtPayDialog } from "@/components/DebtPayDialog";
+import { PayNowModal } from "@/components/PayNowModal";
 import { SubscriptionCreateDialog } from "@/components/SubscriptionCreateDialog";
 import { useToast } from "@/components/ui/use-toast";
 import { AccountsStore, CategoriesStore, onDataChange } from "@/lib/storage";
@@ -48,7 +55,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Account, Category, Debt, RecurringTransaction, Transaction } from "@/lib/types";
+import type { Account, Category, Debt, DebtType, RecurringTransaction, Transaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -61,6 +68,9 @@ type CalendarEvent = {
   flow: "income" | "expense";
   amount: number;
   currency: "USD" | "EUR" | "VES";
+  status?: "pending" | "partial" | "paid" | "completed";
+  debt?: Debt;
+  subscription?: RecurringTransaction;
   pendingTx?: Transaction;
 };
 
@@ -88,6 +98,7 @@ function buildEvents(
       flow: categoryType,
       amount: sub.amount,
       currency: sub.currency,
+      subscription: sub,
     });
   }
 
@@ -101,6 +112,8 @@ function buildEvents(
       flow: debt.type === "payable" ? "expense" : "income",
       amount: debt.remaining,
       currency: debt.currency,
+      status: debt.status,
+      debt,
     });
   }
 
@@ -113,6 +126,7 @@ function buildEvents(
       flow: tx.type,
       amount: tx.amount,
       currency: tx.currency ?? "USD",
+      status: tx.status === "completed" ? "completed" : "pending",
       pendingTx: tx,
     });
   }
@@ -129,8 +143,14 @@ export default function CalendarView() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedPendingTx, setSelectedPendingTx] = useState<Transaction | null>(null);
+  const [payDebtOpen, setPayDebtOpen] = useState(false);
+  const [payingDebt, setPayingDebt] = useState<Debt | null>(null);
+  const [payNowDialogOpen, setPayNowDialogOpen] = useState(false);
+  const [selectedPayNowSub, setSelectedPayNowSub] = useState<RecurringTransaction | null>(null);
   const [createDebtOpen, setCreateDebtOpen] = useState(false);
+  const [createDebtType, setCreateDebtType] = useState<DebtType>("payable");
   const [createSubscriptionOpen, setCreateSubscriptionOpen] = useState(false);
+  const [createSubscriptionType, setCreateSubscriptionType] = useState<"gasto" | "ingreso">("gasto");
 
   const subsQuery = useQuery({
     queryKey: RECURRING_TRANSACTIONS_QUERY_KEY,
@@ -182,6 +202,46 @@ export default function CalendarView() {
     onError: (error) => {
       toast({
         title: "No se pudo crear la deuda",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const payDebtMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: { amount: number; currency: string; accountId: number; date: string; categoryId?: number; exchangeRate?: number } }) =>
+      payDebt(id, payload),
+    onSuccess: async () => {
+      toast({ title: "Pago de deuda registrado", description: "Se actualizó el saldo correctamente." });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: PENDING_TRANSACTIONS_QUERY_KEY }),
+      ]);
+    },
+    onError: (error) => {
+      toast({
+        title: "No se pudo registrar el pago de deuda",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const payNowMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: { accountId: number; amount: number; currency: "USD" | "EUR" | "VES"; date: string } }) =>
+      payNowRecurringTransaction(id, payload),
+    onSuccess: async () => {
+      toast({ title: "Cobro/Pago recurrente registrado", description: "Se procesó correctamente." });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: PENDING_TRANSACTIONS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY }),
+      ]);
+    },
+    onError: (error) => {
+      toast({
+        title: "No se pudo ejecutar la acción rápida",
         description: error instanceof Error ? error.message : "Intenta nuevamente.",
         variant: "destructive",
       });
@@ -251,6 +311,41 @@ export default function CalendarView() {
   const openConfirmFor = (tx: Transaction) => {
     setSelectedPendingTx(tx);
     setConfirmDialogOpen(true);
+  };
+
+  const openPayDebtFor = (debt: Debt) => {
+    setPayingDebt(debt);
+    setPayDebtOpen(true);
+  };
+
+  const openPayNowFor = (subscription: RecurringTransaction) => {
+    setSelectedPayNowSub(subscription);
+    setPayNowDialogOpen(true);
+  };
+
+  const openQuickActionForEvent = (event: CalendarEvent) => {
+    if (event.status === "paid" || event.status === "completed") return;
+    if (event.source === "debt" && event.debt) {
+      openPayDebtFor(event.debt);
+      return;
+    }
+    if (event.source === "pending" && event.pendingTx) {
+      openConfirmFor(event.pendingTx);
+      return;
+    }
+    if (event.source === "subscription" && event.subscription) {
+      openPayNowFor(event.subscription);
+    }
+  };
+
+  const openCreateSubscription = (type: "gasto" | "ingreso") => {
+    setCreateSubscriptionType(type);
+    setCreateSubscriptionOpen(true);
+  };
+
+  const openCreateDebt = (type: DebtType) => {
+    setCreateDebtType(type);
+    setCreateDebtOpen(true);
   };
 
   const renderPendingList = () => (
@@ -414,12 +509,27 @@ export default function CalendarView() {
                     <p className="text-sm text-muted-foreground">No hay movimientos para este día.</p>
                   ) : (
                     selectedEvents.map((event) => (
-                      <div key={event.id} className="rounded-lg border border-border p-2">
+                      <div key={event.id} className="rounded-lg border border-border p-2 space-y-2">
                         <p className="text-sm font-medium text-foreground truncate">{event.label}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{event.source}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs text-muted-foreground capitalize">{event.source}</p>
+                          {(event.status === "paid" || event.status === "completed") ? (
+                            <Badge className="bg-emerald-600 text-white hover:bg-emerald-700">Completado</Badge>
+                          ) : null}
+                        </div>
                         <p className={cn("text-sm font-semibold", event.flow === "expense" ? "text-red-600" : "text-emerald-600")}>
                           {formatAmountWithCurrency(event.amount, event.currency)}
                         </p>
+                        {event.status === "paid" || event.status === "completed" ? null : (
+                          <Button
+                            type="button"
+                            className={cn("w-full", event.flow === "income" && "bg-emerald-600 hover:bg-emerald-700 text-white")}
+                            variant={event.flow === "expense" ? "destructive" : "default"}
+                            onClick={() => openQuickActionForEvent(event)}
+                          >
+                            {event.flow === "expense" ? "Pagar ahora" : "Cobrar ahora"}
+                          </Button>
+                        )}
                       </div>
                     ))
                   )}
@@ -445,12 +555,22 @@ export default function CalendarView() {
             <span className="sr-only">Acceso rápido</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52">
-          <DropdownMenuItem onClick={() => setCreateSubscriptionOpen(true)}>
-            Nueva Suscripción
+        <DropdownMenuContent align="end" className="w-72">
+          <DropdownMenuItem className="flex items-center gap-2" onClick={() => openCreateSubscription("gasto")}>
+            <ArrowDownCircle className="h-4 w-4 text-red-600" />
+            Nuevo Gasto Recurrente
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setCreateDebtOpen(true)}>
-            Nueva Deuda
+          <DropdownMenuItem className="flex items-center gap-2" onClick={() => openCreateSubscription("ingreso")}>
+            <ArrowUpCircle className="h-4 w-4 text-emerald-600" />
+            Nuevo Ingreso Recurrente
+          </DropdownMenuItem>
+          <DropdownMenuItem className="flex items-center gap-2" onClick={() => openCreateDebt("payable")}>
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+            Nueva Deuda por Pagar
+          </DropdownMenuItem>
+          <DropdownMenuItem className="flex items-center gap-2" onClick={() => openCreateDebt("receivable")}>
+            <HandCoins className="h-4 w-4 text-emerald-600" />
+            Nuevo Dinero por Cobrar
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -476,6 +596,8 @@ export default function CalendarView() {
         onOpenChange={setCreateDebtOpen}
         debt={null}
         initialDate={selectedDate}
+        initialType={createDebtType}
+        lockType
         categories={categories}
         submitting={createDebtMutation.isPending}
         onSubmit={handleDebtCreate}
@@ -484,11 +606,46 @@ export default function CalendarView() {
       <SubscriptionCreateDialog
         open={createSubscriptionOpen}
         onOpenChange={setCreateSubscriptionOpen}
+        initialType={createSubscriptionType}
+        lockType
         onCreated={async () => {
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY }),
             queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY }),
           ]);
+        }}
+      />
+
+      <DebtPayDialog
+        open={payDebtOpen}
+        onOpenChange={setPayDebtOpen}
+        debt={payingDebt}
+        accounts={accounts}
+        categories={categories}
+        onConfirm={async (payload) => {
+          if (!payingDebt) return;
+          await payDebtMutation.mutateAsync({ id: payingDebt.id, payload });
+          setPayingDebt(null);
+        }}
+      />
+
+      <PayNowModal
+        open={payNowDialogOpen}
+        onOpenChange={setPayNowDialogOpen}
+        subscription={selectedPayNowSub}
+        accounts={accounts}
+        onConfirm={async (payload) => {
+          if (!selectedPayNowSub) return;
+          await payNowMutation.mutateAsync({
+            id: selectedPayNowSub.id,
+            payload: {
+              accountId: payload.accountId,
+              date: payload.date,
+              amount: payload.amount,
+              currency: payload.currency,
+            },
+          });
+          setSelectedPayNowSub(null);
         }}
       />
     </div>

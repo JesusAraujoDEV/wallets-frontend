@@ -62,6 +62,8 @@ type CreateSubscriptionForm = {
 interface SubscriptionCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialType?: "gasto" | "ingreso";
+  lockType?: boolean;
   onCreated?: () => Promise<void> | void;
 }
 
@@ -82,6 +84,8 @@ const INITIAL_VALUES: CreateSubscriptionForm = {
 export function SubscriptionCreateDialog({
   open,
   onOpenChange,
+  initialType,
+  lockType = false,
   onCreated,
 }: SubscriptionCreateDialogProps) {
   const queryClient = useQueryClient();
@@ -137,10 +141,11 @@ export function SubscriptionCreateDialog({
     if (open) {
       reset({
         ...INITIAL_VALUES,
+        subscriptionType: initialType ?? INITIAL_VALUES.subscriptionType,
         next_date: new Date().toISOString().slice(0, 10),
       });
     }
-  }, [open, reset]);
+  }, [open, initialType, reset]);
 
   const createMutation = useMutation({
     mutationFn: (payload: RecurringTransactionPayload) => createRecurringTransaction(payload),
@@ -217,6 +222,7 @@ export function SubscriptionCreateDialog({
             <Label>Tipo</Label>
             <Select
               value={selectedSubType}
+              disabled={lockType}
               onValueChange={(v) => {
                 setValue("subscriptionType", v as "gasto" | "ingreso");
                 setValue("debtId", "");
