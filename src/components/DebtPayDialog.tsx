@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -85,7 +85,9 @@ export function DebtPayDialog({
   const [amount, setAmount] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
-  const [exchangeRate, setExchangeRate] = useState("");
+  const [equivalentAmount, setEquivalentAmount] = useState("");
+  const [officialRate, setOfficialRate] = useState<number | null>(null);
+  const [manualEquivalentOverride, setManualEquivalentOverride] = useState(false);
   const [paymentDate, setPaymentDate] = useState(() =>
     new Date().toISOString().slice(0, 10),
   );
@@ -93,13 +95,25 @@ export function DebtPayDialog({
   const [autoRateError, setAutoRateError] = useState<string | null>(null);
   const [autoRateSourceDate, setAutoRateSourceDate] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const amountRef = useRef(amount);
+  const manualEquivalentOverrideRef = useRef(manualEquivalentOverride);
+
+  useEffect(() => {
+    amountRef.current = amount;
+  }, [amount]);
+
+  useEffect(() => {
+    manualEquivalentOverrideRef.current = manualEquivalentOverride;
+  }, [manualEquivalentOverride]);
 
   useEffect(() => {
     if (open && debt) {
       setAmount(String(debt.remaining));
       setSelectedAccountId("");
       setSelectedCategoryId(debt.categoryId || "");
-      setExchangeRate("");
+      setEquivalentAmount("");
+      setOfficialRate(null);
+      setManualEquivalentOverride(false);
       setPaymentDate(new Date().toISOString().slice(0, 10));
       setAutoRateLoading(false);
       setAutoRateError(null);
@@ -115,14 +129,10 @@ export function DebtPayDialog({
   const requiresConversion = Boolean(
     debt && selectedAccount && selectedAccount.currency !== debt.currency,
   );
-  const numExchangeRate = Number(exchangeRate);
-  const hasValidExchangeRate =
+  const numEquivalentAmount = Number(equivalentAmount);
+  const hasValidEquivalentAmount =
     !requiresConversion ||
-    (Boolean(exchangeRate) && Number.isFinite(numExchangeRate) && numExchangeRate > 0);
-  const convertedAmountPreview =
-    Number(amount) > 0 && hasValidExchangeRate && requiresConversion
-      ? Number(amount) * numExchangeRate
-      : 0;
+    (Boolean(equivalentAmount) && Number.isFinite(numEquivalentAmount) && numEquivalentAmount > 0);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,6 +142,10 @@ export function DebtPayDialog({
 
       setAutoRateLoading(true);
       setAutoRateError(null);
+      setOfficialRate(null);
+      if (!manualEquivalentOverrideRef.current) {
+        setEquivalentAmount("");
+      }
 
       try {
         const snapshot = await getRateByDate(paymentDate);
@@ -148,7 +162,16 @@ export function DebtPayDialog({
         }
 
         if (!cancelled) {
-          setExchangeRate(directRate.toFixed(6));
+          setOfficialRate(directRate);
+          setManualEquivalentOverride(false);
+          if (!manualEquivalentOverrideRef.current) {
+            const currentAmount = Number(amountRef.current);
+            if (Number.isFinite(currentAmount) && currentAmount > 0) {
+              setEquivalentAmount((currentAmount * directRate).toFixed(2));
+            } else {
+              setEquivalentAmount("");
+            }
+          }
           setAutoRateSourceDate(snapshot.sourceDate);
         }
       } catch (error) {
@@ -158,7 +181,7 @@ export function DebtPayDialog({
               ? error.message
               : "No se pudo cargar la tasa BCV automáticamente.",
           );
-          setExchangeRate("");
+          setOfficialRate(null);
           setAutoRateSourceDate(null);
         }
       } finally {
@@ -170,7 +193,9 @@ export function DebtPayDialog({
       setAutoRateLoading(false);
       setAutoRateError(null);
       setAutoRateSourceDate(null);
-      setExchangeRate("");
+      setOfficialRate(null);
+      setEquivalentAmount("");
+      setManualEquivalentOverride(false);
       return;
     }
 
@@ -187,14 +212,33 @@ export function DebtPayDialog({
     paymentDate,
   ]);
 
+  useEffect(() => {
+    if (!requiresConversion || !officialRate || manualEquivalentOverride) return;
+
+    const currentAmount = Number(amount);
+    if (Number.isFinite(currentAmount) && currentAmount > 0) {
+      setEquivalentAmount((currentAmount * officialRate).toFixed(2));
+    } else {
+      setEquivalentAmount("");
+    }
+  }, [amount, requiresConversion, officialRate, manualEquivalentOverride]);
+
   const numericAmount = Number(amount);
   const hasValidAmount = Number.isFinite(numericAmount) && numericAmount > 0;
-  const finalUsedAmount = requiresConversion ? convertedAmountPreview : numericAmount;
-  const finalUsedRate = requiresConversion ? numExchangeRate : 1;
+  const implicitExchangeRate =
+    requiresConversion && hasValidAmount && Number.isFinite(numEquivalentAmount) && numEquivalentAmount > 0
+      ? numEquivalentAmount / numericAmount
+      : NaN;
+  const hasValidImplicitRate =
+    !requiresConversion ||
+    (Number.isFinite(implicitExchangeRate) && implicitExchangeRate > 0);
+  const finalUsedAmount = requiresConversion ? numEquivalentAmount : numericAmount;
+  const finalUsedRate = requiresConversion ? implicitExchangeRate : 1;
   const canRenderPreview =
     Boolean(debt && selectedAccount) &&
     hasValidAmount &&
-    (!requiresConversion || hasValidExchangeRate);
+    hasValidEquivalentAmount &&
+    hasValidImplicitRate;
 
   const handleConfirm = async () => {
     if (!debt) return;
@@ -231,10 +275,24 @@ export function DebtPayDialog({
       });
       return;
     }
-    if (requiresConversion && !hasValidExchangeRate) {
+    if (requiresConversion && !hasValidEquivalentAmount) {
       toast({
-        title: "Tasa de cambio requerida",
-        description: "Ingresa una tasa de cambio válida para continuar.",
+        title: "Monto debitado requerido",
+        description: "Ingresa un monto a debitar válido para continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const calculatedRate =
+      requiresConversion && hasValidAmount && Number.isFinite(numEquivalentAmount) && numEquivalentAmount > 0
+        ? numEquivalentAmount / numAmount
+        : null;
+
+    if (requiresConversion && (!calculatedRate || !Number.isFinite(calculatedRate) || calculatedRate <= 0)) {
+      toast({
+        title: "No se pudo calcular la tasa",
+        description: "Verifica los montos ingresados para continuar.",
         variant: "destructive",
       });
       return;
@@ -247,7 +305,7 @@ export function DebtPayDialog({
         accountId: Number(selectedAccountId),
         date: paymentDate,
         categoryId: selectedCategoryId ? Number(selectedCategoryId) : undefined,
-        ...(requiresConversion ? { exchangeRate: numExchangeRate } : {}),
+        ...(requiresConversion && calculatedRate ? { exchangeRate: calculatedRate } : {}),
       });
       onOpenChange(false);
     } catch (err) {
@@ -301,7 +359,18 @@ export function DebtPayDialog({
                 max={debt.remaining}
                 placeholder="0.00"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => {
+                  const nextAmount = e.target.value;
+                  setAmount(nextAmount);
+                  if (requiresConversion && officialRate && !manualEquivalentOverride) {
+                    const parsedAmount = Number(nextAmount);
+                    if (Number.isFinite(parsedAmount) && parsedAmount > 0) {
+                      setEquivalentAmount((parsedAmount * officialRate).toFixed(2));
+                    } else {
+                      setEquivalentAmount("");
+                    }
+                  }
+                }}
               />
             </div>
 
@@ -329,19 +398,21 @@ export function DebtPayDialog({
 
             {requiresConversion && selectedAccount && (
               <div className="space-y-2">
-                <Label htmlFor="debt-pay-exchange-rate">
-                  Tasa BCV (Automática)
+                <Label htmlFor="debt-pay-equivalent-amount">
+                  Monto a debitar en {selectedAccount.currency}
                 </Label>
                 <div className="relative">
                   <Input
-                    id="debt-pay-exchange-rate"
+                    id="debt-pay-equivalent-amount"
                     type="number"
-                    step="0.000001"
+                    step="0.01"
                     min="0"
-                    placeholder="0.000000"
-                    value={exchangeRate}
-                    onChange={(e) => setExchangeRate(e.target.value)}
-                    disabled={autoRateLoading}
+                    placeholder="0.00"
+                    value={equivalentAmount}
+                    onChange={(e) => {
+                      setEquivalentAmount(e.target.value);
+                      setManualEquivalentOverride(true);
+                    }}
                   />
                   {autoRateLoading && (
                     <div className="absolute inset-y-0 right-3 flex items-center">
@@ -350,8 +421,18 @@ export function DebtPayDialog({
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Se carga automáticamente según la fecha elegida. Puedes editarla para usar una tasa personalizada.
+                  Se autocompleta según BCV para la fecha elegida y puedes ajustarlo si pagaste un monto distinto.
                 </p>
+                {officialRate && (
+                  <p className="text-xs text-muted-foreground">
+                    Tasa BCV oficial sugerida: {officialRate.toFixed(6)}
+                  </p>
+                )}
+                {hasValidAmount && hasValidEquivalentAmount && hasValidImplicitRate && (
+                  <p className="text-xs text-muted-foreground">
+                    Tasa aplicada: {implicitExchangeRate.toFixed(6)}
+                  </p>
+                )}
                 {autoRateSourceDate && (
                   <p className="text-xs text-muted-foreground">
                     Fuente BCV: {autoRateSourceDate}
@@ -374,14 +455,14 @@ export function DebtPayDialog({
                   Ingresa un monto válido para ver la previsualización.
                 </p>
               )}
-              {selectedAccount && hasValidAmount && requiresConversion && !hasValidExchangeRate && (
+              {selectedAccount && hasValidAmount && requiresConversion && !hasValidEquivalentAmount && (
                 <p className="text-xs text-muted-foreground">
-                  Esperando una tasa BCV válida para calcular el monto final.
+                  Ingresa un monto a debitar válido para calcular la previsualización.
                 </p>
               )}
               {canRenderPreview && debt && selectedAccount && (
                 <p className="text-sm text-foreground">
-                  Abonarás {numericAmount.toFixed(2)} {debt.currency} usando {finalUsedAmount.toFixed(2)} {selectedAccount.currency} (Tasa: {finalUsedRate.toFixed(6)})
+                  Abonarás {numericAmount.toFixed(2)} {debt.currency} usando {finalUsedAmount.toFixed(2)} {selectedAccount.currency} (Tasa aplicada: {finalUsedRate.toFixed(6)})
                 </p>
               )}
             </div>
@@ -423,7 +504,7 @@ export function DebtPayDialog({
           <Button
             type="button"
             className="w-full sm:w-auto"
-            disabled={!selectedAccountId || !amount || submitting || (requiresConversion && !hasValidExchangeRate)}
+            disabled={!selectedAccountId || !amount || submitting || (requiresConversion && !hasValidEquivalentAmount)}
             onClick={handleConfirm}
           >
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
