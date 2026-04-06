@@ -21,6 +21,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { CategorySelector } from "@/components/CategorySelector";
+import { UniversalDatePicker } from "@/components/UniversalDatePicker";
+import { getRateByDate, type ExchangeSnapshot } from "@/lib/rates";
 import type { Account, Category, Debt } from "@/lib/types";
 
 function formatCurrency(amount: number, currency: string) {
@@ -47,6 +49,30 @@ interface DebtPayDialogProps {
   }) => Promise<void>;
 }
 
+type Currency = "USD" | "EUR" | "VES";
+
+function getDirectExchangeRate(
+  fromCurrency: Currency,
+  toCurrency: Currency,
+  snapshot: ExchangeSnapshot,
+): number | null {
+  if (fromCurrency === toCurrency) return 1;
+
+  if (fromCurrency === "USD" && toCurrency === "VES") return snapshot.vesPerUsd;
+  if (fromCurrency === "EUR" && toCurrency === "VES") return snapshot.vesPerEur;
+  if (fromCurrency === "VES" && toCurrency === "USD") return 1 / snapshot.vesPerUsd;
+  if (fromCurrency === "VES" && toCurrency === "EUR") return 1 / snapshot.vesPerEur;
+
+  if (fromCurrency === "USD" && toCurrency === "EUR") {
+    return snapshot.vesPerUsd / snapshot.vesPerEur;
+  }
+  if (fromCurrency === "EUR" && toCurrency === "USD") {
+    return snapshot.vesPerEur / snapshot.vesPerUsd;
+  }
+
+  return null;
+}
+
 export function DebtPayDialog({
   open,
   onOpenChange,
@@ -63,6 +89,9 @@ export function DebtPayDialog({
   const [paymentDate, setPaymentDate] = useState(() =>
     new Date().toISOString().slice(0, 10),
   );
+  const [autoRateLoading, setAutoRateLoading] = useState(false);
+  const [autoRateError, setAutoRateError] = useState<string | null>(null);
+  const [autoRateSourceDate, setAutoRateSourceDate] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -72,6 +101,9 @@ export function DebtPayDialog({
       setSelectedCategoryId(debt.categoryId || "");
       setExchangeRate("");
       setPaymentDate(new Date().toISOString().slice(0, 10));
+      setAutoRateLoading(false);
+      setAutoRateError(null);
+      setAutoRateSourceDate(null);
     }
   }, [open, debt]);
 
@@ -92,6 +124,78 @@ export function DebtPayDialog({
       ? Number(amount) * numExchangeRate
       : 0;
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAutomaticRate() {
+      if (!open || !debt || !selectedAccount || !requiresConversion || !paymentDate) return;
+
+      setAutoRateLoading(true);
+      setAutoRateError(null);
+
+      try {
+        const snapshot = await getRateByDate(paymentDate);
+        if (!snapshot) throw new Error("No se encontró tasa BCV para la fecha seleccionada.");
+
+        const directRate = getDirectExchangeRate(
+          debt.currency,
+          selectedAccount.currency,
+          snapshot,
+        );
+
+        if (!directRate || !Number.isFinite(directRate) || directRate <= 0) {
+          throw new Error("No se pudo calcular la tasa entre las monedas seleccionadas.");
+        }
+
+        if (!cancelled) {
+          setExchangeRate(directRate.toFixed(6));
+          setAutoRateSourceDate(snapshot.sourceDate);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setAutoRateError(
+            error instanceof Error
+              ? error.message
+              : "No se pudo cargar la tasa BCV automáticamente.",
+          );
+          setExchangeRate("");
+          setAutoRateSourceDate(null);
+        }
+      } finally {
+        if (!cancelled) setAutoRateLoading(false);
+      }
+    }
+
+    if (!requiresConversion) {
+      setAutoRateLoading(false);
+      setAutoRateError(null);
+      setAutoRateSourceDate(null);
+      setExchangeRate("");
+      return;
+    }
+
+    void loadAutomaticRate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    debt,
+    selectedAccount,
+    requiresConversion,
+    paymentDate,
+  ]);
+
+  const numericAmount = Number(amount);
+  const hasValidAmount = Number.isFinite(numericAmount) && numericAmount > 0;
+  const finalUsedAmount = requiresConversion ? convertedAmountPreview : numericAmount;
+  const finalUsedRate = requiresConversion ? numExchangeRate : 1;
+  const canRenderPreview =
+    Boolean(debt && selectedAccount) &&
+    hasValidAmount &&
+    (!requiresConversion || hasValidExchangeRate);
+
   const handleConfirm = async () => {
     if (!debt) return;
     if (!selectedAccountId) {
@@ -107,6 +211,14 @@ export function DebtPayDialog({
       toast({
         title: "Monto inválido",
         description: "Ingresa un monto válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!paymentDate) {
+      toast({
+        title: "Fecha requerida",
+        description: "Selecciona la fecha del pago para continuar.",
         variant: "destructive",
       });
       return;
@@ -218,22 +330,61 @@ export function DebtPayDialog({
             {requiresConversion && selectedAccount && (
               <div className="space-y-2">
                 <Label htmlFor="debt-pay-exchange-rate">
-                  Tasa de Cambio ({debt.currency} {"->"} {selectedAccount.currency})
+                  Tasa BCV (Automática)
                 </Label>
-                <Input
-                  id="debt-pay-exchange-rate"
-                  type="number"
-                  step="0.000001"
-                  min="0"
-                  placeholder="0.000000"
-                  value={exchangeRate}
-                  onChange={(e) => setExchangeRate(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="debt-pay-exchange-rate"
+                    type="number"
+                    step="0.000001"
+                    min="0"
+                    placeholder="0.000000"
+                    value={exchangeRate}
+                    onChange={(e) => setExchangeRate(e.target.value)}
+                    disabled={autoRateLoading}
+                  />
+                  {autoRateLoading && (
+                    <div className="absolute inset-y-0 right-3 flex items-center">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Se registrará un movimiento de {convertedAmountPreview.toFixed(2)} {selectedAccount.currency} en tu cuenta
+                  Se carga automáticamente según la fecha elegida. Puedes editarla para usar una tasa personalizada.
                 </p>
+                {autoRateSourceDate && (
+                  <p className="text-xs text-muted-foreground">
+                    Fuente BCV: {autoRateSourceDate}
+                  </p>
+                )}
+                {autoRateError && (
+                  <p className="text-xs text-destructive">{autoRateError}</p>
+                )}
               </div>
             )}
+
+            <div className="rounded-md border border-border bg-muted/30 p-3">
+              {!selectedAccount && (
+                <p className="text-xs text-muted-foreground">
+                  Selecciona una cuenta para previsualizar el pago final.
+                </p>
+              )}
+              {selectedAccount && !hasValidAmount && (
+                <p className="text-xs text-muted-foreground">
+                  Ingresa un monto válido para ver la previsualización.
+                </p>
+              )}
+              {selectedAccount && hasValidAmount && requiresConversion && !hasValidExchangeRate && (
+                <p className="text-xs text-muted-foreground">
+                  Esperando una tasa BCV válida para calcular el monto final.
+                </p>
+              )}
+              {canRenderPreview && debt && selectedAccount && (
+                <p className="text-sm text-foreground">
+                  Abonarás {numericAmount.toFixed(2)} {debt.currency} usando {finalUsedAmount.toFixed(2)} {selectedAccount.currency} (Tasa: {finalUsedRate.toFixed(6)})
+                </p>
+              )}
+            </div>
 
             {/* Category selector — pre-filled from debt */}
             {categories.length > 0 && (
@@ -250,11 +401,11 @@ export function DebtPayDialog({
             {/* Payment date */}
             <div className="space-y-2">
               <Label htmlFor="debt-pay-date">Fecha</Label>
-              <Input
+              <UniversalDatePicker
                 id="debt-pay-date"
-                type="date"
                 value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
+                onChange={(date) => setPaymentDate(date)}
+                placeholder="Seleccionar fecha de pago"
               />
             </div>
           </div>
