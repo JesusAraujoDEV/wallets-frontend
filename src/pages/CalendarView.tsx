@@ -19,7 +19,6 @@ import {
   CreditCard,
   Loader2,
   Plus,
-  ReceiptText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,17 +39,8 @@ import { createDebt, DEBTS_QUERY_KEY, fetchDebts } from "@/lib/debts";
 import { ConfirmPaymentModal, formatAmountWithCurrency } from "@/components/ConfirmPaymentModal";
 import { DebtFormDialog, type DebtFormValues } from "@/components/DebtFormDialog";
 import { SubscriptionCreateDialog } from "@/components/SubscriptionCreateDialog";
-import { UniversalDatePicker } from "@/components/UniversalDatePicker";
 import { useToast } from "@/components/ui/use-toast";
 import { AccountsStore, CategoriesStore, onDataChange } from "@/lib/storage";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -138,7 +128,6 @@ export default function CalendarView() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [pendingSheetOpen, setPendingSheetOpen] = useState(false);
   const [selectedPendingTx, setSelectedPendingTx] = useState<Transaction | null>(null);
   const [createDebtOpen, setCreateDebtOpen] = useState(false);
   const [createSubscriptionOpen, setCreateSubscriptionOpen] = useState(false);
@@ -247,12 +236,6 @@ export default function CalendarView() {
 
   const pendingTransactions = pendingQuery.data ?? [];
 
-  const agendaDays = useMemo(() => {
-    return Array.from(eventsByDate.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .filter(([date]) => date.startsWith(format(currentMonth, "yyyy-MM")));
-  }, [eventsByDate, currentMonth]);
-
   const handleDebtCreate = (values: DebtFormValues) => {
     createDebtMutation.mutate({
       contactName: values.contactName.trim(),
@@ -301,7 +284,7 @@ export default function CalendarView() {
     <div className="space-y-6 pb-24 md:pb-6">
       <Card className="border-border bg-card shadow-sm">
         <CardHeader className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3">
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2 text-2xl text-card-foreground">
                 <CalendarDays className="h-6 w-6" />
@@ -310,41 +293,6 @@ export default function CalendarView() {
               <CardDescription>
                 Proyección mensual de cobros y pagos con aprobaciones pendientes en tiempo real.
               </CardDescription>
-            </div>
-
-            <div className="flex flex-col gap-2 sm:items-end">
-              <div className="hidden md:block w-[240px]">
-                <UniversalDatePicker
-                  value={selectedDate}
-                  onChange={(date) => {
-                    if (!date) return;
-                    setSelectedDate(date);
-                    setCurrentMonth(startOfMonth(new Date(`${date}T00:00:00`)));
-                  }}
-                />
-              </div>
-              <Sheet open={pendingSheetOpen} onOpenChange={setPendingSheetOpen}>
-                <SheetTrigger asChild>
-                  <Button className="w-full md:hidden" variant="outline">
-                    <ReceiptText className="mr-2 h-4 w-4" />
-                    Aprobaciones
-                    {pendingTransactions.length > 0 ? (
-                      <Badge variant="destructive" className="ml-2 min-w-5 justify-center px-1.5 py-0 text-[10px]">
-                        {pendingTransactions.length}
-                      </Badge>
-                    ) : null}
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[95vw] sm:w-full max-w-md">
-                  <SheetHeader>
-                    <SheetTitle>Aprobaciones pendientes</SheetTitle>
-                    <SheetDescription>
-                      Confirma pagos manuales para moverlos de pending a completed.
-                    </SheetDescription>
-                  </SheetHeader>
-                  <div className="mt-4 max-h-[80vh] overflow-y-auto pr-1">{renderPendingList()}</div>
-                </SheetContent>
-              </Sheet>
             </div>
           </div>
         </CardHeader>
@@ -358,7 +306,7 @@ export default function CalendarView() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.7fr_1fr]">
-            <Card className="border-border bg-card shadow-sm hidden md:block">
+            <Card className="border-border bg-card shadow-sm">
               <CardContent className="p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <Button
@@ -392,7 +340,7 @@ export default function CalendarView() {
 
                 <div className="grid grid-cols-7 gap-1">
                   {Array.from({ length: startOffset }).map((_, i) => (
-                    <div key={`empty-${i}`} className="min-h-[96px]" />
+                    <div key={`empty-${i}`} className="min-h-[60px] sm:min-h-[96px]" />
                   ))}
 
                   {days.map((day) => {
@@ -407,7 +355,7 @@ export default function CalendarView() {
                         key={key}
                         onClick={() => setSelectedDate(key)}
                         className={cn(
-                          "min-h-[96px] rounded-md border border-border/50 p-2 text-left transition-colors",
+                          "min-h-[60px] sm:min-h-[96px] rounded-md border border-border/50 p-2 text-left transition-colors",
                           today && "bg-accent/30 border-primary/40",
                           selected && "ring-2 ring-primary/50",
                         )}
@@ -445,7 +393,7 @@ export default function CalendarView() {
               </CardContent>
             </Card>
 
-            <div className="space-y-4 hidden lg:block">
+            <div className="space-y-4">
               <Card className="border-border bg-card shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg">Mini-Dashboard del Día</CardTitle>
@@ -484,59 +432,6 @@ export default function CalendarView() {
                   <CardDescription>{pendingTransactions.length} pagos por confirmar</CardDescription>
                 </CardHeader>
                 <CardContent>{renderPendingList()}</CardContent>
-              </Card>
-            </div>
-
-            <div className="space-y-4 md:hidden">
-              <Card className="border-border bg-card shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Agenda del Mes</CardTitle>
-                  <CardDescription>
-                    Vista móvil de eventos para planificar pagos y cobros.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setCurrentMonth((m) => subMonths(m, 1))}>
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm font-medium capitalize">
-                      {format(currentMonth, "MMMM yyyy", { locale: es })}
-                    </span>
-                    <Button variant="outline" size="sm" onClick={() => setCurrentMonth((m) => addMonths(m, 1))}>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  {agendaDays.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No hay eventos para este mes.</p>
-                  ) : (
-                    agendaDays.map(([date, dayEvents]) => (
-                      <div key={date} className="rounded-lg border border-border p-3 space-y-2">
-                        <button
-                          type="button"
-                          className="w-full text-left"
-                          onClick={() => setSelectedDate(date)}
-                        >
-                          <p className="text-sm font-semibold text-foreground">{format(new Date(`${date}T00:00:00`), "d 'de' MMMM", { locale: es })}</p>
-                          <p className="text-xs text-muted-foreground">{dayEvents.length} evento(s)</p>
-                        </button>
-                        {selectedDate === date ? (
-                          <div className="space-y-2">
-                            {dayEvents.map((event) => (
-                              <div key={event.id} className="rounded-md border border-border p-2">
-                                <p className="text-sm font-medium truncate">{event.label}</p>
-                                <p className={cn("text-sm font-semibold", event.flow === "expense" ? "text-red-600" : "text-emerald-600")}>
-                                  {formatAmountWithCurrency(event.amount, event.currency)}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    ))
-                  )}
-                </CardContent>
               </Card>
             </div>
           </div>
