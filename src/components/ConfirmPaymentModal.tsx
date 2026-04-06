@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UniversalDatePicker } from "@/components/UniversalDatePicker";
 import { useToast } from "@/components/ui/use-toast";
 import { confirmPendingTransaction } from "@/lib/subscriptions";
 import { getRateByDate, type ExchangeSnapshot } from "@/lib/rates";
@@ -209,11 +210,11 @@ export function ConfirmPaymentModal({
 
           <div className="space-y-2">
             <Label htmlFor="confirm-payment-date">Fecha real de pago</Label>
-            <Input
+            <UniversalDatePicker
               id="confirm-payment-date"
-              type="date"
               value={paymentDate}
-              onChange={(e) => setPaymentDate(e.target.value)}
+              onChange={(date) => setPaymentDate(date)}
+              placeholder="Seleccionar fecha real"
             />
           </div>
         </div>

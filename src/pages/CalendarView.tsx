@@ -1,19 +1,26 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   addMonths,
-  subMonths,
+  eachDayOfInterval,
   startOfMonth,
   endOfMonth,
-  eachDayOfInterval,
+  isSameDay,
+  isToday,
   format,
   getDay,
-  isSameMonth,
-  isToday,
-  parseISO,
+  subMonths,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarDays, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Loader2,
+  Plus,
+  ReceiptText,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,11 +31,34 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  fetchPendingTransactions,
   fetchRecurringTransactions,
+  PENDING_TRANSACTIONS_QUERY_KEY,
   RECURRING_TRANSACTIONS_QUERY_KEY,
 } from "@/lib/subscriptions";
-import { DEBTS_QUERY_KEY, fetchDebts } from "@/lib/debts";
-import type { Debt, RecurringTransaction } from "@/lib/types";
+import { createDebt, DEBTS_QUERY_KEY, fetchDebts } from "@/lib/debts";
+import { ConfirmPaymentModal, formatAmountWithCurrency } from "@/components/ConfirmPaymentModal";
+import { DebtFormDialog, type DebtFormValues } from "@/components/DebtFormDialog";
+import { SubscriptionCreateDialog } from "@/components/SubscriptionCreateDialog";
+import { UniversalDatePicker } from "@/components/UniversalDatePicker";
+import { useToast } from "@/components/ui/use-toast";
+import { AccountsStore, CategoriesStore, onDataChange } from "@/lib/storage";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Account, Category, Debt, RecurringTransaction, Transaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -37,24 +67,37 @@ type CalendarEvent = {
   id: string;
   label: string;
   date: string;
-  type: "subscription" | "debt";
-  variant: "default" | "destructive" | "secondary";
+  source: "subscription" | "debt" | "pending";
+  flow: "income" | "expense";
+  amount: number;
+  currency: "USD" | "EUR" | "VES";
+  pendingTx?: Transaction;
 };
 
 function buildEvents(
   subscriptions: RecurringTransaction[],
   debts: Debt[],
+  pendingTxs: Transaction[],
+  categories: Category[],
 ): CalendarEvent[] {
   const events: CalendarEvent[] = [];
 
+  const categoryTypeById = new Map<string, "income" | "expense">();
+  for (const category of categories) {
+    categoryTypeById.set(category.id, category.type);
+  }
+
   for (const sub of subscriptions) {
     if (!sub.is_active || !sub.next_date) continue;
+    const categoryType = categoryTypeById.get(sub.categoryId) ?? "expense";
     events.push({
       id: `sub-${sub.id}`,
       label: sub.description,
       date: sub.next_date,
-      type: "subscription",
-      variant: sub.execution_mode === "manual" ? "destructive" : "secondary",
+      source: "subscription",
+      flow: categoryType,
+      amount: sub.amount,
+      currency: sub.currency,
     });
   }
 
@@ -62,10 +105,25 @@ function buildEvents(
     if (debt.status === "paid" || !debt.dueDate) continue;
     events.push({
       id: `debt-${debt.id}`,
-      label: `${debt.contactName}`,
+      label: debt.contactName,
       date: debt.dueDate,
-      type: "debt",
-      variant: debt.type === "payable" ? "destructive" : "default",
+      source: "debt",
+      flow: debt.type === "payable" ? "expense" : "income",
+      amount: debt.remaining,
+      currency: debt.currency,
+    });
+  }
+
+  for (const tx of pendingTxs) {
+    events.push({
+      id: `pending-${tx.id}`,
+      label: tx.description || "Pago pendiente",
+      date: tx.date,
+      source: "pending",
+      flow: tx.type,
+      amount: tx.amount,
+      currency: tx.currency ?? "USD",
+      pendingTx: tx,
     });
   }
 
@@ -73,21 +131,77 @@ function buildEvents(
 }
 
 export default function CalendarView() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
+  const [selectedDate, setSelectedDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [pendingSheetOpen, setPendingSheetOpen] = useState(false);
+  const [selectedPendingTx, setSelectedPendingTx] = useState<Transaction | null>(null);
+  const [createDebtOpen, setCreateDebtOpen] = useState(false);
+  const [createSubscriptionOpen, setCreateSubscriptionOpen] = useState(false);
 
   const subsQuery = useQuery({
     queryKey: RECURRING_TRANSACTIONS_QUERY_KEY,
     queryFn: fetchRecurringTransactions,
+    staleTime: 30_000,
   });
 
   const debtsQuery = useQuery({
     queryKey: DEBTS_QUERY_KEY,
     queryFn: fetchDebts,
+    staleTime: 30_000,
+  });
+
+  const pendingQuery = useQuery({
+    queryKey: PENDING_TRANSACTIONS_QUERY_KEY,
+    queryFn: fetchPendingTransactions,
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    async function loadReferenceData() {
+      await Promise.all([AccountsStore.refresh(), CategoriesStore.refresh()]);
+      setAccounts(AccountsStore.all());
+      setCategories(CategoriesStore.all());
+    }
+
+    loadReferenceData().catch(() => {
+      toast({
+        title: "No se pudieron cargar cuentas y categorías",
+        description: "Intenta nuevamente.",
+        variant: "destructive",
+      });
+    });
+
+    const off = onDataChange(() => {
+      setAccounts(AccountsStore.all());
+      setCategories(CategoriesStore.all());
+    });
+    return off;
+  }, [toast]);
+
+  const createDebtMutation = useMutation({
+    mutationFn: createDebt,
+    onSuccess: async () => {
+      toast({ title: "Deuda creada", description: "La deuda fue registrada correctamente." });
+      setCreateDebtOpen(false);
+      await queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY });
+    },
+    onError: (error) => {
+      toast({
+        title: "No se pudo crear la deuda",
+        description: error instanceof Error ? error.message : "Intenta nuevamente.",
+        variant: "destructive",
+      });
+    },
   });
 
   const events = useMemo(
-    () => buildEvents(subsQuery.data ?? [], debtsQuery.data ?? []),
-    [subsQuery.data, debtsQuery.data],
+    () => buildEvents(subsQuery.data ?? [], debtsQuery.data ?? [], pendingQuery.data ?? [], categories),
+    [subsQuery.data, debtsQuery.data, pendingQuery.data, categories],
   );
 
   const eventsByDate = useMemo(() => {
@@ -112,42 +226,125 @@ export default function CalendarView() {
     return dow === 0 ? 6 : dow - 1;
   }, [days]);
 
-  const isLoading = subsQuery.isLoading || debtsQuery.isLoading;
+  useEffect(() => {
+    const hasSelection = days.some((day) => format(day, "yyyy-MM-dd") === selectedDate);
+    if (!hasSelection && days.length > 0) {
+      const today = days.find((day) => isSameDay(day, new Date()));
+      setSelectedDate(format(today ?? days[0], "yyyy-MM-dd"));
+    }
+  }, [days, selectedDate]);
+
+  const isLoading = subsQuery.isLoading || debtsQuery.isLoading || pendingQuery.isLoading;
+  const selectedEvents = eventsByDate.get(selectedDate) ?? [];
+  const selectedTotals = selectedEvents.reduce(
+    (acc, event) => {
+      if (event.flow === "income") acc.income += event.amount;
+      else acc.expense += event.amount;
+      return acc;
+    },
+    { income: 0, expense: 0 },
+  );
+
+  const pendingTransactions = pendingQuery.data ?? [];
+
+  const agendaDays = useMemo(() => {
+    return Array.from(eventsByDate.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .filter(([date]) => date.startsWith(format(currentMonth, "yyyy-MM")));
+  }, [eventsByDate, currentMonth]);
+
+  const handleDebtCreate = (values: DebtFormValues) => {
+    createDebtMutation.mutate({
+      contactName: values.contactName.trim(),
+      description: values.description.trim(),
+      totalAmount: values.totalAmount,
+      currency: values.currency,
+      type: values.type,
+      dueDate: values.dueDate || null,
+      categoryId: values.categoryId ? Number(values.categoryId) : null,
+    });
+  };
+
+  const openConfirmFor = (tx: Transaction) => {
+    setSelectedPendingTx(tx);
+    setConfirmDialogOpen(true);
+  };
+
+  const renderPendingList = () => (
+    <div className="space-y-3">
+      {pendingTransactions.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No hay pagos pendientes por aprobar.</p>
+      ) : (
+        pendingTransactions.map((tx) => (
+          <div key={tx.id} className="rounded-lg border border-destructive/30 bg-card p-3 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">{tx.description || "Pago pendiente"}</p>
+                <p className="text-xs text-muted-foreground">Fecha: {tx.date}</p>
+              </div>
+              <Badge variant="destructive">Pending</Badge>
+            </div>
+            <p className={cn("text-sm font-semibold", tx.type === "expense" ? "text-red-600" : "text-emerald-600")}>
+              {formatAmountWithCurrency(tx.amount, tx.currency ?? "USD")}
+            </p>
+            <Button className="w-full h-11 text-base" onClick={() => openConfirmFor(tx)}>
+              <CreditCard className="mr-2 h-4 w-4" />
+              Confirmar Pago Ahora
+            </Button>
+          </div>
+        ))
+      )}
+    </div>
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 md:pb-6">
       <Card className="border-border bg-card shadow-sm">
         <CardHeader className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2 text-2xl text-card-foreground">
                 <CalendarDays className="h-6 w-6" />
-                Calendario
+                Calendario Maestro
               </CardTitle>
               <CardDescription>
-                Visualiza tus suscripciones y vencimientos de deudas en el mes.
+                Proyección mensual de cobros y pagos con aprobaciones pendientes en tiempo real.
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentMonth((m) => subMonths(m, 1))}
-                aria-label="Mes anterior"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="min-w-[140px] text-center text-sm font-medium text-foreground capitalize">
-                {format(currentMonth, "MMMM yyyy", { locale: es })}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentMonth((m) => addMonths(m, 1))}
-                aria-label="Mes siguiente"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+
+            <div className="flex flex-col gap-2 sm:items-end">
+              <div className="hidden md:block w-[240px]">
+                <UniversalDatePicker
+                  value={selectedDate}
+                  onChange={(date) => {
+                    if (!date) return;
+                    setSelectedDate(date);
+                    setCurrentMonth(startOfMonth(new Date(`${date}T00:00:00`)));
+                  }}
+                />
+              </div>
+              <Sheet open={pendingSheetOpen} onOpenChange={setPendingSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button className="w-full md:hidden" variant="outline">
+                    <ReceiptText className="mr-2 h-4 w-4" />
+                    Aprobaciones
+                    {pendingTransactions.length > 0 ? (
+                      <Badge variant="destructive" className="ml-2 min-w-5 justify-center px-1.5 py-0 text-[10px]">
+                        {pendingTransactions.length}
+                      </Badge>
+                    ) : null}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[95vw] sm:w-full max-w-md">
+                  <SheetHeader>
+                    <SheetTitle>Aprobaciones pendientes</SheetTitle>
+                    <SheetDescription>
+                      Confirma pagos manuales para moverlos de pending a completed.
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="mt-4 max-h-[80vh] overflow-y-auto pr-1">{renderPendingList()}</div>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </CardHeader>
@@ -159,73 +356,246 @@ export default function CalendarView() {
           Cargando calendario...
         </div>
       ) : (
-        <Card className="border-border bg-card shadow-sm overflow-x-auto">
-          <CardContent className="p-2 sm:p-4">
-            {/* Weekday headers */}
-            <div className="grid grid-cols-7 gap-px mb-1">
-              {WEEKDAYS.map((d) => (
-                <div
-                  key={d}
-                  className="text-center text-xs font-medium text-muted-foreground py-2"
-                >
-                  {d}
-                </div>
-              ))}
-            </div>
-
-            {/* Day grid */}
-            <div className="grid grid-cols-7 gap-px">
-              {/* Empty cells for offset */}
-              {Array.from({ length: startOffset }).map((_, i) => (
-                <div key={`empty-${i}`} className="min-h-[72px] sm:min-h-[90px]" />
-              ))}
-
-              {days.map((day) => {
-                const key = format(day, "yyyy-MM-dd");
-                const dayEvents = eventsByDate.get(key) ?? [];
-                const today = isToday(day);
-                const inMonth = isSameMonth(day, currentMonth);
-
-                return (
-                  <div
-                    key={key}
-                    className={cn(
-                      "min-h-[72px] sm:min-h-[90px] rounded-md border border-border/50 p-1 transition-colors",
-                      today && "bg-accent/30 border-primary/40",
-                      !inMonth && "opacity-40",
-                    )}
+        <>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.7fr_1fr]">
+            <Card className="border-border bg-card shadow-sm hidden md:block">
+              <CardContent className="p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentMonth((m) => subMonths(m, 1))}
+                    aria-label="Mes anterior"
                   >
-                    <span
-                      className={cn(
-                        "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium text-foreground",
-                        today && "bg-primary text-primary-foreground",
-                      )}
-                    >
-                      {format(day, "d")}
-                    </span>
-                    <div className="mt-0.5 space-y-0.5">
-                      {dayEvents.slice(0, 3).map((ev) => (
-                        <Badge
-                          key={ev.id}
-                          variant={ev.variant}
-                          className="block w-full truncate text-[10px] px-1 py-0 leading-tight"
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="min-w-[180px] text-center text-sm font-medium text-foreground capitalize">
+                    {format(currentMonth, "MMMM yyyy", { locale: es })}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentMonth((m) => addMonths(m, 1))}
+                    aria-label="Mes siguiente"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 mb-1">
+                  {WEEKDAYS.map((d) => (
+                    <div key={d} className="text-center text-xs font-medium text-muted-foreground py-2">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: startOffset }).map((_, i) => (
+                    <div key={`empty-${i}`} className="min-h-[96px]" />
+                  ))}
+
+                  {days.map((day) => {
+                    const key = format(day, "yyyy-MM-dd");
+                    const dayEvents = eventsByDate.get(key) ?? [];
+                    const today = isToday(day);
+                    const selected = selectedDate === key;
+
+                    return (
+                      <button
+                        type="button"
+                        key={key}
+                        onClick={() => setSelectedDate(key)}
+                        className={cn(
+                          "min-h-[96px] rounded-md border border-border/50 p-2 text-left transition-colors",
+                          today && "bg-accent/30 border-primary/40",
+                          selected && "ring-2 ring-primary/50",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium text-foreground",
+                            today && "bg-primary text-primary-foreground",
+                          )}
                         >
-                          {ev.label}
-                        </Badge>
-                      ))}
-                      {dayEvents.length > 3 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          +{dayEvents.length - 3} más
+                          {format(day, "d")}
                         </span>
-                      )}
+                        <div className="mt-1 space-y-1">
+                          {dayEvents.slice(0, 3).map((ev) => (
+                            <div
+                              key={ev.id}
+                              className={cn(
+                                "truncate rounded px-1.5 py-0.5 text-[10px] font-medium",
+                                ev.flow === "expense"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-emerald-100 text-emerald-800",
+                              )}
+                            >
+                              {ev.label}
+                            </div>
+                          ))}
+                          {dayEvents.length > 3 ? (
+                            <span className="text-[10px] text-muted-foreground">+{dayEvents.length - 3} más</span>
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-4 hidden lg:block">
+              <Card className="border-border bg-card shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Mini-Dashboard del Día</CardTitle>
+                  <CardDescription>{selectedDate}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-lg border border-border p-2">
+                      <p className="text-muted-foreground">Ingresos</p>
+                      <p className="font-semibold text-emerald-600">{formatAmountWithCurrency(selectedTotals.income, "USD")}</p>
+                    </div>
+                    <div className="rounded-lg border border-border p-2">
+                      <p className="text-muted-foreground">Gastos</p>
+                      <p className="font-semibold text-red-600">{formatAmountWithCurrency(selectedTotals.expense, "USD")}</p>
                     </div>
                   </div>
-                );
-              })}
+                  {selectedEvents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No hay movimientos para este día.</p>
+                  ) : (
+                    selectedEvents.map((event) => (
+                      <div key={event.id} className="rounded-lg border border-border p-2">
+                        <p className="text-sm font-medium text-foreground truncate">{event.label}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{event.source}</p>
+                        <p className={cn("text-sm font-semibold", event.flow === "expense" ? "text-red-600" : "text-emerald-600")}>
+                          {formatAmountWithCurrency(event.amount, event.currency)}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-border bg-card shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Aprobaciones Pendientes</CardTitle>
+                  <CardDescription>{pendingTransactions.length} pagos por confirmar</CardDescription>
+                </CardHeader>
+                <CardContent>{renderPendingList()}</CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+
+            <div className="space-y-4 md:hidden">
+              <Card className="border-border bg-card shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Agenda del Mes</CardTitle>
+                  <CardDescription>
+                    Vista móvil de eventos para planificar pagos y cobros.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setCurrentMonth((m) => subMonths(m, 1))}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-medium capitalize">
+                      {format(currentMonth, "MMMM yyyy", { locale: es })}
+                    </span>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentMonth((m) => addMonths(m, 1))}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {agendaDays.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No hay eventos para este mes.</p>
+                  ) : (
+                    agendaDays.map(([date, dayEvents]) => (
+                      <div key={date} className="rounded-lg border border-border p-3 space-y-2">
+                        <button
+                          type="button"
+                          className="w-full text-left"
+                          onClick={() => setSelectedDate(date)}
+                        >
+                          <p className="text-sm font-semibold text-foreground">{format(new Date(`${date}T00:00:00`), "d 'de' MMMM", { locale: es })}</p>
+                          <p className="text-xs text-muted-foreground">{dayEvents.length} evento(s)</p>
+                        </button>
+                        {selectedDate === date ? (
+                          <div className="space-y-2">
+                            {dayEvents.map((event) => (
+                              <div key={event.id} className="rounded-md border border-border p-2">
+                                <p className="text-sm font-medium truncate">{event.label}</p>
+                                <p className={cn("text-sm font-semibold", event.flow === "expense" ? "text-red-600" : "text-emerald-600")}>
+                                  {formatAmountWithCurrency(event.amount, event.currency)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </>
       )}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-40">
+            <Plus className="h-6 w-6" />
+            <span className="sr-only">Acceso rápido</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuItem onClick={() => setCreateSubscriptionOpen(true)}>
+            Nueva Suscripción
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setCreateDebtOpen(true)}>
+            Nueva Deuda
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ConfirmPaymentModal
+        open={confirmDialogOpen}
+        onOpenChange={setConfirmDialogOpen}
+        pendingTx={selectedPendingTx}
+        referenceCurrency={selectedPendingTx?.currency ?? "USD"}
+        referenceAmount={selectedPendingTx?.amount ?? 0}
+        accounts={accounts}
+        onConfirmed={async () => {
+          setSelectedPendingTx(null);
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: PENDING_TRANSACTIONS_QUERY_KEY }),
+            queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY }),
+          ]);
+        }}
+      />
+
+      <DebtFormDialog
+        open={createDebtOpen}
+        onOpenChange={setCreateDebtOpen}
+        debt={null}
+        initialDate={selectedDate}
+        categories={categories}
+        submitting={createDebtMutation.isPending}
+        onSubmit={handleDebtCreate}
+      />
+
+      <SubscriptionCreateDialog
+        open={createSubscriptionOpen}
+        onOpenChange={setCreateSubscriptionOpen}
+        onCreated={async () => {
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: RECURRING_TRANSACTIONS_QUERY_KEY }),
+            queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY }),
+          ]);
+        }}
+      />
     </div>
   );
 }

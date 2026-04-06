@@ -111,8 +111,13 @@ export default function SidebarLayout() {
 
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="Abrir navegación">
+              <Button variant="outline" size="icon" aria-label="Abrir navegación" className="relative">
                 <Menu className="h-5 w-5" />
+                {pendingCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+                    {pendingCount}
+                  </span>
+                ) : null}
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex w-full max-w-xs flex-col border-r border-border bg-card px-0">
@@ -139,7 +144,14 @@ export default function SidebarLayout() {
         <aside className="hidden w-64 shrink-0 border-r border-border bg-card md:fixed md:top-0 md:left-0 md:z-20 md:flex md:h-screen md:flex-col md:overflow-y-auto">
           <div className="border-b border-border px-6 py-6">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">Platica</p>
-            <h1 className="mt-2 text-xl font-semibold text-foreground">Dashboard</h1>
+            <div className="mt-2 flex items-center gap-2">
+              <h1 className="text-xl font-semibold text-foreground">Dashboard</h1>
+              {pendingCount > 0 ? (
+                <Badge variant="destructive" className="min-w-5 justify-center px-1.5 py-0 text-[10px]">
+                  {pendingCount}
+                </Badge>
+              ) : null}
+            </div>
             <p className="mt-1 text-sm text-muted-foreground">Navegación principal de tu workspace financiero.</p>
           </div>
 

@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CategorySelector } from "@/components/CategorySelector";
+import { UniversalDatePicker } from "@/components/UniversalDatePicker";
 import type { Category, Debt, DebtType } from "@/lib/types";
 
 export type DebtFormValues = {
@@ -36,6 +37,7 @@ interface DebtFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   debt: Debt | null;
+  initialDate?: string;
   categories: Category[];
   submitting: boolean;
   onSubmit: (values: DebtFormValues) => void;
@@ -45,6 +47,7 @@ export function DebtFormDialog({
   open,
   onOpenChange,
   debt,
+  initialDate,
   categories,
   submitting,
   onSubmit,
@@ -89,12 +92,12 @@ export function DebtFormDialog({
           totalAmount: undefined as unknown as number,
           currency: "USD",
           type: "payable",
-          dueDate: "",
+          dueDate: initialDate ?? "",
           categoryId: "",
         });
       }
     }
-  }, [open, debt, reset]);
+  }, [open, debt, initialDate, reset]);
 
   const onFormSubmit = handleSubmit((values) => {
     onSubmit(values);
@@ -202,8 +205,13 @@ export function DebtFormDialog({
 
           {/* Due date — optional */}
           <div className="space-y-2">
-            <Label htmlFor="debt-due-date">Fecha límite (opcional)</Label>
-            <Input id="debt-due-date" type="date" {...register("dueDate")} />
+            <Label htmlFor="debt-due-date">Fecha Programada / Limite (opcional)</Label>
+            <UniversalDatePicker
+              id="debt-due-date"
+              value={watch("dueDate") || ""}
+              onChange={(date) => setValue("dueDate", date, { shouldValidate: true })}
+              placeholder="Seleccionar fecha límite"
+            />
           </div>
 
           <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-3">
