@@ -64,6 +64,38 @@ export interface Transaction {
   debtId?: string;
 }
 
+export interface TransferCreatePayload {
+  fromAccountId: number;
+  toAccountId: number;
+  amount: number;
+  destinationAmount: number;
+  date: string;
+  commission?: number;
+  concept?: string;
+}
+
+interface TransferTransactionSnapshot {
+  id: number;
+  description: string;
+  amount: string;
+  currency: "USD" | "EUR" | "VES";
+  amountUsd: string;
+  exchangeRateUsed: string;
+  date: string;
+  categoryId: number;
+  accountId: number;
+  type: "ingreso" | "gasto";
+}
+
+export interface TransferCreateResponse {
+  ok: boolean;
+  transfer: {
+    outTx: TransferTransactionSnapshot;
+    inTx: TransferTransactionSnapshot;
+    commissionTx?: TransferTransactionSnapshot;
+  };
+}
+
 export type RecurringExecutionMode = "auto" | "manual";
 
 export interface RecurringTransaction {

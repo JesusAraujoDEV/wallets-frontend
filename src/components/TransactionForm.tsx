@@ -4,21 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar as CalendarIcon, PlusCircle, Loader2, Download } from "lucide-react";
+import { Calendar as CalendarIcon, PlusCircle, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AccountsStore, CategoriesStore, TransactionsStore, TransfersStore, newId, onDataChange } from "@/lib/storage";
 import type { Account, Category } from "@/lib/types";
-import { useVESExchangeRate } from "@/lib/rates";
+import { getRateByDate, useVESExchangeRate } from "@/lib/rates";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import dayjs from 'dayjs';
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategorySelector } from "@/components/CategorySelector";
-import { exportTransfers, exportTransfersEpicPdfAuto } from "@/lib/exports";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asModalContent?: boolean; onSubmitted?: () => void }) => {
   const [account, setAccount] = useState("");
@@ -37,12 +36,116 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
   const [toAccount, setToAccount] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
   const [commission, setCommission] = useState("");
+  const [destinationAmount, setDestinationAmount] = useState("");
+  const [destinationEdited, setDestinationEdited] = useState(false);
   const [transferDate, setTransferDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [concept, setConcept] = useState("");
   const [submittingTransfer, setSubmittingTransfer] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
-  const [exporting, setExporting] = useState<false | "pdf" | "xlsx">(false);
+  const [bcvLoading, setBcvLoading] = useState(false);
+  const [bcvOfficialRate, setBcvOfficialRate] = useState<number | null>(null);
+  const [bcvSourceDate, setBcvSourceDate] = useState<string | null>(null);
   const filteredCategories = categories.filter((c) => c.type === type);
+  const fromAccountData = accounts.find((a) => a.id === fromAccount);
+  const toAccountData = accounts.find((a) => a.id === toAccount);
+  const hasDifferentCurrencies = !!fromAccountData && !!toAccountData && fromAccountData.currency !== toAccountData.currency;
+  const isUsdVesPair = !!fromAccountData && !!toAccountData && (
+    (fromAccountData.currency === "USD" && toAccountData.currency === "VES") ||
+    (fromAccountData.currency === "VES" && toAccountData.currency === "USD")
+  );
+
+  useEffect(() => {
+    // When account pair or transfer date changes, re-seed destination value from BCV.
+    setDestinationEdited(false);
+  }, [fromAccount, toAccount, transferDate]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadBcvRate = async () => {
+      if (!hasDifferentCurrencies) {
+        setBcvOfficialRate(null);
+        setDestinationAmount("");
+        setBcvSourceDate(null);
+        return;
+      }
+
+      if (!isUsdVesPair) {
+        setBcvOfficialRate(null);
+        setDestinationAmount("");
+        setBcvSourceDate(null);
+        return;
+      }
+
+      try {
+        setBcvLoading(true);
+        const rate = await getRateByDate(transferDate);
+        if (cancelled) return;
+        if (!rate || !isFinite(rate.vesPerUsd) || rate.vesPerUsd <= 0) {
+          setBcvOfficialRate(null);
+          setBcvSourceDate(null);
+          toast({
+            title: "BCV unavailable",
+            description: "No BCV rate available for the selected date.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        setBcvOfficialRate(rate.vesPerUsd);
+        setBcvSourceDate(rate.sourceDate);
+      } finally {
+        if (!cancelled) {
+          setBcvLoading(false);
+        }
+      }
+    };
+
+    void loadBcvRate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasDifferentCurrencies, isUsdVesPair, transferDate]);
+
+  useEffect(() => {
+    if (!hasDifferentCurrencies || !isUsdVesPair) return;
+    const numericAmount = Number(transferAmount);
+    if (!isFinite(numericAmount) || numericAmount <= 0 || !bcvOfficialRate || bcvOfficialRate <= 0) {
+      if (!destinationEdited) {
+        setDestinationAmount("");
+      }
+      return;
+    }
+
+    if (destinationEdited) {
+      return;
+    }
+
+    const calculated = fromAccountData?.currency === "USD"
+      ? numericAmount * bcvOfficialRate
+      : numericAmount / bcvOfficialRate;
+
+    setDestinationAmount(calculated.toFixed(2));
+  }, [hasDifferentCurrencies, isUsdVesPair, transferAmount, destinationEdited, fromAccountData?.currency, bcvOfficialRate]);
+
+  const parsedTransferAmount = Number(transferAmount);
+  const parsedDestinationAmount = Number(destinationAmount);
+  const showArbitrageSummary =
+    hasDifferentCurrencies &&
+    isUsdVesPair &&
+    fromAccountData?.currency === "USD" &&
+    toAccountData?.currency === "VES" &&
+    isFinite(parsedTransferAmount) &&
+    parsedTransferAmount > 0 &&
+    isFinite(parsedDestinationAmount) &&
+    parsedDestinationAmount > 0 &&
+    !!bcvOfficialRate &&
+    bcvOfficialRate > 0;
+
+  const baseBcvAmount = showArbitrageSummary ? parsedTransferAmount * (bcvOfficialRate ?? 0) : null;
+  const appliedRate = showArbitrageSummary ? parsedDestinationAmount / parsedTransferAmount : null;
+  const gainOrLoss = showArbitrageSummary && baseBcvAmount != null ? parsedDestinationAmount - baseBcvAmount : null;
+  const gainOrLossUsdApprox = showArbitrageSummary && gainOrLoss != null && bcvOfficialRate ? gainOrLoss / bcvOfficialRate : null;
 
   useEffect(() => {
     const load = () => {
@@ -117,19 +220,44 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
       toast({ title: "Invalid Accounts", description: "Origin and destination accounts must be different.", variant: "destructive" });
       return;
     }
-    const from = accounts.find(a => a.id === fromAccount);
-    const to = accounts.find(a => a.id === toAccount);
+    const from = fromAccountData;
+    const to = toAccountData;
     if (!from || !to) return;
-    if (from.currency !== to.currency) {
-      toast({ title: "Currencies mismatch", description: "Both accounts must have the same currency for a transfer.", variant: "destructive" });
+
+    if (from.currency !== to.currency && !isUsdVesPair) {
+      toast({
+        title: "Unsupported currency pair",
+        description: "This transfer currently supports only USD and VES between different currencies.",
+        variant: "destructive"
+      });
       return;
     }
+
+    if (hasDifferentCurrencies && !destinationAmount) {
+      toast({
+        title: "Missing destination amount",
+        description: "Please enter the amount received in the destination account.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const parsedAmount = Number(transferAmount);
+    const parsedDestinationAmount = hasDifferentCurrencies
+      ? Number(destinationAmount)
+      : Number(transferAmount);
+    if (!isFinite(parsedAmount) || parsedAmount <= 0 || !isFinite(parsedDestinationAmount) || parsedDestinationAmount <= 0) {
+      toast({ title: "Invalid amount", description: "Amounts must be greater than zero.", variant: "destructive" });
+      return;
+    }
+
     try {
       setSubmittingTransfer(true);
       await TransfersStore.create({
         fromAccountId: fromAccount,
         toAccountId: toAccount,
-        amount: parseFloat(transferAmount),
+        amount: parsedAmount,
+        destinationAmount: parsedDestinationAmount,
         commission: commission ? parseFloat(commission) : undefined,
         date: transferDate || new Date().toISOString().slice(0, 10),
         concept: concept || undefined,
@@ -139,9 +267,12 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
       setFromAccount("");
       setToAccount("");
       setTransferAmount("");
+      setDestinationAmount("");
+      setDestinationEdited(false);
       setCommission("");
       setTransferDate(new Date().toISOString().slice(0, 10));
       setConcept("");
+      setBcvSourceDate(null);
       onSubmitted?.();
     } finally {
       setSubmittingTransfer(false);
@@ -359,6 +490,35 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
             required
           />
         </div>
+        {hasDifferentCurrencies && (
+          <div className="space-y-2">
+            <Label htmlFor="destinationAmount">Destination amount</Label>
+            <Input
+              id="destinationAmount"
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              value={destinationAmount}
+              onChange={(e) => {
+                setDestinationEdited(true);
+                setDestinationAmount(e.target.value);
+              }}
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              {bcvLoading
+                ? "Loading BCV rate..."
+                : bcvSourceDate
+                  ? `BCV reference date: ${bcvSourceDate}`
+                  : "BCV reference unavailable for selected date."}
+            </p>
+            {Number(transferAmount) > 0 && Number(destinationAmount) > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Tasa aplicada: {(Number(destinationAmount) / Number(transferAmount)).toFixed(6)}
+              </p>
+            ) : null}
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="commission">Commission (optional)</Label>
           <Input
@@ -411,7 +571,24 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
           onChange={(e) => setConcept(e.target.value)}
         />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+      {showArbitrageSummary && baseBcvAmount != null && appliedRate != null && gainOrLoss != null && gainOrLossUsdApprox != null ? (
+        <Alert className="border-primary/30 bg-primary/5">
+          <AlertTitle>Resumen de la Jugada</AlertTitle>
+          <AlertDescription className="space-y-1 text-sm break-words">
+            <p>Tasa oficial BCV: {bcvOfficialRate?.toFixed(4)}</p>
+            <p>Tasa tuya aplicada: {appliedRate.toFixed(6)}</p>
+            <p>Monto Base BCV: {baseBcvAmount.toFixed(2)} VES</p>
+            {gainOrLoss > 0 ? (
+              <p className="font-medium text-emerald-600">¡Farmeando Aura! Ganancia detectada: +{gainOrLoss.toFixed(2)} VES (Aprox +{gainOrLossUsdApprox.toFixed(2)} USD)</p>
+            ) : gainOrLoss < 0 ? (
+              <p className="font-medium text-red-600">Pérdida cambiaria: {gainOrLoss.toFixed(2)} VES</p>
+            ) : (
+              <p className="font-medium text-muted-foreground">Sin diferencia cambiaria: 0.00 VES</p>
+            )}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      <div className="grid grid-cols-1 gap-3">
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={submittingTransfer} aria-busy={submittingTransfer}>
           {submittingTransfer ? (
             <>
@@ -425,86 +602,7 @@ export const TransactionForm = ({ asModalContent = false, onSubmitted }: { asMod
             </>
           )}
         </Button>
-        <Button type="button" variant="outline" className="w-full md:w-auto" onClick={() => setExportOpen(true)}>
-          <Download className="w-4 h-4 mr-2" />
-          Download
-        </Button>
       </div>
-      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Export Transfers</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Choose a format to download your transfers.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <Button
-                type="button"
-                className="w-full"
-                disabled={exporting === "pdf"}
-                aria-busy={exporting === "pdf"}
-                onClick={async () => {
-                  try {
-                    setExporting("pdf");
-                    await exportTransfers("pdf"); // classic backend flow
-                    toast({ title: "Export started", description: "Your PDF (classic) download should begin shortly." });
-                    setExportOpen(false);
-                  } catch (err: any) {
-                    toast({ title: "Export failed", description: String(err?.message || err) });
-                  } finally {
-                    setExporting(false);
-                  }
-                }}
-              >
-                {exporting === "pdf" ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />PDF (classic)</>) : "PDF (classic)"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full"
-                disabled={exporting === "pdf"}
-                aria-busy={exporting === "pdf"}
-                onClick={async () => {
-                  try {
-                    setExporting("pdf");
-                    await exportTransfersEpicPdfAuto({ title: "Transfers Report" }); // EPIC template flow
-                    toast({ title: "Export started", description: "Your EPIC PDF download should begin shortly." });
-                    setExportOpen(false);
-                  } catch (err: any) {
-                    toast({ title: "Export failed", description: String(err?.message || err) });
-                  } finally {
-                    setExporting(false);
-                  }
-                }}
-              >
-                {exporting === "pdf" ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />PDF (EPIC)</>) : "PDF (EPIC)"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full"
-                disabled={exporting === "xlsx"}
-                aria-busy={exporting === "xlsx"}
-                onClick={async () => {
-                  try {
-                    setExporting("xlsx");
-                    await exportTransfers("xlsx");
-                    toast({ title: "Export started", description: "Your Excel download should begin shortly." });
-                    setExportOpen(false);
-                  } catch (err: any) {
-                    toast({ title: "Export failed", description: String(err?.message || err) });
-                  } finally {
-                    setExporting(false);
-                  }
-                }}
-              >
-                {exporting === "xlsx" ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Excel</>) : "Excel"}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">Note: If the download doesn’t start, please ensure the backend export endpoint is available.</p>
-          </div>
-        </DialogContent>
-      </Dialog>
     </form>
   );
 

@@ -6,6 +6,8 @@ import {
   CategoryGroupAssignCategoriesResponse,
   CategoryGroupDeleteResponse,
   CategoryGroupUpsertPayload,
+  TransferCreatePayload,
+  TransferCreateResponse,
   Transaction,
 } from "./types";
 import { apiFetch } from "./http";
@@ -320,21 +322,23 @@ export const TransfersStore = {
     fromAccountId: string | number;
     toAccountId: string | number;
     amount: number;
+    destinationAmount: number;
     commission?: number;
     date: string;
     concept?: string;
   }): Promise<void> {
-    const payload = {
+    const payload: TransferCreatePayload = {
       fromAccountId: Number(params.fromAccountId),
       toAccountId: Number(params.toAccountId),
       amount: Number(params.amount),
+      destinationAmount: Number(params.destinationAmount),
       date: params.date,
       ...(params.commission != null && params.commission !== undefined && params.commission !== 0
         ? { commission: Number(params.commission) }
         : {}),
       ...(params.concept && params.concept.trim() ? { concept: params.concept.trim() } : {}),
-    } as any;
-    await fetchJSON(`transactions/transfer`, { method: "POST", body: JSON.stringify(payload) });
+    };
+    await fetchJSON<TransferCreateResponse>(`transactions/transfer`, { method: "POST", body: JSON.stringify(payload) });
     await AccountsStore.refresh().catch(() => {});
     await TransactionsStore.refresh();
   },

@@ -638,6 +638,7 @@ Body (`application/json`):
   "fromAccountId": 1,
   "toAccountId": 2,
   "amount": 400,
+  "destinationAmount": 189000,
   "commission": 10,
   "date": "2025-10-27",
   "concept": "Pago tarjeta"
@@ -690,7 +691,7 @@ Body (`application/json`):
 ```
 
 Errors:
-- `400` validation error (invalid accounts or different currencies, etc)
+- `400` validation error (invalid accounts, invalid amounts, etc)
 - `500` server error
 
 ---
