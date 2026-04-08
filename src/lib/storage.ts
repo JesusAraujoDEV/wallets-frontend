@@ -339,7 +339,10 @@ export const TransfersStore = {
       ...(params.concept && params.concept.trim() ? { concept: params.concept.trim() } : {}),
     };
     await fetchJSON<TransferCreateResponse>(`transactions/transfer`, { method: "POST", body: JSON.stringify(payload) });
-    await AccountsStore.refresh().catch(() => {});
+    await Promise.all([
+      AccountsStore.refresh().catch(() => {}),
+      CategoriesStore.refresh().catch(() => {}),
+    ]);
     await TransactionsStore.refresh();
   },
 };
