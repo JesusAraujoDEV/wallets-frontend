@@ -1,14 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { LogOut } from "lucide-react";
+import { LogOut, HelpCircle } from "lucide-react";
 import { SidebarNav } from "./SidebarNav";
 import type { NavigationItem } from "./types";
 
-export function DesktopSidebar({ items, pendingCount, onLogout }: {
+export function DesktopSidebar({ items, pendingCount, onLogout, onHelp }: {
   items: NavigationItem[];
   pendingCount: number;
   onLogout: () => void;
+  onHelp: () => void;
 }) {
   return (
     <aside className="hidden w-64 shrink-0 border-r border-border bg-card md:fixed md:top-0 md:left-0 md:z-20 md:flex md:h-screen md:flex-col md:overflow-y-auto">
@@ -31,6 +32,10 @@ export function DesktopSidebar({ items, pendingCount, onLogout }: {
 
       <div className="mt-auto border-t border-border p-4 space-y-2">
         <ThemeToggle />
+        <Button variant="ghost" className="w-full justify-start gap-2" onClick={onHelp}>
+          <HelpCircle className="h-4 w-4" />
+          Ayuda
+        </Button>
         <Button variant="ghost" className="w-full justify-start gap-2" onClick={onLogout}>
           <LogOut className="h-4 w-4" />
           Cerrar sesión
