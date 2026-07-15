@@ -1,100 +1,89 @@
-// Simple client-side exchange rate helper for VES to USD equivalence
-// Data source: BCV Rates API https://bcv-api.irissoftware.lat/api/v1/exchange-rates
+// Exchange rate client — talks only to our own backend (server/services/exchange_rate_service.js),
+// which owns the BCV integration, caching, and weekend/holiday fallback. Never call the BCV API
+// directly from the frontend: see docs/decisions/0001-... in wallets-backend for why.
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/http";
 
-type BcvResponse = {
+export interface ExchangeRate {
   date: string; // YYYY-MM-DD
-  usd_rate: number;
-  eur_rate: number;
-};
+  usdRate: number; // VES per 1 USD
+  eurRate: number; // VES per 1 EUR
+  usdtRate: number | null;
+  source?: "live" | "fallback";
+}
 
-export type ExchangeSnapshot = {
-  vesPerUsd: number; // VES per 1 USD
-  vesPerEur: number; // VES per 1 EUR
-  fetchedAt: string; // ISO timestamp
-  sourceDate: string; // date provided by API
-};
+export async function fetchCurrentRate(): Promise<ExchangeRate> {
+  const res = await apiFetch<{ ok: boolean; rate: ExchangeRate }>("exchange-rates/current");
+  return res.rate;
+}
 
-const STORAGE_KEY = "pwi_exchange_rate";
-const BCV_API_URL = "https://bcv-api.irissoftware.lat/api/v1/exchange-rates";
+export async function fetchRateByDate(date: string): Promise<ExchangeRate> {
+  const res = await apiFetch<{ ok: boolean; rate: ExchangeRate }>(`exchange-rates/by-date?date=${date}`);
+  return res.rate;
+}
 
-function readCache(): ExchangeSnapshot | null {
+export async function fetchRateHistory(params?: { from?: string; to?: string }): Promise<ExchangeRate[]> {
+  const sp = new URLSearchParams();
+  if (params?.from) sp.set("from", params.from);
+  if (params?.to) sp.set("to", params.to);
+  const qs = sp.toString();
+  const res = await apiFetch<{ ok: boolean; rates: ExchangeRate[] }>(`exchange-rates/history${qs ? `?${qs}` : ""}`);
+  return res.rates;
+}
+
+export function useCurrentExchangeRate() {
+  return useQuery({
+    queryKey: ["exchange-rate", "current"],
+    queryFn: fetchCurrentRate,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useExchangeRateByDate(date: string | undefined) {
+  return useQuery({
+    queryKey: ["exchange-rate", "by-date", date],
+    queryFn: () => fetchRateByDate(date as string),
+    enabled: !!date,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useExchangeRateHistory(params?: { from?: string; to?: string }) {
+  return useQuery({
+    queryKey: ["exchange-rate", "history", params?.from, params?.to],
+    queryFn: () => fetchRateHistory(params),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// --- Legacy-shaped surface, kept for existing consumers (AccountManager, AccountSelector,
+// ConfirmPaymentModal, DebtPayDialog, PayNowModal, TransactionsList, Index) so this
+// architectural fix doesn't require touching every call site in the same change.
+// All of it now routes through the backend above — nothing here hits BCV directly anymore.
+export interface ExchangeSnapshot {
+  vesPerUsd: number;
+  vesPerEur: number;
+  fetchedAt: string;
+  sourceDate: string;
+}
+
+function toSnapshot(rate: ExchangeRate): ExchangeSnapshot {
+  return { vesPerUsd: rate.usdRate, vesPerEur: rate.eurRate ?? 0, fetchedAt: new Date().toISOString(), sourceDate: rate.date };
+}
+
+export async function getRateByDate(dateISO: string): Promise<ExchangeSnapshot | null> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as ExchangeSnapshot) : null;
+    return toSnapshot(await fetchRateByDate(dateISO.slice(0, 10)));
   } catch {
     return null;
   }
 }
 
-function writeCache(data: ExchangeSnapshot) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {}
-}
-
-export async function getVESPerUsd(forceRefresh = false): Promise<ExchangeSnapshot | null> {
-  const cached = readCache();
-  // If we have cache from same calendar day, use it unless forceRefresh
-  if (!forceRefresh && cached) {
-    const today = new Date().toISOString().slice(0, 10);
-    if (cached.sourceDate === today) return cached;
-  }
-
-  try {
-    const res = await fetch(BCV_API_URL, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = (await res.json()) as BcvResponse;
-    const snapshot: ExchangeSnapshot = {
-      vesPerUsd: Number(json.usd_rate),
-      vesPerEur: Number(json.eur_rate),
-      fetchedAt: new Date().toISOString(),
-      sourceDate: json.date,
-    };
-    writeCache(snapshot);
-    return snapshot;
-  } catch (err) {
-    return cached ?? null;
-  }
-}
-
-// Convenience converter: takes a VES amount and returns USD using latest known rate (cached or fetched)
-export async function vesToUsd(amountVES: number): Promise<number | null> {
-  const snap = await getVESPerUsd();
-  if (!snap || !snap.vesPerUsd || !isFinite(snap.vesPerUsd)) return null;
-  if (!isFinite(amountVES)) return null;
-  return amountVES / snap.vesPerUsd;
-}
-
-// React hook variant for components
-import { useEffect, useState } from "react";
 export function useVESExchangeRate() {
-  const [rate, setRate] = useState<ExchangeSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const snap = await getVESPerUsd();
-        if (mounted) setRate(snap);
-      } catch (e: any) {
-        if (mounted) setError(e?.message ?? "Failed to load exchange rate");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  return { rate, loading, error } as const;
+  const q = useCurrentExchangeRate();
+  return { rate: q.data ? toSnapshot(q.data) : null, loading: q.isLoading, error: q.error ? String(q.error) : null } as const;
 }
 
-// Convert a value in a given currency to USD using the snapshot
 export function convertToUSD(amount: number, currency: "USD" | "EUR" | "VES", snap: ExchangeSnapshot | null): number | null {
   if (!isFinite(amount)) return null;
   if (!snap) return null;
@@ -102,123 +91,19 @@ export function convertToUSD(amount: number, currency: "USD" | "EUR" | "VES", sn
     case "USD":
       return amount;
     case "VES":
-      return amount / (snap.vesPerUsd || NaN);
+      return snap.vesPerUsd ? amount / snap.vesPerUsd : null;
     case "EUR": {
-      // EUR -> USD: (VES/EUR) / (VES/USD) = USD per EUR
       if (!snap.vesPerUsd || !snap.vesPerEur) return null;
-      const usdPerEur = snap.vesPerEur / snap.vesPerUsd;
-      return amount * usdPerEur;
+      return amount * (snap.vesPerEur / snap.vesPerUsd);
     }
     default:
       return null;
   }
 }
 
-// Historical rates cache (by YYYY-MM-DD)
-type HistoricalCache = Record<string, { vesPerUsd: number; vesPerEur: number; fetchedAt: string }>;
-const HIST_KEY = "pwi_exchange_rate_hist";
-
-function readHist(): HistoricalCache {
-  try {
-    const raw = localStorage.getItem(HIST_KEY);
-    return raw ? (JSON.parse(raw) as HistoricalCache) : {};
-  } catch {
-    return {};
-  }
-}
-function writeHist(map: HistoricalCache) {
-  try { localStorage.setItem(HIST_KEY, JSON.stringify(map)); } catch {}
-}
-
-export async function getRateByDate(dateISO: string): Promise<ExchangeSnapshot | null> {
-  const target = dateISO.slice(0, 10);
-  const hist = readHist();
-  const cached = hist[target];
-  if (cached) {
-    // Validate cached value against the official list for the exact target date.
-    // If the API returns a definitive value for the target date, refresh cache to avoid stale/mismatched entries.
-    try {
-      const url = `${BCV_API_URL}?date=${target}`;
-      const res = await fetch(url, { cache: "no-store" });
-      if (res.ok) {
-        const json = (await res.json()) as BcvResponse;
-        if (json && json.date === target && isFinite(json.usd_rate)) {
-          const snap: ExchangeSnapshot = {
-            vesPerUsd: Number(json.usd_rate),
-            vesPerEur: Number(json.eur_rate),
-            fetchedAt: new Date().toISOString(),
-            sourceDate: target,
-          };
-          hist[target] = { vesPerUsd: snap.vesPerUsd, vesPerEur: snap.vesPerEur, fetchedAt: snap.fetchedAt };
-          writeHist(hist);
-          return snap;
-        }
-      }
-    } catch {
-      // ignore network errors; fall back to cached
-    }
-    return {
-      vesPerUsd: cached.vesPerUsd,
-      vesPerEur: cached.vesPerEur,
-      fetchedAt: cached.fetchedAt,
-      sourceDate: target,
-    };
-  }
-
-  // Some dates (fines de semana/feriados) might not have a listed rate.
-  // Fallback: search backwards up to 7 days and use the most recent available.
-  const maxBack = 7;
-  const tryFetch = async (date: string) => {
-    const url = `${BCV_API_URL}?date=${date}`;
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return null;
-    const json = (await res.json()) as BcvResponse;
-    if (!json || !isFinite(json.usd_rate)) return null;
-    return { date: json.date, usd: Number(json.usd_rate), eur: Number(json.eur_rate) };
-  };
-
-  try {
-    // Walk back day-by-day
-    let found: { date: string; usd: number; eur: number } | null = null;
-    let d = new Date(target + 'T00:00:00Z');
-    for (let i = 0; i <= maxBack; i++) {
-      const iso = d.toISOString().slice(0, 10);
-      // Check hist for this specific date
-      const cachedAlt = hist[iso];
-      if (cachedAlt) {
-        found = { date: iso, usd: cachedAlt.vesPerUsd, eur: cachedAlt.vesPerEur };
-        break;
-      }
-      const got = await tryFetch(iso);
-      if (got) { found = got; break; }
-      // step back one day
-      d = new Date(d.getTime() - 24 * 60 * 60 * 1000);
-    }
-
-    if (!found) return null;
-
-    const snap: ExchangeSnapshot = {
-      vesPerUsd: found.usd,
-      vesPerEur: found.eur,
-      fetchedAt: new Date().toISOString(),
-      sourceDate: found.date, // actual source date (may be before target)
-    };
-    // Cache under both the found date and the original target date for quicker future lookups
-    hist[found.date] = { vesPerUsd: snap.vesPerUsd, vesPerEur: snap.vesPerEur, fetchedAt: snap.fetchedAt };
-    hist[target] = { vesPerUsd: snap.vesPerUsd, vesPerEur: snap.vesPerEur, fetchedAt: snap.fetchedAt };
-    writeHist(hist);
-    return snap;
-  } catch {
-    return null;
-  }
-}
-
-// Convert with optional historical date: if date provided, attempt historical rate; else use current snapshot
 export async function convertToUSDByDate(amount: number, currency: "USD" | "EUR" | "VES", dateISO?: string): Promise<number | null> {
   if (!isFinite(amount)) return null;
   if (currency === "USD") return amount;
-  let snap: ExchangeSnapshot | null = null;
-  if (dateISO) snap = await getRateByDate(dateISO);
-  if (!snap) snap = await getVESPerUsd();
+  const snap = dateISO ? await getRateByDate(dateISO) : await getRateByDate(new Date().toISOString().slice(0, 10));
   return convertToUSD(amount, currency, snap);
 }
