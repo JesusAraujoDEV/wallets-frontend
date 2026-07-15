@@ -3,9 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import CategoryMultiSelect from "@/components/CategoryMultiSelect";
 import AccountMultiSelect from "@/components/AccountMultiSelect";
 import type { Category, Account } from "@/lib/types";
@@ -25,6 +24,12 @@ export type TransactionFiltersProps = {
   accounts: Account[];
   onClear: () => void;
 };
+
+const DATE_MODE_OPTIONS = [
+  { value: "day", label: "Día exacto" },
+  { value: "range", label: "Rango" },
+  { value: "month", label: "Mes" },
+] as const;
 
 export const TransactionFilters = (props: TransactionFiltersProps) => {
   const {
@@ -46,187 +51,91 @@ export const TransactionFilters = (props: TransactionFiltersProps) => {
   const expenseCategoryOptions = useMemo(() => categories.filter(c => c.type === 'expense'), [categories]);
 
   return (
-    <div className="space-y-3">
-      {/* Compact top row for small screens */}
-      <div className="grid grid-cols-1 sm:hidden gap-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search transactions..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+    <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="space-y-1.5 sm:col-span-2 lg:col-span-2">
+          <Label htmlFor="tx-search">Buscar</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="tx-search"
+              placeholder="Descripción o categoría..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="tx-type">Tipo</Label>
           <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
+            <SelectTrigger id="tx-type" className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="income">Income</SelectItem>
-              <SelectItem value="expense">Expenses</SelectItem>
-            </SelectContent>
-          </Select>
-          <Collapsible>
-            <CollapsibleTrigger asChild>
-              <Button variant="outline" className="whitespace-nowrap">More Filters</Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3 space-y-3">
-              <CategoryMultiSelect
-                label="Categorías de Ingreso"
-                categories={incomeCategoryOptions}
-                selected={filterIncomeCategories}
-                onChange={setFilterIncomeCategories}
-                placeholder="Todas"
-              />
-              <CategoryMultiSelect
-                label="Categorías de Gasto"
-                categories={expenseCategoryOptions}
-                selected={filterExpenseCategories}
-                onChange={setFilterExpenseCategories}
-                placeholder="Todas"
-              />
-              <AccountMultiSelect
-                label="Accounts"
-                accounts={accounts}
-                selected={filterAccounts}
-                onChange={setFilterAccounts}
-                placeholder="All Accounts"
-              />
-              <div className="space-y-2">
-                <div className="space-y-2">
-                  <Label className="text-sm">Date filter</Label>
-                  <RadioGroup value={dateMode} onValueChange={(v: any) => setDateMode(v)} className="grid grid-cols-3 gap-2">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="day" id="dm-day-sm" />
-                      <Label htmlFor="dm-day-sm" className="text-sm">Exact day</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="range" id="dm-range-sm" />
-                      <Label htmlFor="dm-range-sm" className="text-sm">Range</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="month" id="dm-month-sm" />
-                      <Label htmlFor="dm-month-sm" className="text-sm">Month</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                {dateMode === 'day' && (
-                  <div className="flex items-center gap-2">
-                    <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-full" />
-                  </div>
-                )}
-                {dateMode === 'range' && (
-                  <div className="flex items-center gap-2">
-                    <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="w-full" placeholder="From" />
-                    <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="w-full" placeholder="To" />
-                  </div>
-                )}
-                {dateMode === 'month' && (
-                  <div className="flex items-center gap-2">
-                    <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-full" />
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" onClick={onClear}>Clear</Button>
-                </div>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
-      </div>
-
-      {/* Full filter bar for >= sm */}
-      <div className="hidden sm:grid items-end gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-8">
-        <div className="relative sm:col-span-2 lg:col-span-2">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search transactions..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <div className="lg:col-span-1">
-          <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="income">Income</SelectItem>
-              <SelectItem value="expense">Expenses</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="income">Ingresos</SelectItem>
+              <SelectItem value="expense">Gastos</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <div className="lg:col-span-1">
+        <div className="space-y-1.5">
           <CategoryMultiSelect
-            label="Categorías de Ingreso"
+            label="Categorías de ingreso"
             categories={incomeCategoryOptions}
             selected={filterIncomeCategories}
             onChange={setFilterIncomeCategories}
             placeholder="Todas"
           />
         </div>
-        <div className="lg:col-span-1">
+        <div className="space-y-1.5">
           <CategoryMultiSelect
-            label="Categorías de Gasto"
+            label="Categorías de gasto"
             categories={expenseCategoryOptions}
             selected={filterExpenseCategories}
             onChange={setFilterExpenseCategories}
             placeholder="Todas"
           />
         </div>
-        <div className="lg:col-span-1">
+        <div className="space-y-1.5">
           <AccountMultiSelect
-            label="Accounts"
+            label="Cuentas"
             accounts={accounts}
             selected={filterAccounts}
             onChange={setFilterAccounts}
-            placeholder="All Accounts"
+            placeholder="Todas las cuentas"
           />
         </div>
-        <div className="flex flex-col gap-2 lg:col-span-2">
-          <div className="flex items-center gap-4">
-            <Label className="text-sm">Date filter</Label>
-            <div className="flex items-center gap-4">
-              <RadioGroup value={dateMode} onValueChange={(v: any) => setDateMode(v)} className="grid grid-cols-3 gap-3">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="day" id="dm-day" />
-                  <Label htmlFor="dm-day" className="text-sm">Exact day</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="range" id="dm-range" />
-                  <Label htmlFor="dm-range" className="text-sm">Range</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="month" id="dm-month" />
-                  <Label htmlFor="dm-month" className="text-sm">Month</Label>
-                </div>
-              </RadioGroup>
-            </div>
-          </div>
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div className="space-y-1.5">
+          <Label>Filtrar por fecha</Label>
+          <RadioGroup value={dateMode} onValueChange={(v: any) => setDateMode(v)} className="flex flex-wrap gap-4">
+            {DATE_MODE_OPTIONS.map((opt) => (
+              <div key={opt.value} className="flex items-center space-x-2">
+                <RadioGroupItem value={opt.value} id={`dm-${opt.value}`} />
+                <Label htmlFor={`dm-${opt.value}`} className="text-sm font-normal cursor-pointer">{opt.label}</Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-3">
           {dateMode === 'day' && (
-            <div className="flex items-center gap-2">
-              <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-full" />
-            </div>
+            <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-auto" />
           )}
           {dateMode === 'range' && (
-            <div className="flex items-center gap-2">
-              <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="w-full" placeholder="From" />
-              <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="w-full" placeholder="To" />
-            </div>
+            <>
+              <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="w-auto" aria-label="Desde" />
+              <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="w-auto" aria-label="Hasta" />
+            </>
           )}
           {dateMode === 'month' && (
-            <div className="flex items-center gap-2">
-              <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-full" />
-            </div>
+            <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-auto" />
           )}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={onClear}>Clear</Button>
-          </div>
+          <Button variant="ghost" size="sm" onClick={onClear} className="gap-1.5 text-muted-foreground">
+            <X className="h-3.5 w-3.5" />
+            Limpiar filtros
+          </Button>
         </div>
       </div>
     </div>

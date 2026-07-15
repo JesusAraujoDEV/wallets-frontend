@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Calendar as CalendarIcon, Loader2, Plus, Download } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Loader2, Plus, Download } from "lucide-react";
 import * as Icons from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
@@ -13,10 +13,7 @@ import { apiFetch, buildApiUrl } from "@/lib/http";
 import { convertToUSDByDate, getRateByDate } from "@/lib/rates";
 import type { Transaction, Category, Account } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
+import { DatePickerField } from "@/components/DatePickerField";
 import dayjs from 'dayjs';
 import { cn, isBalanceAdjustmentCategory } from "@/lib/utils";
 import { TransactionForm } from "@/components/TransactionForm";
@@ -312,25 +309,25 @@ export const TransactionsList = () => {
       <CardHeader>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <CardTitle>Transaction Log</CardTitle>
-            <CardDescription>View and filter your daily transactions</CardDescription>
+            <CardTitle>Registro de transacciones</CardTitle>
+            <CardDescription>Visualiza y filtra tus movimientos diarios</CardDescription>
           </div>
           <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:justify-between sm:gap-4">
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
               <Button onClick={() => setIsAddOpen(true)} className="w-full gap-2 sm:w-auto">
                 <Plus className="h-4 w-4" />
-                New Transaction
+                Nueva transacción
               </Button>
               <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
                 <DialogHeader>
-                  <DialogTitle>Add Transaction</DialogTitle>
+                  <DialogTitle>Agregar transacción</DialogTitle>
                 </DialogHeader>
                 <TransactionForm asModalContent onSubmitted={async () => { setIsAddOpen(false); await refetch(); }} />
               </DialogContent>
             </Dialog>
             <Button variant="outline" className="w-full gap-2 sm:w-auto" onClick={() => setIsExportOpen(true)}>
               <Download className="h-4 w-4" />
-              Download Transfers
+              Descargar transferencias
             </Button>
           </div>
         </div>
@@ -469,44 +466,22 @@ export const TransactionsList = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
           <DialogHeader>
-            <DialogTitle>Edit Transaction</DialogTitle>
+            <DialogTitle>Editar transacción</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdate} className="space-y-4">
             <div className="space-y-2">
-              <Label>Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                    <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                    )}
-                    type="button"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.date ? dayjs(formData.date).format('YYYY-MM-DD') : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" align="start">
-                  <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <DateCalendar
-                      value={formData.date ? dayjs(formData.date) : null}
-                      onChange={(d:any) => {
-                        if (d) {
-                          const iso = d.format('YYYY-MM-DD');
-                          setFormData({ ...formData, date: iso });
-                        }
-                      }}
-                    />
-                  </LocalizationProvider>
-                </PopoverContent>
-              </Popover>
+              <Label htmlFor="edit-date">Fecha</Label>
+              <DatePickerField
+                id="edit-date"
+                value={formData.date}
+                onChange={(iso) => setFormData({ ...formData, date: iso })}
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="account">Account</Label>
+              <Label htmlFor="account">Cuenta</Label>
               <Select value={formData.accountId} onValueChange={(v) => setFormData({ ...formData, accountId: v })}>
                 <SelectTrigger id="account">
-                  <SelectValue placeholder="Select account" />
+                  <SelectValue placeholder="Selecciona una cuenta" />
                 </SelectTrigger>
                 <SelectContent>
                   {accountsOptions.map(acc => (
@@ -517,7 +492,7 @@ export const TransactionsList = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="type">Type</Label>
+                <Label htmlFor="type">Tipo</Label>
                 <Select value={formData.type} onValueChange={(v: any) => {
                   const nextType = v as 'income' | 'expense';
                   // If current category doesn't match new type, clear it
@@ -529,13 +504,13 @@ export const TransactionsList = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="income">Income</SelectItem>
-                    <SelectItem value="expense">Expense</SelectItem>
+                    <SelectItem value="income">Ingreso</SelectItem>
+                    <SelectItem value="expense">Gasto</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="amount">Amount</Label>
+                <Label htmlFor="amount">Monto</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -547,10 +522,10 @@ export const TransactionsList = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">Categoría</Label>
                 <Select value={formData.categoryId} onValueChange={(v) => setFormData({ ...formData, categoryId: v })}>
                 <SelectTrigger id="category">
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder="Selecciona una categoría" />
                 </SelectTrigger>
                 <SelectContent>
                   {editCategories.map(cat => (
@@ -560,24 +535,24 @@ export const TransactionsList = () => {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Descripción</Label>
               <Input
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Add a note..."
+                placeholder="Agrega una nota..."
               />
             </div>
             <div className="flex gap-2 pt-2">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)} disabled={saving}>Cancel</Button>
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)} disabled={saving}>Cancelar</Button>
               <Button type="submit" className="flex-1" disabled={saving} aria-busy={saving}>
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
+                    Guardando...
                   </>
                 ) : (
-                  'Save'
+                  'Guardar'
                 )}
               </Button>
             </div>

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { RateCurrentCards } from "@/components/RateCurrentCards";
 import { RateHistoryChart } from "@/components/RateHistoryChart";
 import { RateHistoryTable } from "@/components/RateHistoryTable";
+import { CurrencyToggle } from "@/components/CurrencyToggle";
 import { useCurrentExchangeRate, useExchangeRateHistory } from "@/lib/rates";
 
 const RANGE_OPTIONS = [
@@ -28,9 +29,15 @@ export default function Rates() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Tasas de Cambio</h1>
-        <p className="text-sm text-muted-foreground">Dólar y Euro oficiales (BCV), con histórico diario.</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Tasas de Cambio</h1>
+          <p className="text-sm text-muted-foreground">Dólar, Euro y USDT oficiales, con histórico diario.</p>
+        </div>
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">Mostrar equivalencias en</p>
+          <CurrencyToggle />
+        </div>
       </div>
 
       <RateCurrentCards rate={current.data} loading={current.isLoading} />

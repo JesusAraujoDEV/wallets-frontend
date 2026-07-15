@@ -2,13 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
-import dayjs from "dayjs";
-import { Calendar as CalendarIcon, PlusCircle, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { DatePickerField } from "@/components/DatePickerField";
+import { PlusCircle, Loader2 } from "lucide-react";
 import { AccountOption } from "./AccountOption";
 import { TransferArbitrageSummary } from "./TransferArbitrageSummary";
 import { useTransferForm } from "./useTransferForm";
@@ -50,12 +45,12 @@ export function TransferForm({ accounts, rate, onSubmitted }: {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="transferAmount">Amount</Label>
+          <div className="flex min-h-10 items-end"><Label htmlFor="transferAmount">Amount</Label></div>
           <Input id="transferAmount" type="number" step="0.01" placeholder="0.00" value={f.transferAmount} onChange={(e) => f.setTransferAmount(e.target.value)} required />
         </div>
         {f.hasDifferentCurrencies && (
           <div className="space-y-2">
-            <Label htmlFor="destinationAmount">Destination amount</Label>
+            <div className="flex min-h-10 items-end"><Label htmlFor="destinationAmount">Destination amount</Label></div>
             <Input
               id="destinationAmount" type="number" step="0.01" placeholder="0.00" value={f.destinationAmount}
               onChange={(e) => { f.setDestinationEdited(true); f.setDestinationAmount(e.target.value); }}
@@ -70,24 +65,12 @@ export function TransferForm({ accounts, rate, onSubmitted }: {
           </div>
         )}
         <div className="space-y-2">
-          <Label htmlFor="commission">Commission (optional)</Label>
+          <div className="flex min-h-10 items-end"><Label htmlFor="commission">Commission (optional)</Label></div>
           <Input id="commission" type="number" step="0.01" placeholder="0.00" value={f.commission} onChange={(e) => f.setCommission(e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-full justify-start text-left font-normal")} type="button">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {f.transferDate ? dayjs(f.transferDate).format("YYYY-MM-DD") : <span>Pick a date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-2" align="start">
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DateCalendar value={f.transferDate ? dayjs(f.transferDate) : null} onChange={(d: any) => { if (d) f.setTransferDate(d.format("YYYY-MM-DD")); }} />
-              </LocalizationProvider>
-            </PopoverContent>
-          </Popover>
+          <div className="flex min-h-10 items-end"><Label htmlFor="transferDate">Date</Label></div>
+          <DatePickerField id="transferDate" value={f.transferDate} onChange={f.setTransferDate} />
         </div>
       </div>
       <div className="space-y-2">
