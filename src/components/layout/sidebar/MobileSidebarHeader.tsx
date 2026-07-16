@@ -41,7 +41,7 @@ export function MobileSidebarHeader({ items, pendingCount, mobileOpen, setMobile
               <SheetTitle>Platica</SheetTitle>
               <SheetDescription>{t("sidebar.mobileDescription")}</SheetDescription>
             </SheetHeader>
-            <div className="flex-1 px-4 py-6">
+            <div className="flex-1 overflow-y-auto px-4 py-6">
               <SidebarNav items={items} onNavigate={() => setMobileOpen(false)} />
             </div>
             <div className="border-t border-border p-4 space-y-2">
