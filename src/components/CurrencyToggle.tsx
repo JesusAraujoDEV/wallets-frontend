@@ -1,7 +1,11 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { DISPLAY_CURRENCIES, useDisplayCurrency } from "@/lib/displayCurrency";
 
+const LABEL_KEYS: Record<string, string> = { USD: "rates.usd", EUR: "rates.eur", USDT: "rates.usdt" };
+
 export function CurrencyToggle({ className }: { className?: string }) {
+  const { t } = useTranslation();
   const [value, setValue] = useDisplayCurrency();
 
   return (
@@ -17,7 +21,7 @@ export function CurrencyToggle({ className }: { className?: string }) {
           )}
           aria-pressed={value === c.value}
         >
-          {c.symbol} {c.label}
+          {c.symbol} {t(LABEL_KEYS[c.value])}
         </button>
       ))}
     </div>

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -25,13 +26,8 @@ export type TransactionFiltersProps = {
   onClear: () => void;
 };
 
-const DATE_MODE_OPTIONS = [
-  { value: "day", label: "Día exacto" },
-  { value: "range", label: "Rango" },
-  { value: "month", label: "Mes" },
-] as const;
-
 export const TransactionFilters = (props: TransactionFiltersProps) => {
+  const { t } = useTranslation();
   const {
     searchQuery, setSearchQuery,
     filterType, setFilterType,
@@ -49,17 +45,22 @@ export const TransactionFilters = (props: TransactionFiltersProps) => {
 
   const incomeCategoryOptions = useMemo(() => categories.filter(c => c.type === 'income'), [categories]);
   const expenseCategoryOptions = useMemo(() => categories.filter(c => c.type === 'expense'), [categories]);
+  const dateModeOptions = [
+    { value: "day", label: t("filters.exactDay") },
+    { value: "range", label: t("filters.range") },
+    { value: "month", label: t("filters.month") },
+  ] as const;
 
   return (
     <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <div className="space-y-1.5 sm:col-span-2 lg:col-span-2">
-          <Label htmlFor="tx-search">Buscar</Label>
+          <Label htmlFor="tx-search">{t("filters.search")}</Label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="tx-search"
-              placeholder="Descripción o categoría..."
+              placeholder={t("filters.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -67,50 +68,50 @@ export const TransactionFilters = (props: TransactionFiltersProps) => {
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="tx-type">Tipo</Label>
+          <Label htmlFor="tx-type">{t("filters.type")}</Label>
           <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
             <SelectTrigger id="tx-type" className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="income">Ingresos</SelectItem>
-              <SelectItem value="expense">Gastos</SelectItem>
+              <SelectItem value="all">{t("filters.all")}</SelectItem>
+              <SelectItem value="income">{t("filters.income")}</SelectItem>
+              <SelectItem value="expense">{t("filters.expense")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1.5">
           <CategoryMultiSelect
-            label="Categorías de ingreso"
+            label={t("filters.incomeCategories")}
             categories={incomeCategoryOptions}
             selected={filterIncomeCategories}
             onChange={setFilterIncomeCategories}
-            placeholder="Todas"
+            placeholder={t("filters.allCategories")}
           />
         </div>
         <div className="space-y-1.5">
           <CategoryMultiSelect
-            label="Categorías de gasto"
+            label={t("filters.expenseCategories")}
             categories={expenseCategoryOptions}
             selected={filterExpenseCategories}
             onChange={setFilterExpenseCategories}
-            placeholder="Todas"
+            placeholder={t("filters.allCategories")}
           />
         </div>
         <div className="space-y-1.5">
           <AccountMultiSelect
-            label="Cuentas"
+            label={t("filters.accounts")}
             accounts={accounts}
             selected={filterAccounts}
             onChange={setFilterAccounts}
-            placeholder="Todas las cuentas"
+            placeholder={t("filters.allAccounts")}
           />
         </div>
       </div>
 
       <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div className="space-y-1.5">
-          <Label>Filtrar por fecha</Label>
+          <Label>{t("filters.filterByDate")}</Label>
           <RadioGroup value={dateMode} onValueChange={(v: any) => setDateMode(v)} className="flex flex-wrap gap-4">
-            {DATE_MODE_OPTIONS.map((opt) => (
+            {dateModeOptions.map((opt) => (
               <div key={opt.value} className="flex items-center space-x-2">
                 <RadioGroupItem value={opt.value} id={`dm-${opt.value}`} />
                 <Label htmlFor={`dm-${opt.value}`} className="text-sm font-normal cursor-pointer">{opt.label}</Label>
@@ -134,7 +135,7 @@ export const TransactionFilters = (props: TransactionFiltersProps) => {
           )}
           <Button variant="ghost" size="sm" onClick={onClear} className="gap-1.5 text-muted-foreground">
             <X className="h-3.5 w-3.5" />
-            Limpiar filtros
+            {t("filters.clearFilters")}
           </Button>
         </div>
       </div>

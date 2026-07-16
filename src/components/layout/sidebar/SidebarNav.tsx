@@ -1,9 +1,11 @@
 import { NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { NavigationItem } from "./types";
 
 export function SidebarNav({ items, onNavigate }: { items: NavigationItem[]; onNavigate?: () => void }) {
+  const { t } = useTranslation();
   return (
     <nav className="flex flex-col gap-2">
       {items.map((item) => {
@@ -23,7 +25,7 @@ export function SidebarNav({ items, onNavigate }: { items: NavigationItem[]; onN
             }
           >
             <Icon className="h-4 w-4 shrink-0" />
-            <span className="truncate">{item.label}</span>
+            <span className="truncate">{t(item.labelKey)}</span>
             {item.badgeCount && item.badgeCount > 0 ? (
               <Badge variant="destructive" className="ml-auto min-w-5 justify-center px-1.5 py-0 text-[10px]">
                 {item.badgeCount}

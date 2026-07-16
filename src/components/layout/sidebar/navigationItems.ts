@@ -15,16 +15,16 @@ import type { NavigationItem } from "./types";
 
 export function buildNavigationItems(pendingCount: number): NavigationItem[] {
   return [
-    { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-    { to: "/transactions", label: "Transacciones", icon: ReceiptText },
-    { to: "/subscriptions", label: "Suscripciones", icon: Repeat, badgeCount: pendingCount },
-    { to: "/budgets", label: "Presupuestos", icon: PiggyBank },
-    { to: "/debts", label: "Deudas", icon: Handshake },
-    { to: "/rates", label: "Tasas", icon: TrendingUp },
-    { to: "/calendar", label: "Calendario", icon: CalendarDays },
-    { to: "/categories", label: "Categorías", icon: Tags },
-    { to: "/category-groups", label: "Grupos", icon: Layers },
-    { to: "/accounts", label: "Cuentas", icon: WalletCards },
-    { to: "/profile", label: "Perfil", icon: UserCircle2 },
+    { to: "/", labelKey: "nav.dashboard", icon: LayoutDashboard, end: true },
+    { to: "/transactions", labelKey: "nav.transactions", icon: ReceiptText },
+    { to: "/subscriptions", labelKey: "nav.subscriptions", icon: Repeat, badgeCount: pendingCount },
+    { to: "/budgets", labelKey: "nav.budgets", icon: PiggyBank },
+    { to: "/debts", labelKey: "nav.debts", icon: Handshake },
+    { to: "/rates", labelKey: "nav.rates", icon: TrendingUp },
+    { to: "/calendar", labelKey: "nav.calendar", icon: CalendarDays },
+    { to: "/categories", labelKey: "nav.categories", icon: Tags },
+    { to: "/category-groups", labelKey: "nav.categoryGroups", icon: Layers },
+    { to: "/accounts", labelKey: "nav.accounts", icon: WalletCards },
+    { to: "/profile", labelKey: "nav.profile", icon: UserCircle2 },
   ];
 }

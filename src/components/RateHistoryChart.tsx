@@ -1,11 +1,13 @@
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import type { ExchangeRate } from "@/lib/rates";
 
 export function RateHistoryChart({ data, loading }: { data: ExchangeRate[]; loading: boolean }) {
+  const { t } = useTranslation();
   return (
     <Card className="p-6 shadow-md border-0">
-      <h3 className="text-xl font-semibold text-foreground mb-4">Histórico de tasas BCV</h3>
+      <h3 className="text-xl font-semibold text-foreground mb-4">{t("rates.historyTitle")}</h3>
       <ResponsiveContainer width="100%" height={320}>
         <LineChart data={loading ? [] : data}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -14,7 +16,7 @@ export function RateHistoryChart({ data, loading }: { data: ExchangeRate[]; load
           <Tooltip
             contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "var(--radius)" }}
             formatter={(value: number, name: string) => [`Bs. ${Number(value).toFixed(2)}`, name === "usdRate" ? "USD" : name === "eurRate" ? "EUR" : "USDT"]}
-            labelFormatter={(label) => `Fecha: ${label}`}
+            labelFormatter={(label) => `${t("rates.date")}: ${label}`}
           />
           <Legend formatter={(name) => (name === "usdRate" ? "USD" : name === "eurRate" ? "EUR" : "USDT")} />
           <Line type="monotone" dataKey="usdRate" stroke="#10b981" strokeWidth={2} dot={false} />

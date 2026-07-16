@@ -1,5 +1,5 @@
 // Centralized HTTP client for Wallets API
-// Uses VITE_BACKEND_URL (expects something like "http://localhost:3001/") and appends "api/" prefix.
+// Uses VITE_BACKEND_URL (expects something like "http://localhost:4001/") and appends "api/" prefix.
 
 // IMPORTANT: Use direct import.meta.env access so Vite can statically replace it at build time
 const BASE_RAW = import.meta.env.VITE_BACKEND_URL || "/";

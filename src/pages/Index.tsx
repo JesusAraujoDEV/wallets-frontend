@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { DashboardStats } from "@/components/DashboardStats";
 import { EmptyDashboardState } from "@/components/EmptyDashboardState";
 import { useVESExchangeRate } from "@/lib/rates";
@@ -12,6 +13,7 @@ import { DashboardFiltersSection } from "./dashboard/DashboardFiltersSection";
 import { DashboardChartsGrid } from "./dashboard/DashboardChartsGrid";
 
 const Index = () => {
+  const { t } = useTranslation();
   const { accounts, categories, transactions, authUser, groups } = useDashboardData();
   const { selectedAccount, setSelectedAccount, selectedGroupId, setSelectedGroupId, selectedGroupNumber } = useDashboardScope();
   const { rate } = useVESExchangeRate();
@@ -46,8 +48,8 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-foreground">{authUser?.username ? `${authUser.username} Dashboard` : "Dashboard"}</h1>
-          <p className="text-muted-foreground mt-1">Track your finances with clarity</p>
+          <h1 className="text-3xl font-bold text-foreground">{authUser?.username ? t("dashboard.greeting", { name: authUser.username }) : t("dashboard.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("dashboard.subtitle")}</p>
         </div>
       </header>
 

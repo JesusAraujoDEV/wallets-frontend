@@ -1,8 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ExchangeRate } from "@/lib/rates";
 
 export function RateHistoryTable({ data }: { data: ExchangeRate[] }) {
+  const { t } = useTranslation();
   const rows = [...data].reverse(); // most recent first
 
   return (
@@ -11,7 +13,7 @@ export function RateHistoryTable({ data }: { data: ExchangeRate[] }) {
         <Table>
           <TableHeader className="sticky top-0 bg-card">
             <TableRow>
-              <TableHead>Fecha</TableHead>
+              <TableHead>{t("rates.date")}</TableHead>
               <TableHead className="text-right">USD</TableHead>
               <TableHead className="text-right">EUR</TableHead>
               <TableHead className="text-right">USDT</TableHead>
@@ -27,7 +29,7 @@ export function RateHistoryTable({ data }: { data: ExchangeRate[] }) {
               </TableRow>
             ))}
             {rows.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Sin datos para el rango seleccionado.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">{t("rates.noData")}</TableCell></TableRow>
             ) : null}
           </TableBody>
         </Table>

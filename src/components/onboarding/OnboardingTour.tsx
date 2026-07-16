@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "framer-motion";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ export function OnboardingTour({ open, onOpenChange, onFinish }: {
   onOpenChange: (open: boolean) => void;
   onFinish: () => void;
 }) {
+  const { t } = useTranslation();
   const [stepIndex, setStepIndex] = useState(0);
   const step = ONBOARDING_STEPS[stepIndex];
   const isLast = stepIndex === ONBOARDING_STEPS.length - 1;
@@ -26,7 +28,7 @@ export function OnboardingTour({ open, onOpenChange, onFinish }: {
       <DialogContent className="max-w-md overflow-hidden rounded-2xl p-0">
         <button
           onClick={handleClose}
-          aria-label="Cerrar recorrido"
+          aria-label={t("onboarding.closeAria")}
           className="absolute right-4 top-4 z-10 text-muted-foreground transition-colors hover:text-foreground"
         >
           <X className="h-4 w-4" />
@@ -45,8 +47,8 @@ export function OnboardingTour({ open, onOpenChange, onFinish }: {
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
                 {step.icon}
               </div>
-              <h2 className="text-xl font-semibold text-foreground">{step.title}</h2>
-              <p className="text-sm text-muted-foreground">{step.description}</p>
+              <h2 className="text-xl font-semibold text-foreground">{t(step.titleKey)}</h2>
+              <p className="text-sm text-muted-foreground">{t(step.descriptionKey)}</p>
             </motion.div>
           </AnimatePresence>
 
@@ -69,15 +71,15 @@ export function OnboardingTour({ open, onOpenChange, onFinish }: {
               onClick={() => setStepIndex((i) => i - 1)}
               className={cn("gap-1", stepIndex === 0 && "invisible")}
             >
-              <ArrowLeft className="h-4 w-4" /> Atrás
+              <ArrowLeft className="h-4 w-4" /> {t("onboarding.back")}
             </Button>
             {isLast ? (
               <Button size="sm" onClick={handleClose} className="gap-1">
-                Empezar
+                {t("onboarding.start")}
               </Button>
             ) : (
               <Button size="sm" onClick={() => setStepIndex((i) => i + 1)} className="gap-1">
-                Siguiente <ArrowRight className="h-4 w-4" />
+                {t("onboarding.next")} <ArrowRight className="h-4 w-4" />
               </Button>
             )}
           </div>
