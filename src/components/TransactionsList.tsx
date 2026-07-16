@@ -1,171 +1,63 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { ArrowUpCircle, ArrowDownCircle, Search, Pencil, Trash2, Loader2, Plus, Download } from "lucide-react";
-import * as Icons from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Download } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
-import { apiFetch, buildApiUrl } from "@/lib/http";
-import { convertToUSDByDate, getRateByDate } from "@/lib/rates";
-import type { Transaction, Category, Account } from "@/lib/types";
+import type { Category, Account } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
-import { DatePickerField } from "@/components/DatePickerField";
-import dayjs from 'dayjs';
-import { cn, isBalanceAdjustmentCategory } from "@/lib/utils";
 import { TransactionForm } from "@/components/TransactionForm";
-import { exportTransactionsFromData, exportAllTransactions } from "@/lib/exports";
-import CategoryMultiSelect from "@/components/CategoryMultiSelect";
-import AccountMultiSelect from "@/components/AccountMultiSelect";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { TransactionFilters } from "@/components/TransactionFilters";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { TxAmount } from "@/components/TxAmount";
 import { TransactionsDeleteConfirm } from "@/components/TransactionsDeleteConfirm";
-import { buildTransactionsQuery, mapServerTransaction, PAGE_SIZE_DEFAULT } from "@/lib/transactions";
+import { PAGE_SIZE_DEFAULT } from "@/lib/transactions";
 import { useTransactionsQuery } from "@/hooks/use-transactions-query";
+import { useTransactionFiltersState } from "./transactions-list/useTransactionFiltersState";
+import { useGroupedTransactions } from "./transactions-list/useGroupedTransactions";
+import { useDailyRates } from "./transactions-list/useDailyRates";
+import { useDailyTotals } from "./transactions-list/useDailyTotals";
+import { useTransactionEditForm } from "./transactions-list/useTransactionEditForm";
+import { useTransactionExport } from "./transactions-list/useTransactionExport";
+import { TransactionGroupList } from "./transactions-list/TransactionGroupList";
+import { TransactionEditDialog } from "./transactions-list/TransactionEditDialog";
+import { TransactionExportDialog } from "./transactions-list/TransactionExportDialog";
 
 export const TransactionsList = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
-  const [filterIncomeCategories, setFilterIncomeCategories] = useState<string[]>([]);
-  const [filterExpenseCategories, setFilterExpenseCategories] = useState<string[]>([]);
-  const [filterAccounts, setFilterAccounts] = useState<string[]>([]);
-  const [filterDate, setFilterDate] = useState<string>(""); // YYYY-MM-DD (Exact day)
-  const [filterDateFrom, setFilterDateFrom] = useState<string>(""); // YYYY-MM-DD (Range from)
-  const [filterDateTo, setFilterDateTo] = useState<string>(""); // YYYY-MM-DD (Range to)
-  const [filterMonth, setFilterMonth] = useState<string>(""); // YYYY-MM (Month)
-  const [dateMode, setDateMode] = useState<"none" | "day" | "range" | "month">("none");
-  // Filters pack for the query hook
-  const filtersPack = {
-    searchQuery,
-    filterType,
-    filterIncomeCategories,
-    filterExpenseCategories,
-    filterAccounts,
-    dateMode,
-    filterDate,
-    filterDateFrom,
-    filterDateTo,
-    filterMonth,
-  };
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isExportOpen, setIsExportOpen] = useState(false);
-  const [exporting, setExporting] = useState<false | "pdf" | "xlsx">(false);
-  const [exportAll, setExportAll] = useState(false);
-  const [advOpen, setAdvOpen] = useState(false);
-  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
-  const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    accountId: "",
-    type: "expense" as "income" | "expense",
-    amount: "",
-    categoryId: "",
-    description: "",
-    date: "",
-  });
-  const [vesRateByDate, setVesRateByDate] = useState<Record<string, number | null>>({});
-  const [groupTotals, setGroupTotals] = useState<Record<string, { income: number; expenses: number; balance: number }>>({});
-  const PAGE_SIZE = PAGE_SIZE_DEFAULT;
+  const [isAddOpen, setIsAddOpen] = useState(false);
 
+  const filters = useTransactionFiltersState();
   const { transactions, rawItems, pageLoading, hasMore, fetchNextPage, refetch, firstReloadTick } = useTransactionsQuery({
-    filters: filtersPack,
-    pageSize: PAGE_SIZE,
+    filters: filters.filtersPack, pageSize: PAGE_SIZE_DEFAULT,
   });
 
   useEffect(() => {
-    const load = () => {
-      // Keep categories and accounts reactive from the store
-      setCategories(CategoriesStore.all());
-      setAccounts(AccountsStore.all());
-    };
+    const load = () => { setCategories(CategoriesStore.all()); setAccounts(AccountsStore.all()); };
     load();
-    const off = onDataChange(load);
-    return off;
+    return onDataChange(load);
   }, []);
 
-  // Fetch logic now handled by useTransactionsQuery
-
   useEffect(() => {
-    // Ensure base datasets are available
     AccountsStore.refresh().catch(() => {});
     CategoriesStore.refresh().catch(() => {});
-    // Do not call TransactionsStore.refresh here to avoid loading the entire dataset
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  
-  // Reset computed caches (rates/totals) when first page is (re)loaded by the hook
-  useEffect(() => {
-    setVesRateByDate({});
-    setGroupTotals({});
-  }, [firstReloadTick]);
-  const categoriesOptions = useMemo(() => categories, [categories]);
-  const incomeCategoryOptions = useMemo(() => categories.filter(c => c.type === 'income'), [categories]);
-  const expenseCategoryOptions = useMemo(() => categories.filter(c => c.type === 'expense'), [categories]);
-  const accountsOptions = useMemo(() => accounts, [accounts]);
-  const editCategories = useMemo(() => categories.filter(c => c.type === formData.type), [categories, formData.type]);
-  
-  // Keep category selections consistent with type
-  useEffect(() => {
-    if (filterType === 'income' && filterExpenseCategories.length) {
-      setFilterExpenseCategories([]);
-    } else if (filterType === 'expense' && filterIncomeCategories.length) {
-      setFilterIncomeCategories([]);
-    }
-  }, [filterType]);
 
-  // No manual refresh; list reacts automatically to filter changes
+  const { filteredTransactions, groupedTransactions } = useGroupedTransactions(transactions, filters.filterType, filters.isAnyFilterActive, categories);
+  const dates = useMemo(() => Object.keys(groupedTransactions), [groupedTransactions]);
+  const vesRateByDate = useDailyRates(dates, firstReloadTick);
+  const groupTotals = useDailyTotals(groupedTransactions, categories, vesRateByDate, firstReloadTick);
 
-  const handleClearFilters = () => {
-    setSearchQuery("");
-    setFilterType("all");
-    setFilterIncomeCategories([]);
-  setFilterExpenseCategories([]);
-    setFilterAccounts([]);
-    setFilterDate("");
-    setFilterDateFrom("");
-    setFilterDateTo("");
-    setFilterMonth("");
-    setDateMode("none");
-  };
-
-  const handleEdit = (tx: Transaction) => {
-    setEditingTx(tx);
-    setFormData({
-      accountId: tx.accountId,
-      type: tx.type,
-      amount: tx.amount.toString(),
-      categoryId: tx.categoryId,
-      description: tx.description,
-      date: tx.date,
-    });
-    setIsDialogOpen(true);
-  };
+  const editForm = useTransactionEditForm(refetch);
+  const exportState = useTransactionExport({ filtersPack: filters.filtersPack, rawItems });
+  const editCategories = useMemo(() => categories.filter(c => c.type === editForm.formData.type), [categories, editForm.formData.type]);
 
   const handleDelete = async (id: string) => {
     try {
       setDeletingId(id);
       await TransactionsStore.remove(id);
-      // Reload first page to keep pagination consistent
       await refetch();
       toast({ title: "Transaction Deleted", description: "The transaction has been removed." });
     } finally {
@@ -173,136 +65,8 @@ export const TransactionsList = () => {
     }
   };
 
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingTx) return;
-    if (!formData.accountId || !formData.categoryId || !formData.amount) {
-      toast({ title: "Missing Information", description: "Please complete all required fields.", variant: "destructive" });
-      return;
-    }
-    const next: Transaction = {
-      ...editingTx,
-      accountId: formData.accountId,
-      type: formData.type,
-      amount: parseFloat(formData.amount),
-      categoryId: formData.categoryId,
-      description: formData.description,
-      date: formData.date || editingTx.date,
-    };
-    try {
-      setSaving(true);
-  await TransactionsStore.update(next);
-  await refetch();
-      setIsDialogOpen(false);
-      setEditingTx(null);
-      toast({ title: "Transaction Updated", description: "Your changes have been saved." });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Track if any filter is active to optionally hide Balance Adjustment entries from the visible list
-  const isAnyFilterActive = useMemo(() => {
-    return Boolean(
-      (searchQuery && searchQuery.trim()) ||
-      filterType !== 'all' ||
-      filterIncomeCategories.length ||
-      filterExpenseCategories.length ||
-      filterAccounts.length ||
-      (dateMode === 'day' && filterDate) ||
-      (dateMode === 'range' && (filterDateFrom || filterDateTo)) ||
-      (dateMode === 'month' && filterMonth)
-    );
-  }, [searchQuery, filterType, filterIncomeCategories, filterExpenseCategories, filterAccounts, dateMode, filterDate, filterDateFrom, filterDateTo, filterMonth]);
-
-  // Apply a defensive client-side filter by type and exclude balance adjustments when any filter is active
-  const filteredTransactions = useMemo(() => {
-    const byType = filterType === 'all' ? transactions : transactions.filter(t => t.type === filterType);
-    if (!isAnyFilterActive) return byType;
-    return byType.filter(t => {
-      const cat = categories.find(c => c.id === t.categoryId);
-      return !isBalanceAdjustmentCategory(cat?.name);
-    });
-  }, [transactions, filterType, isAnyFilterActive, categories]);
-
-  // Always sort by date DESC (YYYY-MM-DD) to ensure correct grouping order regardless of insertion
-  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
-    const ad = String(a.date || '').slice(0, 10);
-    const bd = String(b.date || '').slice(0, 10);
-    if (ad === bd) {
-      // Secondary sort: try by numeric id desc if both look numeric, else string desc
-      const an = Number(a.id);
-      const bn = Number(b.id);
-      if (!Number.isNaN(an) && !Number.isNaN(bn)) return bn - an;
-      return String(b.id).localeCompare(String(a.id));
-    }
-    return bd.localeCompare(ad);
-  });
-
-  // Group by date
-  const groupedTransactions = sortedTransactions.reduce((groups, transaction) => {
-    const dateKey = transaction.date ? String(transaction.date).slice(0, 10) : '';
-    if (!groups[dateKey]) {
-      groups[dateKey] = [];
-    }
-    groups[dateKey].push(transaction);
-    return groups;
-  }, {} as Record<string, Transaction[]>);
-
-  // Fetch VES/USD rate per date group (cached by localStorage in getRateByDate)
-  useEffect(() => {
-    const dates = Object.keys(groupedTransactions);
-    if (dates.length === 0) return;
-    let mounted = true;
-    (async () => {
-      const updates: Record<string, number | null> = {};
-      await Promise.all(dates.map(async (d) => {
-        if (vesRateByDate[d] !== undefined) return; // already have
-        const snap = await getRateByDate(d);
-        updates[d] = snap?.vesPerUsd ?? null;
-      }));
-      if (mounted && Object.keys(updates).length > 0) {
-        setVesRateByDate(prev => ({ ...prev, ...updates }));
-      }
-    })();
-    return () => { mounted = false; };
-  }, [groupedTransactions, vesRateByDate]);
-
-  // Compute per-day totals (USD) for income/expenses.
-  // Prefer server-provided amountUsd (and exchangeRateUsed) to ensure consistency with backend;
-  // fallback to client historical conversion when not available.
-  useEffect(() => {
-    const dates = Object.keys(groupedTransactions);
-    if (dates.length === 0) return;
-    let mounted = true;
-    (async () => {
-      const updates: Record<string, { income: number; expenses: number; balance: number }> = {};
-      await Promise.all(dates.map(async (d) => {
-        if (groupTotals[d] !== undefined) return; // already computed
-        // Exclude balance adjustment categories from daily totals
-        const txs = groupedTransactions[d].filter(tx => {
-          const cat = categories.find(c => c.id === tx.categoryId);
-          return !isBalanceAdjustmentCategory(cat?.name);
-        });
-        const usdValues = await Promise.all(txs.map(async (tx) => {
-          if (tx.amountUsd != null) {
-            return { type: tx.type, usd: tx.amountUsd } as { type: 'income' | 'expense'; usd: number };
-          }
-          const acc = accounts.find(a => a.id === tx.accountId);
-          const cur = (tx as any).currency ?? acc?.currency ?? 'USD';
-          const usd = await convertToUSDByDate(tx.amount, cur as any, tx.date);
-          return { type: tx.type, usd: usd ?? 0 } as { type: 'income' | 'expense'; usd: number };
-        }));
-        const income = usdValues.filter(v => v.type === 'income').reduce((s, v) => s + v.usd, 0);
-        const expenses = usdValues.filter(v => v.type === 'expense').reduce((s, v) => s + v.usd, 0);
-        updates[d] = { income, expenses, balance: income - expenses };
-      }));
-      if (mounted && Object.keys(updates).length > 0) {
-        setGroupTotals(prev => ({ ...prev, ...updates }));
-      }
-    })();
-    return () => { mounted = false; };
-  }, [groupedTransactions, accounts, categories, groupTotals]);
+  const totalIncome = Object.values(groupTotals).reduce((s, g) => s + g.income, 0);
+  const totalExpenses = Object.values(groupTotals).reduce((s, g) => s + g.expenses, 0);
 
   return (
     <Card className="shadow-md">
@@ -315,388 +79,69 @@ export const TransactionsList = () => {
           <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:justify-between sm:gap-4">
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
               <Button onClick={() => setIsAddOpen(true)} className="w-full gap-2 sm:w-auto">
-                <Plus className="h-4 w-4" />
-                Nueva transacción
+                <Plus className="h-4 w-4" /> Nueva transacción
               </Button>
               <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
-                <DialogHeader>
-                  <DialogTitle>Agregar transacción</DialogTitle>
-                </DialogHeader>
+                <DialogHeader><DialogTitle>Agregar transacción</DialogTitle></DialogHeader>
                 <TransactionForm asModalContent onSubmitted={async () => { setIsAddOpen(false); await refetch(); }} />
               </DialogContent>
             </Dialog>
-            <Button variant="outline" className="w-full gap-2 sm:w-auto" onClick={() => setIsExportOpen(true)}>
-              <Download className="h-4 w-4" />
-              Descargar transferencias
+            <Button variant="outline" className="w-full gap-2 sm:w-auto" onClick={() => exportState.setIsExportOpen(true)}>
+              <Download className="h-4 w-4" /> Descargar transferencias
             </Button>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Filters */}
         <TransactionFilters
-          searchQuery={searchQuery} setSearchQuery={setSearchQuery}
-          filterType={filterType} setFilterType={setFilterType}
-          filterIncomeCategories={filterIncomeCategories} setFilterIncomeCategories={setFilterIncomeCategories}
-          filterExpenseCategories={filterExpenseCategories} setFilterExpenseCategories={setFilterExpenseCategories}
-          filterAccounts={filterAccounts} setFilterAccounts={setFilterAccounts}
-          dateMode={dateMode} setDateMode={setDateMode}
-          filterDate={filterDate} setFilterDate={setFilterDate}
-          filterDateFrom={filterDateFrom} setFilterDateFrom={setFilterDateFrom}
-          filterDateTo={filterDateTo} setFilterDateTo={setFilterDateTo}
-          filterMonth={filterMonth} setFilterMonth={setFilterMonth}
-          categories={categories}
-          accounts={accountsOptions}
-          onClear={handleClearFilters}
+          searchQuery={filters.searchQuery} setSearchQuery={filters.setSearchQuery}
+          filterType={filters.filterType} setFilterType={filters.setFilterType}
+          filterIncomeCategories={filters.filterIncomeCategories} setFilterIncomeCategories={filters.setFilterIncomeCategories}
+          filterExpenseCategories={filters.filterExpenseCategories} setFilterExpenseCategories={filters.setFilterExpenseCategories}
+          filterAccounts={filters.filterAccounts} setFilterAccounts={filters.setFilterAccounts}
+          dateMode={filters.dateMode} setDateMode={filters.setDateMode}
+          filterDate={filters.filterDate} setFilterDate={filters.setFilterDate}
+          filterDateFrom={filters.filterDateFrom} setFilterDateFrom={filters.setFilterDateFrom}
+          filterDateTo={filters.filterDateTo} setFilterDateTo={filters.setFilterDateTo}
+          filterMonth={filters.filterMonth} setFilterMonth={filters.setFilterMonth}
+          categories={categories} accounts={accounts} onClear={filters.handleClearFilters}
         />
 
-        {/* Overall totals summary for current results */}
-        {Object.keys(groupedTransactions).length > 0 ? (
+        {dates.length > 0 ? (
           <div className="flex items-center gap-2 text-xs sm:text-sm flex-wrap">
-            <Badge variant="outline" className="border-green-500 text-green-600">
-              Total Income: ${Object.keys(groupTotals).reduce((s, d) => s + (groupTotals[d]?.income ?? 0), 0).toFixed(2)}
-            </Badge>
-            <Badge variant="outline" className="border-red-500 text-red-600">
-              Total Expenses: -${Object.keys(groupTotals).reduce((s, d) => s + (groupTotals[d]?.expenses ?? 0), 0).toFixed(2)}
-            </Badge>
-            <Badge variant="secondary" className="font-semibold">
-              Net: {(Object.keys(groupTotals).reduce((s, d) => s + ((groupTotals[d]?.income ?? 0) - (groupTotals[d]?.expenses ?? 0)), 0)).toFixed(2)}
-            </Badge>
+            <Badge variant="outline" className="border-green-500 text-green-600">Total Income: ${totalIncome.toFixed(2)}</Badge>
+            <Badge variant="outline" className="border-red-500 text-red-600">Total Expenses: -${totalExpenses.toFixed(2)}</Badge>
+            <Badge variant="secondary" className="font-semibold">Net: {(totalIncome - totalExpenses).toFixed(2)}</Badge>
           </div>
         ) : null}
-        
 
-        {/* Transaction List */}
-        <div className="space-y-6">
-          {Object.entries(groupedTransactions).map(([date, transactions]) => (
-            <div key={date} className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground flex-1">
-                  <div className="h-px bg-border flex-1" />
-                  <span className="px-3">
-                    {dayjs(String(date).slice(0,10)).format('dddd, MMM D, YYYY')} • Tasa: {vesRateByDate[date] != null ? Number(vesRateByDate[date]).toFixed(2) : '…'}
-                  </span>
-                  <div className="h-px bg-border flex-1" />
-                </div>
-                <div className="sm:ml-3 flex items-center gap-2 text-xs whitespace-nowrap">
-                  <Badge variant="outline" className="border-green-500 text-green-600">+${(groupTotals[date]?.income ?? 0).toFixed(2)}</Badge>
-                  <Badge variant="outline" className="border-red-500 text-red-600">-${(groupTotals[date]?.expenses ?? 0).toFixed(2)}</Badge>
-                  <Badge variant="secondary" className="font-semibold">Bal: ${(groupTotals[date]?.balance ?? 0).toFixed(2)}</Badge>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {transactions.map(transaction => (
-                  <div
-                    key={transaction.id}
-                    className="grid grid-cols-1 sm:grid-cols-[auto,1fr,auto,auto] items-center gap-3 p-4 rounded-lg bg-card border border-border hover:shadow-sm transition-shadow"
-                  >
-                    <div className="">
-                      {transaction.type === "income" ? (
-                        <ArrowUpCircle className="h-8 w-8 text-emerald-500" />
-                      ) : (
-                        <ArrowDownCircle className="h-8 w-8 text-red-500" />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-base font-semibold text-foreground sm:truncate">
-                        {transaction.description}
-                      </p>
-                      <div className="flex items-center flex-wrap gap-2 mt-1">
-                        {(() => {
-                          const cat = categories.find(c => c.id === transaction.categoryId);
-                          const acc = accounts.find(a => a.id === transaction.accountId);
-                          return (
-                            <>
-                              {cat?.icon && (Icons as any)[cat.icon] ? (
-                                (() => { const C = (Icons as any)[cat.icon]; return <C className="h-4 w-4" style={{ color: cat?.color || undefined }} />; })()
-                              ) : null}
-                              <span
-                                className="inline-block w-3 h-3 rounded-full"
-                                style={{ backgroundColor: cat?.color || "hsl(var(--muted))" }}
-                              />
-                              <p className="text-sm text-muted-foreground">{cat?.name || "Uncategorized"}</p>
-                              {acc ? (
-                                <Badge variant="secondary" className="ml-1 text-xs md:text-sm font-semibold">
-                                  {acc.name} ({acc.currency})
-                                </Badge>
-                              ) : null}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                    <div className="justify-self-end">
-                      <TxAmount
-                        transaction={transaction}
-                        accounts={accounts}
-                        rateForDate={vesRateByDate[String(date).slice(0,10)] ?? null}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 justify-self-end">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(transaction)} disabled={deletingId === transaction.id}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => setConfirmDeleteId(transaction.id)} disabled={deletingId === transaction.id}>
-                        {deletingId === transaction.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-          {filteredTransactions.length === 0 && !pageLoading && (
-            <div className="text-center py-12 text-muted-foreground">
-              No transactions found. Try adjusting your filters.
-            </div>
-          )}
-          <div className="flex justify-center pt-2">
-            {pageLoading ? (
-              <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
-            ) : hasMore ? (
-              <Button variant="outline" onClick={fetchNextPage}>Load more days</Button>
-            ) : null}
-          </div>
-        </div>
+        <TransactionGroupList
+          groupedTransactions={groupedTransactions} vesRateByDate={vesRateByDate} groupTotals={groupTotals}
+          categories={categories} accounts={accounts} deletingId={deletingId}
+          onEdit={editForm.handleEdit} onDeleteRequest={setConfirmDeleteId}
+          isEmpty={filteredTransactions.length === 0} pageLoading={pageLoading} hasMore={hasMore} onLoadMore={fetchNextPage}
+        />
       </CardContent>
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
-          <DialogHeader>
-            <DialogTitle>Editar transacción</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleUpdate} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-date">Fecha</Label>
-              <DatePickerField
-                id="edit-date"
-                value={formData.date}
-                onChange={(iso) => setFormData({ ...formData, date: iso })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="account">Cuenta</Label>
-              <Select value={formData.accountId} onValueChange={(v) => setFormData({ ...formData, accountId: v })}>
-                <SelectTrigger id="account">
-                  <SelectValue placeholder="Selecciona una cuenta" />
-                </SelectTrigger>
-                <SelectContent>
-                  {accountsOptions.map(acc => (
-                    <SelectItem key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="type">Tipo</Label>
-                <Select value={formData.type} onValueChange={(v: any) => {
-                  const nextType = v as 'income' | 'expense';
-                  // If current category doesn't match new type, clear it
-                  const currentCat = categories.find(c => c.id === formData.categoryId);
-                  const nextCategoryId = currentCat && currentCat.type === nextType ? formData.categoryId : "";
-                  setFormData({ ...formData, type: nextType, categoryId: nextCategoryId });
-                }}>
-                  <SelectTrigger id="type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="income">Ingreso</SelectItem>
-                    <SelectItem value="expense">Gasto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="amount">Monto</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="category">Categoría</Label>
-                <Select value={formData.categoryId} onValueChange={(v) => setFormData({ ...formData, categoryId: v })}>
-                <SelectTrigger id="category">
-                  <SelectValue placeholder="Selecciona una categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  {editCategories.map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Descripción</Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Agrega una nota..."
-              />
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)} disabled={saving}>Cancelar</Button>
-              <Button type="submit" className="flex-1" disabled={saving} aria-busy={saving}>
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  'Guardar'
-                )}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
-        <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
-          <DialogHeader>
-            <DialogTitle>Export Transfers</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Choose a format to download your transactions.</p>
-            <div className="flex items-center gap-2">
-              <input id="export-all" type="checkbox" checked={exportAll} onChange={(e) => setExportAll(e.target.checked)} />
-              <Label htmlFor="export-all" className="text-sm">Export ALL transactions (server-side) instead of only the loaded items</Label>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <Button
-                type="button"
-                className="w-full"
-                disabled={exporting === "pdf"}
-                aria-busy={exporting === "pdf"}
-                onClick={async () => {
-                  try {
-                    setExporting("pdf");
-                    if (exportAll) {
-                      await exportAllTransactions({
-                        format: "pdf",
-                        includeInStats: true, // default to included-in-stats
-                        filters: {
-                          searchQuery,
-                          filterType,
-                          filterIncomeCategories,
-                          filterExpenseCategories,
-                          filterAccounts,
-                          dateMode,
-                          filterDate,
-                          filterDateFrom,
-                          filterDateTo,
-                          filterMonth,
-                        },
-                      });
-                    } else {
-                      // Use currently loaded raw items (includes pages added via "Load more")
-                      const items = rawItems;
-                      const [rawAccounts, rawCategories] = await Promise.all([
-                        apiFetch<any[]>(`accounts`).catch(() => []),
-                        apiFetch<any[]>(`categories`).catch(() => []),
-                      ]);
-                      await exportTransactionsFromData({
-                        format: "pdf",
-                        data: {
-                          items,
-                          accounts: rawAccounts,
-                          categories: rawCategories,
-                          title: "Mis movimientos",
-                          createdBy: undefined,
-                        },
-                      });
-                    }
-                    toast({ title: "Export ready", description: "Your PDF download has started." });
-                    setIsExportOpen(false);
-                  } catch (err: any) {
-                    toast({ title: "Export failed", description: String(err?.message || err) });
-                  } finally {
-                    setExporting(false);
-                  }
-                }}
-              >
-                {exporting === "pdf" ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />PDF</>) : "PDF"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full"
-                disabled={exporting === "xlsx"}
-                aria-busy={exporting === "xlsx"}
-                onClick={async () => {
-                  try {
-                    setExporting("xlsx");
-                    if (exportAll) {
-                      await exportAllTransactions({
-                        format: "xlsx",
-                        includeInStats: true,
-                        filters: {
-                          searchQuery,
-                          filterType,
-                          filterIncomeCategories,
-                          filterExpenseCategories,
-                          filterAccounts,
-                          dateMode,
-                          filterDate,
-                          filterDateFrom,
-                          filterDateTo,
-                          filterMonth,
-                        },
-                      });
-                    } else {
-                      // EPIC XLSX from current loaded items
-                      const items = rawItems;
-                      const [rawAccounts, rawCategories] = await Promise.all([
-                        apiFetch<any[]>(`accounts`).catch(() => []),
-                        apiFetch<any[]>(`categories`).catch(() => []),
-                      ]);
-                      await exportTransactionsFromData({
-                        format: "xlsx",
-                        data: {
-                          items,
-                          accounts: rawAccounts,
-                          categories: rawCategories,
-                          title: "Mis movimientos",
-                          createdBy: undefined,
-                        },
-                      });
-                    }
-                    toast({ title: "Export ready", description: "Your Excel download has started." });
-                    setIsExportOpen(false);
-                  } catch (err: any) {
-                    toast({ title: "Export failed", description: String(err?.message || err) });
-                  } finally {
-                    setExporting(false);
-                  }
-                }}
-              >
-                {exporting === "xlsx" ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Excel</>) : "Excel"}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">Nota: si marcas "Export ALL", se descargan todas las transacciones (vía servidor) respetando filtros. Si no, solo las cargadas actualmente.</p>
-          </div>
-        </DialogContent>
-      </Dialog>
+
+      <TransactionEditDialog
+        open={editForm.isDialogOpen} onOpenChange={editForm.setIsDialogOpen}
+        formData={editForm.formData} setFormData={editForm.setFormData}
+        categories={categories} editCategories={editCategories} accounts={accounts}
+        saving={editForm.saving} onSubmit={editForm.handleUpdate} onCancel={() => editForm.setIsDialogOpen(false)}
+      />
+
+      <TransactionExportDialog
+        open={exportState.isExportOpen} onOpenChange={exportState.setIsExportOpen}
+        exportAll={exportState.exportAll} setExportAll={exportState.setExportAll}
+        exporting={exportState.exporting} onExport={exportState.runExport}
+      />
+
       <TransactionsDeleteConfirm
         open={!!confirmDeleteId}
         onOpenChange={(open) => setConfirmDeleteId(open ? confirmDeleteId : null)}
         busy={!!deletingId}
-        onConfirm={async () => {
-          if (!confirmDeleteId) return;
-          await handleDelete(confirmDeleteId);
-          setConfirmDeleteId(null);
-        }}
+        onConfirm={async () => { if (!confirmDeleteId) return; await handleDelete(confirmDeleteId); setConfirmDeleteId(null); }}
       />
     </Card>
   );
 };
-
-// (Moved TxAmount and TransactionsDeleteConfirm into dedicated files for SRP and reuse)
