@@ -1,57 +1,35 @@
-import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, Handshake, Loader2, Plus } from "lucide-react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Handshake, Plus } from "lucide-react";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 
-import { DebtCard } from "@/components/DebtCard";
 import { DebtFormDialog } from "@/components/DebtFormDialog";
-import type { DebtFormValues } from "@/components/DebtFormDialog";
 import { DebtPayDialog } from "@/components/DebtPayDialog";
 import { LinkTransactionsDialog } from "@/components/LinkTransactionsDialog";
 
-import {
-  createDebt,
-  DEBTS_QUERY_KEY,
-  deleteDebt,
-  fetchDebts,
-  payDebt,
-  updateDebt,
-} from "@/lib/debts";
-import { AccountsStore, CategoriesStore, onDataChange } from "@/lib/storage";
-import type {
-  Account,
-  Category,
-  CreateDebtPayload,
-  Debt,
-  UpdateDebtPayload,
-} from "@/lib/types";
+import { DEBTS_QUERY_KEY } from "@/lib/debts";
+import type { Debt } from "@/lib/types";
+
+import { DebtGridSection } from "./debts/DebtGridSection";
+import { DeleteDebtDialog } from "./debts/DeleteDebtDialog";
+import { useDebtCrudMutations } from "./debts/useDebtCrudMutations";
+import { useDebtFormHandlers } from "./debts/useDebtFormHandlers";
+import { useDebtQueries } from "./debts/useDebtQueries";
+import { useDebtsReferenceData } from "./debts/useDebtsReferenceData";
+import { usePayDebtMutation } from "./debts/usePayDebtMutation";
 
 export default function Debts() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { accounts, categories } = useDebtsReferenceData();
+  const { debtsQuery, payableDebts, receivableDebts } = useDebtQueries();
+  const payMutation = usePayDebtMutation();
+
   const [formOpen, setFormOpen] = useState(false);
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [payOpen, setPayOpen] = useState(false);
@@ -61,133 +39,17 @@ export default function Debts() {
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkingDebt, setLinkingDebt] = useState<Debt | null>(null);
 
-  useEffect(() => {
-    Promise.all([AccountsStore.refresh(), CategoriesStore.refresh()])
-      .then(() => {
-        setAccounts(AccountsStore.all());
-        setCategories(CategoriesStore.all());
-      })
-      .catch(() => {});
-    const off = onDataChange(() => {
-      setAccounts(AccountsStore.all());
-      setCategories(CategoriesStore.all());
-    });
-    return off;
-  }, []);
-
-  const debtsQuery = useQuery({
-    queryKey: DEBTS_QUERY_KEY,
-    queryFn: fetchDebts,
-  });
-
-  const debts = debtsQuery.data ?? [];
-  const payableDebts = debts.filter((d) => d.type === "payable");
-  const receivableDebts = debts.filter((d) => d.type === "receivable");
-
-  // ── Mutations ──────────────────────────────────────────────────────────────
-
-  const createMutation = useMutation({
-    mutationFn: (payload: CreateDebtPayload) => createDebt(payload),
-    onSuccess: async () => {
-      toast({ title: "Deuda creada", description: "La deuda fue registrada correctamente." });
+  const mutations = useDebtCrudMutations({
+    onSaved: () => {
       setFormOpen(false);
       setEditingDebt(null);
-      await queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY });
     },
-    onError: (error) => {
-      toast({
-        title: "No se pudo crear la deuda",
-        description: error instanceof Error ? error.message : "Intenta nuevamente.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: UpdateDebtPayload }) =>
-      updateDebt(id, payload),
-    onSuccess: async () => {
-      toast({ title: "Deuda actualizada", description: "Los cambios se guardaron correctamente." });
-      setFormOpen(false);
-      setEditingDebt(null);
-      await queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY });
-    },
-    onError: (error) => {
-      toast({
-        title: "No se pudo actualizar la deuda",
-        description: error instanceof Error ? error.message : "Intenta nuevamente.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteDebt(id),
-    onSuccess: async () => {
-      toast({ title: "Deuda eliminada", description: "La deuda se eliminó correctamente." });
+    onDeleted: () => {
       setDeleteOpen(false);
       setDeletingDebt(null);
-      await queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY });
-    },
-    onError: (error) => {
-      toast({
-        title: "No se pudo eliminar la deuda",
-        description: error instanceof Error ? error.message : "Intenta nuevamente.",
-        variant: "destructive",
-      });
     },
   });
-
-  const payMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: { amount: number; currency: string; accountId: number; date: string; categoryId?: number; exchangeRate?: number } }) =>
-      payDebt(id, payload),
-    onSuccess: async () => {
-      toast({ title: "Abono registrado", description: "El pago se registró correctamente." });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY }),
-        AccountsStore.refresh(),
-      ]);
-    },
-    onError: (error) => {
-      toast({
-        title: "No se pudo registrar el abono",
-        description: error instanceof Error ? error.message : "Intenta nuevamente.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // ── Handlers ───────────────────────────────────────────────────────────────
-
-  function handleFormSubmit(values: DebtFormValues) {
-    const dueDate = values.dueDate || null;
-    const categoryId = values.categoryId ? Number(values.categoryId) : null;
-
-    if (editingDebt) {
-      updateMutation.mutate({
-        id: editingDebt.id,
-        payload: {
-          contactName: values.contactName.trim(),
-          description: values.description.trim(),
-          totalAmount: values.totalAmount,
-          currency: values.currency,
-          type: values.type,
-          dueDate,
-          categoryId,
-        },
-      });
-    } else {
-      createMutation.mutate({
-        contactName: values.contactName.trim(),
-        description: values.description.trim(),
-        totalAmount: values.totalAmount,
-        currency: values.currency,
-        type: values.type,
-        dueDate,
-        categoryId,
-      });
-    }
-  }
+  const { handleFormSubmit } = useDebtFormHandlers({ editingDebt, mutations });
 
   function openCreate() {
     setEditingDebt(null);
@@ -214,47 +76,8 @@ export default function Debts() {
     setLinkOpen(true);
   }
 
-  // ── Render helpers ─────────────────────────────────────────────────────────
-
-  function renderDebtGrid(list: Debt[]) {
-    if (debtsQuery.isLoading) {
-      return (
-        <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Cargando deudas...
-        </div>
-      );
-    }
-    if (list.length === 0) {
-      return (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Sin deudas registradas</AlertTitle>
-          <AlertDescription>
-            Crea una nueva deuda para empezar a llevar el control.
-          </AlertDescription>
-        </Alert>
-      );
-    }
-    return (
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {list.map((debt) => (
-          <DebtCard
-            key={debt.id}
-            debt={debt}
-            onPay={openPay}
-            onEdit={openEdit}
-            onDelete={openDeleteConfirm}
-            onLinkPast={handleLinkPast}
-          />
-        ))}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      {/* Header */}
       <Card className="border-border bg-card shadow-sm">
         <CardHeader className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -275,7 +98,6 @@ export default function Debts() {
         </CardHeader>
       </Card>
 
-      {/* Tabs: Por Pagar / Por Cobrar */}
       <Tabs defaultValue="payable" className="w-full">
         <TabsList className="w-full grid grid-cols-2">
           <TabsTrigger value="payable">
@@ -287,25 +109,37 @@ export default function Debts() {
         </TabsList>
 
         <TabsContent value="payable" className="mt-4">
-          {renderDebtGrid(payableDebts)}
+          <DebtGridSection
+            debts={payableDebts}
+            isLoading={debtsQuery.isLoading}
+            onPay={openPay}
+            onEdit={openEdit}
+            onDelete={openDeleteConfirm}
+            onLinkPast={handleLinkPast}
+          />
         </TabsContent>
 
         <TabsContent value="receivable" className="mt-4">
-          {renderDebtGrid(receivableDebts)}
+          <DebtGridSection
+            debts={receivableDebts}
+            isLoading={debtsQuery.isLoading}
+            onPay={openPay}
+            onEdit={openEdit}
+            onDelete={openDeleteConfirm}
+            onLinkPast={handleLinkPast}
+          />
         </TabsContent>
       </Tabs>
 
-      {/* CRUD Dialog */}
       <DebtFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         debt={editingDebt}
         categories={categories}
-        submitting={createMutation.isPending || updateMutation.isPending}
+        submitting={mutations.createMutation.isPending || mutations.updateMutation.isPending}
         onSubmit={handleFormSubmit}
       />
 
-      {/* Pay Dialog */}
       <DebtPayDialog
         open={payOpen}
         onOpenChange={setPayOpen}
@@ -318,32 +152,16 @@ export default function Debts() {
         }}
       />
 
-      {/* Delete confirmation */}
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent className="w-[95vw] sm:w-full max-w-md rounded-xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar deuda?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se eliminará la deuda de {deletingDebt?.contactName}. Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:gap-3">
-            <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteMutation.isPending}
-              onClick={() => {
-                if (deletingDebt) deleteMutation.mutate(deletingDebt.id);
-              }}
-            >
-              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteDebtDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        debt={deletingDebt}
+        isPending={mutations.deleteMutation.isPending}
+        onConfirm={() => {
+          if (deletingDebt) mutations.deleteMutation.mutate(deletingDebt.id);
+        }}
+      />
 
-      {/* Cherry-pick link transactions dialog */}
       <LinkTransactionsDialog
         open={linkOpen}
         onOpenChange={setLinkOpen}
