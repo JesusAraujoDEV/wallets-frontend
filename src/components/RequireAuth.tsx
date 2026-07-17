@@ -8,6 +8,14 @@ export default function RequireAuth({ children }: { children: JSX.Element }) {
 
   useEffect(() => {
     let alive = true;
+    const handleUnauthorized = () => {
+      if (alive) {
+        setUser(null);
+        setLoading(false);
+      }
+    };
+    window.addEventListener("platica:unauthorized", handleUnauthorized);
+
     (async () => {
       try {
         const response = await AuthApi.me();
@@ -18,7 +26,10 @@ export default function RequireAuth({ children }: { children: JSX.Element }) {
         if (alive) setLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+      window.removeEventListener("platica:unauthorized", handleUnauthorized);
+    };
   }, []);
 
   if (loading) {

@@ -66,11 +66,7 @@ export function useTransactionsQuery({ filters, pageSize = PAGE_SIZE_DEFAULT }: 
       setFirstReloadTick((v) => v + 1);
     } catch (e: any) {
       if (e?.name === 'AbortError') return;
-      try {
-        await fetchLegacyAll(abortRef.current?.signal);
-      } catch (e2) {
-        throw e2;
-      }
+      await fetchLegacyAll(abortRef.current?.signal);
     } finally {
       setPageLoading(false);
     }

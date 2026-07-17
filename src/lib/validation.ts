@@ -5,7 +5,7 @@ export function sanitizeNameInput(value: string) {
 
 export function sanitizeEmailInput(value: string) {
   // Allow common email-safe ASCII chars only
-  return value.replace(/[^A-Za-z0-9@._%+\-]/g, "");
+  return value.replace(/[^A-Za-z0-9@._%+-]/g, "");
 }
 
 export function sanitizeUsernameInput(value: string) {
@@ -14,5 +14,5 @@ export function sanitizeUsernameInput(value: string) {
 }
 
 export function isValidEmail(value: string) {
-  return /^[\w.%+\-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value);
+  return /^[\w.%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value);
 }

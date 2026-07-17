@@ -23,8 +23,15 @@ export function getToken(): string | null {
 
 export function setToken(token: string | null) {
   try {
-    if (!token) localStorage.removeItem(TOKEN_KEY);
-    else localStorage.setItem(TOKEN_KEY, token);
+    if (!token) {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    } else {
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    }
   } catch {
     // ignore storage errors
   }
@@ -47,6 +54,10 @@ export async function apiFetch<T = any>(path: string, init?: RequestInit): Promi
 
   const res = await fetch(url, { ...init, headers });
   if (!res.ok) {
+    if (res.status === 401) {
+      setToken(null);
+      window.dispatchEvent(new Event("platica:unauthorized"));
+    }
     let msg = `HTTP ${res.status}`;
     try { msg = await res.text(); } catch {}
     throw new Error(msg || `HTTP ${res.status}`);

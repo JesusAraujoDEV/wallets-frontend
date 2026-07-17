@@ -37,6 +37,12 @@ type ApiBudget = {
   specific_month?: string | null;
 };
 
+type ApiBudgetResponse = ApiBudget | { data: ApiBudget };
+
+function unwrapBudget(response: ApiBudgetResponse): ApiBudget {
+  return "data" in response ? response.data : response;
+}
+
 function normalizeBudgetPeriod(period?: string): BudgetPeriod {
   if (period === "yearly" || period === "one_time") {
     return period;
@@ -103,25 +109,25 @@ export async function fetchBudgets(): Promise<Budget[]> {
 }
 
 export async function createBudget(payload: CreateBudgetPayload): Promise<Budget> {
-  const response = await apiFetch<ApiBudget>("budgets", {
+  const response = await apiFetch<ApiBudgetResponse>("budgets", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 
-  return mapBudget(response);
+  return mapBudget(unwrapBudget(response));
 }
 
 export async function updateBudget(id: string, payload: UpdateBudgetPayload): Promise<Budget> {
-  const response = await apiFetch<ApiBudget>(`budgets?id=${encodeURIComponent(id)}`, {
+  const response = await apiFetch<ApiBudgetResponse>(`budgets/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   });
 
-  return mapBudget(response);
+  return mapBudget(unwrapBudget(response));
 }
 
 export async function deleteBudget(id: string): Promise<BudgetDeleteResponse> {
-  return apiFetch<BudgetDeleteResponse>(`budgets?id=${encodeURIComponent(id)}`, {
+  return apiFetch<BudgetDeleteResponse>(`budgets/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
 }

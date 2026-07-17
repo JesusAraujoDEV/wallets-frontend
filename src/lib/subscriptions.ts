@@ -31,6 +31,12 @@ type ApiRecurringTransaction = {
   debt_id?: number | string | null;
 };
 
+type ApiRecurringResponse = ApiRecurringTransaction | { data: ApiRecurringTransaction };
+
+function unwrapRecurring(response: ApiRecurringResponse): ApiRecurringTransaction {
+  return "data" in response ? response.data : response;
+}
+
 function mapRecurringTransaction(item: any): RecurringTransaction {
   // Soporta tanto snake_case como camelCase
   const rawCurrency = item.currency;
@@ -59,19 +65,19 @@ export async function fetchRecurringTransactions(): Promise<RecurringTransaction
 }
 
 export async function createRecurringTransaction(payload: RecurringTransactionPayload): Promise<RecurringTransaction> {
-  const response = await apiFetch<ApiRecurringTransaction>("recurring-transactions", {
+  const response = await apiFetch<ApiRecurringResponse>("recurring-transactions", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  return mapRecurringTransaction(response);
+  return mapRecurringTransaction(unwrapRecurring(response));
 }
 
 export async function updateRecurringTransaction(id: string, payload: UpdateRecurringTransactionPayload): Promise<RecurringTransaction> {
-  const response = await apiFetch<ApiRecurringTransaction>(`recurring-transactions/${encodeURIComponent(id)}`, {
+  const response = await apiFetch<ApiRecurringResponse>(`recurring-transactions/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   });
-  return mapRecurringTransaction(response);
+  return mapRecurringTransaction(unwrapRecurring(response));
 }
 
 export async function deleteRecurringTransaction(id: string): Promise<{ ok?: boolean; success?: boolean; message?: string }> {
@@ -87,11 +93,11 @@ export async function triggerRecurringTransactions(): Promise<TriggerRecurringRe
 }
 
 export async function confirmPendingTransaction(id: string, payload: ConfirmPendingTransactionPayload): Promise<Transaction> {
-  const response = await apiFetch<unknown>(`transactions/${encodeURIComponent(id)}/confirm`, {
+  const response = await apiFetch<{ tx: unknown }>(`transactions/${encodeURIComponent(id)}/confirm`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   });
-  return mapServerTransaction(response);
+  return mapServerTransaction(response.tx);
 }
 
 export async function fetchPendingTransactions(): Promise<Transaction[]> {

@@ -199,7 +199,10 @@ export interface UpdateProfilePayload {
   username?: string;
 }
 
-export type UpdateProfileResponse = AuthUser | AuthProfileResponse;
+export type UpdateProfileResponse =
+  | AuthUser
+  | AuthProfileResponse
+  | { success: boolean; message?: string; data: AuthUser };
 
 export interface RequestEmailChangePayload {
   currentPassword: string;

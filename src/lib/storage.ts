@@ -108,7 +108,7 @@ export async function createCategoryGroup(payload: CategoryGroupUpsertPayload): 
 }
 
 export async function updateCategoryGroup(id: number, payload: CategoryGroupUpsertPayload): Promise<CategoryGroup> {
-  const updated = await fetchJSON<ApiCategoryGroup>(`category-groups?id=${encodeURIComponent(String(id))}`, {
+  const updated = await fetchJSON<ApiCategoryGroup>(`category-groups/${encodeURIComponent(String(id))}`, {
     method: "PATCH",
     body: JSON.stringify({
       name: payload.name,
@@ -130,7 +130,7 @@ export async function updateCategoryGroup(id: number, payload: CategoryGroupUpse
 }
 
 export async function deleteCategoryGroup(id: number): Promise<CategoryGroupDeleteResponse> {
-  return fetchJSON<CategoryGroupDeleteResponse>(`category-groups?id=${encodeURIComponent(String(id))}`, {
+  return fetchJSON<CategoryGroupDeleteResponse>(`category-groups/${encodeURIComponent(String(id))}`, {
     method: "DELETE",
   });
 }

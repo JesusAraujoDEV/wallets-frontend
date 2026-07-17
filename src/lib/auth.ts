@@ -67,6 +67,10 @@ export const AuthApi = {
       body: JSON.stringify(data),
     });
 
+    if ("data" in out) {
+      return { ...out.data, id: String(out.data.id) };
+    }
+
     if ("user" in out) {
       return { ...out.user, id: String(out.user.id) };
     }

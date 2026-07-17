@@ -5,7 +5,6 @@ import type {
   DebtDeleteResponse,
   DebtStatus,
   DebtType,
-  LinkPastTransactionsResponse,
   LinkTransactionsPayload,
   LinkTransactionsResponse,
   PayDebtPayload,
@@ -33,6 +32,12 @@ type ApiDebt = {
   categoryId?: number | string | null;
   category_id?: number | string | null;
 };
+
+type ApiDebtResponse = ApiDebt | { data: ApiDebt };
+
+function unwrapDebt(response: ApiDebtResponse): ApiDebt {
+  return "data" in response ? response.data : response;
+}
 
 function mapDebt(item: ApiDebt): Debt {
   const rawCurrency = item.currency;
@@ -73,19 +78,19 @@ export async function fetchDebts(): Promise<Debt[]> {
 }
 
 export async function createDebt(payload: CreateDebtPayload): Promise<Debt> {
-  const response = await apiFetch<ApiDebt>("debts", {
+  const response = await apiFetch<ApiDebtResponse>("debts", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  return mapDebt(response);
+  return mapDebt(unwrapDebt(response));
 }
 
 export async function updateDebt(id: string, payload: UpdateDebtPayload): Promise<Debt> {
-  const response = await apiFetch<ApiDebt>(`debts/${encodeURIComponent(id)}`, {
+  const response = await apiFetch<ApiDebtResponse>(`debts/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   });
-  return mapDebt(response);
+  return mapDebt(unwrapDebt(response));
 }
 
 export async function deleteDebt(id: string): Promise<DebtDeleteResponse> {
@@ -99,13 +104,6 @@ export async function payDebt(id: string, payload: PayDebtPayload): Promise<PayD
     method: "POST",
     body: JSON.stringify(payload),
   });
-}
-
-export async function linkPastTransactions(id: string): Promise<LinkPastTransactionsResponse> {
-  return apiFetch<LinkPastTransactionsResponse>(
-    `debts/${encodeURIComponent(id)}/link-past-transactions`,
-    { method: "POST" },
-  );
 }
 
 type ApiTransaction = Record<string, unknown>;
