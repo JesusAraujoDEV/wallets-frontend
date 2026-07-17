@@ -12,7 +12,7 @@ export default function Statistics() {
   const { t } = useTranslation();
   const [selectedAccount, setSelectedAccount] = useState("all");
   const accountId = selectedAccount !== "all" ? selectedAccount : undefined;
-  const { preset, setPreset, custom, setCustom, expense, income, loading, customIncomplete } =
+  const { preset, setPreset, custom, setCustom, months, setMonths, expense, income, loading, customIncomplete } =
     useStatisticsComparison({ accountId });
 
   return (
@@ -24,7 +24,11 @@ export default function Statistics() {
         </CardHeader>
         <CardContent className="space-y-4">
           <AccountSelector selectedAccount={selectedAccount} onAccountChange={setSelectedAccount} />
-          <StatisticsPeriodPicker preset={preset} onPresetChange={setPreset} custom={custom} onCustomChange={setCustom} />
+          <StatisticsPeriodPicker
+            preset={preset} onPresetChange={setPreset}
+            custom={custom} onCustomChange={setCustom}
+            months={months} onMonthsChange={setMonths}
+          />
         </CardContent>
       </Card>
 

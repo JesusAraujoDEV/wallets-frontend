@@ -69,6 +69,7 @@
     "historyTitle": "Histórico de tasas BCV",
     "date": "Fecha",
     "noData": "Sin datos para el rango seleccionado.",
+    "pageOf": "Página {{page}} de {{total}}",
     "usdt": "Binance"
   },
   "filters": {
@@ -138,6 +139,7 @@
     "comparePeriod": "Comparar",
     "presetLastMonth": "Mes actual vs mes anterior",
     "presetLastYear": "Mes actual vs mismo mes del año pasado",
+    "presetTwoMonths": "Elegir dos meses",
     "presetCustom": "Rango personalizado",
     "currentPeriod": "Periodo actual",
     "comparePeriodWith": "Comparar con",
@@ -146,6 +148,13 @@
     "avgDailySpend": "Gasto diario promedio",
     "avgDailyIncome": "Ingreso diario promedio",
     "netChange": "Cambio neto",
-    "biggestMover": "Mayor variación"
+    "biggestMover": "Mayor variación",
+    "savingsRate": "Tasa de ahorro",
+    "vsPreviousPeriod": "vs periodo anterior",
+    "months": {
+      "january": "Enero", "february": "Febrero", "march": "Marzo", "april": "Abril",
+      "may": "Mayo", "june": "Junio", "july": "Julio", "august": "Agosto",
+      "september": "Septiembre", "october": "Octubre", "november": "Noviembre", "december": "Diciembre"
+    }
   }
 }

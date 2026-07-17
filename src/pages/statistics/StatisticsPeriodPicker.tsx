@@ -2,12 +2,15 @@ import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePickerField } from "@/components/DatePickerField";
-import type { PeriodPreset } from "./useStatisticsComparison";
+import { MonthYearSelect } from "./MonthYearSelect";
+import type { MonthValue, PeriodPreset } from "./useStatisticsComparison";
 
-export function StatisticsPeriodPicker({ preset, onPresetChange, custom, onCustomChange }: {
+export function StatisticsPeriodPicker({ preset, onPresetChange, custom, onCustomChange, months, onMonthsChange }: {
   preset: PeriodPreset; onPresetChange: (v: PeriodPreset) => void;
   custom: { currentFrom: string; currentTo: string; previousFrom: string; previousTo: string };
   onCustomChange: (v: typeof custom) => void;
+  months: { current: MonthValue; previous: MonthValue };
+  onMonthsChange: (v: typeof months) => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -19,10 +22,24 @@ export function StatisticsPeriodPicker({ preset, onPresetChange, custom, onCusto
           <SelectContent>
             <SelectItem value="mtd_vs_last_month">{t("statistics.presetLastMonth")}</SelectItem>
             <SelectItem value="mtd_vs_last_year">{t("statistics.presetLastYear")}</SelectItem>
+            <SelectItem value="pick_two_months">{t("statistics.presetTwoMonths")}</SelectItem>
             <SelectItem value="custom">{t("statistics.presetCustom")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {preset === "pick_two_months" ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">{t("statistics.currentPeriod")}</Label>
+            <MonthYearSelect value={months.current} onChange={(v) => onMonthsChange({ ...months, current: v })} />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">{t("statistics.comparePeriodWith")}</Label>
+            <MonthYearSelect value={months.previous} onChange={(v) => onMonthsChange({ ...months, previous: v })} />
+          </div>
+        </div>
+      ) : null}
 
       {preset === "custom" ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

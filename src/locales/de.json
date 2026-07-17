@@ -69,6 +69,7 @@
     "historyTitle": "BCV-Kursverlauf",
     "date": "Datum",
     "noData": "Keine Daten für den gewählten Zeitraum.",
+    "pageOf": "Seite {{page}} von {{total}}",
     "usdt": "Binance"
   },
   "filters": {
@@ -138,6 +139,7 @@
     "comparePeriod": "Vergleichen",
     "presetLastMonth": "Aktueller Monat vs. Vormonat",
     "presetLastYear": "Aktueller Monat vs. gleicher Monat letztes Jahr",
+    "presetTwoMonths": "Zwei Monate wählen",
     "presetCustom": "Benutzerdefinierter Zeitraum",
     "currentPeriod": "Aktueller Zeitraum",
     "comparePeriodWith": "Vergleichen mit",
@@ -146,6 +148,13 @@
     "avgDailySpend": "Ø tägliche Ausgaben",
     "avgDailyIncome": "Ø tägliche Einnahmen",
     "netChange": "Nettoveränderung",
-    "biggestMover": "Größte Veränderung"
+    "biggestMover": "Größte Veränderung",
+    "savingsRate": "Sparquote",
+    "vsPreviousPeriod": "vs. vorherigem Zeitraum",
+    "months": {
+      "january": "Januar", "february": "Februar", "march": "März", "april": "April",
+      "may": "Mai", "june": "Juni", "july": "Juli", "august": "August",
+      "september": "September", "october": "Oktober", "november": "November", "december": "Dezember"
+    }
   }
 }

@@ -18,6 +18,11 @@ export function StatisticsOverviewCards({ expense, income }: { expense: Comparat
   const netChange = netCurrent - netPrevious;
   const topMover = expense.categories_comparison[0];
 
+  const savingsRate = (inc: number, exp: number) => (inc > 0 ? ((inc - exp) / inc) * 100 : 0);
+  const savingsRateCurrent = savingsRate(income.summary.current_total, expense.summary.current_total);
+  const savingsRatePrevious = savingsRate(income.summary.previous_total, expense.summary.previous_total);
+  const savingsRateDelta = savingsRateCurrent - savingsRatePrevious;
+
   const stats = [
     { label: t("statistics.daysCompared"), value: String(days) },
     { label: t("statistics.avgDailySpend"), value: `$${avgDailySpend.toFixed(2)}` },
@@ -27,6 +32,12 @@ export function StatisticsOverviewCards({ expense, income }: { expense: Comparat
       value: `${netChange >= 0 ? "+" : ""}$${netChange.toFixed(2)}`,
       className: netChange >= 0 ? "text-green-600" : "text-red-600",
     },
+    {
+      label: t("statistics.savingsRate"),
+      value: `${savingsRateCurrent.toFixed(1)}%`,
+      className: savingsRateCurrent >= 0 ? "text-green-600" : "text-red-600",
+      hint: `${savingsRateDelta >= 0 ? "+" : ""}${savingsRateDelta.toFixed(1)} pp ${t("statistics.vsPreviousPeriod")}`,
+    },
   ];
 
   return (
@@ -35,6 +46,7 @@ export function StatisticsOverviewCards({ expense, income }: { expense: Comparat
         <Card key={s.label} className="p-4 shadow-md border-0">
           <div className="text-xs text-muted-foreground">{s.label}</div>
           <div className={`text-xl font-bold ${s.className ?? ""}`}>{s.value}</div>
+          {"hint" in s && s.hint ? <div className="text-xs text-muted-foreground">{s.hint}</div> : null}
         </Card>
       ))}
       {topMover ? (

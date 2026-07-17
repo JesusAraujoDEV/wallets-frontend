@@ -69,6 +69,7 @@
     "historyTitle": "BCV rate history",
     "date": "Date",
     "noData": "No data for the selected range.",
+    "pageOf": "Page {{page}} of {{total}}",
     "usdt": "Binance"
   },
   "filters": {
@@ -138,6 +139,7 @@
     "comparePeriod": "Compare",
     "presetLastMonth": "This month vs last month",
     "presetLastYear": "This month vs same month last year",
+    "presetTwoMonths": "Pick two months",
     "presetCustom": "Custom range",
     "currentPeriod": "Current period",
     "comparePeriodWith": "Compare with",
@@ -146,6 +148,13 @@
     "avgDailySpend": "Avg daily spend",
     "avgDailyIncome": "Avg daily income",
     "netChange": "Net change",
-    "biggestMover": "Biggest mover"
+    "biggestMover": "Biggest mover",
+    "savingsRate": "Savings rate",
+    "vsPreviousPeriod": "vs previous period",
+    "months": {
+      "january": "January", "february": "February", "march": "March", "april": "April",
+      "may": "May", "june": "June", "july": "July", "august": "August",
+      "september": "September", "october": "October", "november": "November", "december": "December"
+    }
   }
 }
