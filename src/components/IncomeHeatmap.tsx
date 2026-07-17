@@ -1,5 +1,7 @@
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { localizedWeekdays } from "@/lib/localizedWeekdays";
 
 export interface IncomeHeatmapProps {
   categories: string[];
@@ -8,6 +10,8 @@ export interface IncomeHeatmapProps {
 }
 
 export function IncomeHeatmap({ categories, weekdays, data_points }: IncomeHeatmapProps) {
+  const { t, i18n } = useTranslation();
+  const dayLabels = localizedWeekdays(i18n.language);
   const max = data_points.reduce((m, p) => Math.max(m, p.amount), 0);
   const matrix: number[][] = Array.from({ length: categories.length }, () => Array(weekdays.length).fill(0));
   for (const p of data_points) {
@@ -26,13 +30,13 @@ export function IncomeHeatmap({ categories, weekdays, data_points }: IncomeHeatm
   };
   return (
     <Card className="p-6 shadow-md border-0">
-      <h3 className="text-xl font-semibold text-foreground mb-4">Income Heatmap</h3>
+      <h3 className="text-xl font-semibold text-foreground mb-4">{t("dashboard.heatmap.incomeTitle")}</h3>
       <div className="overflow-auto">
         <div className="inline-grid" style={{ gridTemplateColumns: `120px repeat(${weekdays.length}, minmax(40px, 1fr))` }}>
           {/* Header row */}
           <div className="text-xs text-muted-foreground" />
-          {weekdays.map((d, i) => (
-            <div key={i} className="text-xs text-muted-foreground text-center px-2 pb-2">{d}</div>
+          {weekdays.map((_, i) => (
+            <div key={i} className="text-xs text-muted-foreground text-center px-2 pb-2">{dayLabels[i]}</div>
           ))}
           {/* Rows */}
           {categories.map((cat, r) => (
@@ -46,7 +50,7 @@ export function IncomeHeatmap({ categories, weekdays, data_points }: IncomeHeatm
                       <TooltipTrigger asChild>
                         <div className="h-8 w-10 md:w-14 border rounded-sm" style={{ backgroundColor: colorFor(v), borderColor: 'hsl(var(--border))' }} />
                       </TooltipTrigger>
-                      <TooltipContent>Total income: ${v.toFixed(2)}</TooltipContent>
+                      <TooltipContent>{t("dashboard.heatmap.totalIncome", { amount: v.toFixed(2) })}</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 );

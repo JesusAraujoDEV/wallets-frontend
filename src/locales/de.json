@@ -12,7 +12,8 @@
     "logout": "Abmelden",
     "darkMode": "Zum dunklen Modus wechseln",
     "lightMode": "Zum hellen Modus wechseln",
-    "language": "Sprache"
+    "language": "Sprache",
+    "pickDate": "Datum wählen"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -21,6 +22,7 @@
     "budgets": "Budgets",
     "debts": "Schulden",
     "rates": "Wechselkurse",
+    "statistics": "Statistiken",
     "calendar": "Kalender",
     "categories": "Kategorien",
     "categoryGroups": "Gruppen",
@@ -93,6 +95,57 @@
     "subtitle": "Behalte deine Finanzen im Überblick",
     "emptyTitle": "Du hast noch keine Konten",
     "emptyDescription": "Lege dein erstes Konto an, um Transaktionen zu erfassen — das Dashboard füllt sich automatisch mit Grafiken, sobald du Bewegungen hast.",
-    "emptyCta": "Mein erstes Konto anlegen"
+    "emptyCta": "Mein erstes Konto anlegen",
+    "filters": {
+      "categoryGroup": "Kategoriegruppe",
+      "allGroups": "Alle Gruppen",
+      "globalViewTitle": "Globale Ansicht:",
+      "globalViewDesc": "zeigt aggregierte Daten aller Konten.",
+      "accountViewTitle": "Kontoansicht:",
+      "accountViewDesc": "zeigt Daten nur für das ausgewählte Konto.",
+      "chooseIncomeCategories": "Einnahmekategorien wählen",
+      "allIncomeCategories": "Alle Einnahmekategorien",
+      "chooseExpenseCategories": "Ausgabekategorien wählen",
+      "allExpenseCategories": "Alle Ausgabekategorien"
+    },
+    "mom": {
+      "titleExpense": "Monatsvergleich",
+      "titleIncome": "Monatsvergleich (Einnahmen)",
+      "comparing": "Vergleich {{current}} vs {{previous}}",
+      "current": "Aktuell",
+      "previous": "Vorherig",
+      "category": "Kategorie",
+      "currentExpense": "Aktuelle Ausgaben",
+      "previousExpense": "Vorherige Ausgaben",
+      "currentIncome": "Aktuelle Einnahmen",
+      "previousIncome": "Vorherige Einnahmen",
+      "changePercent": "Änderung (%)"
+    },
+    "forecast": {
+      "title": "Monatsprognose",
+      "projection": "Projektion",
+      "vsBudget": "vs. Budget"
+    },
+    "heatmap": {
+      "spendingTitle": "Ausgaben-Heatmap",
+      "incomeTitle": "Einnahmen-Heatmap",
+      "totalSpent": "Gesamt ausgegeben: ${{amount}}",
+      "totalIncome": "Gesamt erhalten: ${{amount}}"
+    }
+  },
+  "statistics": {
+    "subtitle": "Vergleiche beliebige Zeiträume und erkenne Trends in deinen Finanzen.",
+    "comparePeriod": "Vergleichen",
+    "presetLastMonth": "Aktueller Monat vs. Vormonat",
+    "presetLastYear": "Aktueller Monat vs. gleicher Monat letztes Jahr",
+    "presetCustom": "Benutzerdefinierter Zeitraum",
+    "currentPeriod": "Aktueller Zeitraum",
+    "comparePeriodWith": "Vergleichen mit",
+    "pickBothRanges": "Wähle alle vier Daten zum Vergleichen.",
+    "daysCompared": "Verglichene Tage",
+    "avgDailySpend": "Ø tägliche Ausgaben",
+    "avgDailyIncome": "Ø tägliche Einnahmen",
+    "netChange": "Nettoveränderung",
+    "biggestMover": "Größte Veränderung"
   }
 }

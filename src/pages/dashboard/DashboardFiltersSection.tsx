@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { AccountSelector } from "@/components/AccountSelector";
 import CategoryMultiSelect from "@/components/CategoryMultiSelect";
 import { Label } from "@/components/ui/label";
@@ -14,18 +15,19 @@ export function DashboardFiltersSection({
   visibleIncomeCategories: Category[]; selectedIncomeCats: string[]; onIncomeCatsChange: (v: string[]) => void;
   visibleExpenseCategories: Category[]; selectedExpenseCats: string[]; onExpenseCatsChange: (v: string[]) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       <AccountSelector selectedAccount={selectedAccount} onAccountChange={onAccountChange} />
 
       <div className="space-y-2">
-        <Label htmlFor="group-filter">Grupo de Categoría</Label>
+        <Label htmlFor="group-filter">{t("dashboard.filters.categoryGroup")}</Label>
         <Select value={selectedGroupId} onValueChange={onGroupChange}>
           <SelectTrigger id="group-filter" className="w-full sm:max-w-sm">
-            <SelectValue placeholder="Todos los grupos" />
+            <SelectValue placeholder={t("dashboard.filters.allGroups")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos los grupos</SelectItem>
+            <SelectItem value="all">{t("dashboard.filters.allGroups")}</SelectItem>
             {groups.map((group) => (
               <SelectItem key={group.id} value={String(group.id)}>{group.name}</SelectItem>
             ))}
@@ -35,28 +37,28 @@ export function DashboardFiltersSection({
 
       {selectedAccount === "all" ? (
         <div className="rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
-          <span className="font-semibold">Vista global:</span> mostrando datos agregados de todas las cuentas.
+          <span className="font-semibold">{t("dashboard.filters.globalViewTitle")}</span> {t("dashboard.filters.globalViewDesc")}
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-muted px-4 py-3 text-sm text-foreground">
-          <span className="font-semibold">Vista de cuenta:</span> mostrando datos solo de la cuenta seleccionada.
+          <span className="font-semibold">{t("dashboard.filters.accountViewTitle")}</span> {t("dashboard.filters.accountViewDesc")}
         </div>
       )}
 
       <div className="space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
         <CategoryMultiSelect
-          label="Elegir categorías Income"
+          label={t("dashboard.filters.chooseIncomeCategories")}
           categories={visibleIncomeCategories}
           selected={selectedIncomeCats}
           onChange={onIncomeCatsChange}
-          placeholder="Todas las categorías de Income"
+          placeholder={t("dashboard.filters.allIncomeCategories")}
         />
         <CategoryMultiSelect
-          label="Elegir categorías Expense"
+          label={t("dashboard.filters.chooseExpenseCategories")}
           categories={visibleExpenseCategories}
           selected={selectedExpenseCats}
           onChange={onExpenseCatsChange}
-          placeholder="Todas las categorías de Expense"
+          placeholder={t("dashboard.filters.allExpenseCategories")}
         />
       </div>
     </>

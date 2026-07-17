@@ -12,7 +12,8 @@
     "logout": "Cerrar sesión",
     "darkMode": "Cambiar a modo oscuro",
     "lightMode": "Cambiar a modo claro",
-    "language": "Idioma"
+    "language": "Idioma",
+    "pickDate": "Seleccionar fecha"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -21,6 +22,7 @@
     "budgets": "Presupuestos",
     "debts": "Deudas",
     "rates": "Tasas",
+    "statistics": "Estadísticas",
     "calendar": "Calendario",
     "categories": "Categorías",
     "categoryGroups": "Grupos",
@@ -93,6 +95,57 @@
     "subtitle": "Sigue tus finanzas con claridad",
     "emptyTitle": "Todavía no tienes cuentas",
     "emptyDescription": "Crea tu primera cuenta para empezar a registrar transacciones — el Dashboard se llena de gráficas automáticamente en cuanto tengas movimientos.",
-    "emptyCta": "Crear mi primera cuenta"
+    "emptyCta": "Crear mi primera cuenta",
+    "filters": {
+      "categoryGroup": "Grupo de Categoría",
+      "allGroups": "Todos los grupos",
+      "globalViewTitle": "Vista global:",
+      "globalViewDesc": "mostrando datos agregados de todas las cuentas.",
+      "accountViewTitle": "Vista de cuenta:",
+      "accountViewDesc": "mostrando datos solo de la cuenta seleccionada.",
+      "chooseIncomeCategories": "Elegir categorías Income",
+      "allIncomeCategories": "Todas las categorías de Income",
+      "chooseExpenseCategories": "Elegir categorías Expense",
+      "allExpenseCategories": "Todas las categorías de Expense"
+    },
+    "mom": {
+      "titleExpense": "Comparativa Mensual",
+      "titleIncome": "Comparativa Mensual (Ingresos)",
+      "comparing": "Comparando {{current}} vs {{previous}}",
+      "current": "Actual",
+      "previous": "Anterior",
+      "category": "Categoría",
+      "currentExpense": "Gasto Actual",
+      "previousExpense": "Gasto Anterior",
+      "currentIncome": "Ingreso Actual",
+      "previousIncome": "Ingreso Anterior",
+      "changePercent": "Cambio (%)"
+    },
+    "forecast": {
+      "title": "Pronóstico Mensual",
+      "projection": "Proyección",
+      "vsBudget": "vs presupuesto"
+    },
+    "heatmap": {
+      "spendingTitle": "Mapa de Calor de Gastos",
+      "incomeTitle": "Mapa de Calor de Ingresos",
+      "totalSpent": "Total gastado: ${{amount}}",
+      "totalIncome": "Total recibido: ${{amount}}"
+    }
+  },
+  "statistics": {
+    "subtitle": "Compara cualquier par de periodos y descubre tendencias en tus finanzas.",
+    "comparePeriod": "Comparar",
+    "presetLastMonth": "Mes actual vs mes anterior",
+    "presetLastYear": "Mes actual vs mismo mes del año pasado",
+    "presetCustom": "Rango personalizado",
+    "currentPeriod": "Periodo actual",
+    "comparePeriodWith": "Comparar con",
+    "pickBothRanges": "Selecciona las cuatro fechas para comparar.",
+    "daysCompared": "Días comparados",
+    "avgDailySpend": "Gasto diario promedio",
+    "avgDailyIncome": "Ingreso diario promedio",
+    "netChange": "Cambio neto",
+    "biggestMover": "Mayor variación"
   }
 }

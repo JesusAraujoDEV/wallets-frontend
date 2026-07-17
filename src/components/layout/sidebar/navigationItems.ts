@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   CalendarDays,
   LayoutDashboard,
   Layers,
@@ -21,6 +22,7 @@ export function buildNavigationItems(pendingCount: number): NavigationItem[] {
     { to: "/budgets", labelKey: "nav.budgets", icon: PiggyBank },
     { to: "/debts", labelKey: "nav.debts", icon: Handshake },
     { to: "/rates", labelKey: "nav.rates", icon: TrendingUp },
+    { to: "/statistics", labelKey: "nav.statistics", icon: BarChart3 },
     { to: "/calendar", labelKey: "nav.calendar", icon: CalendarDays },
     { to: "/categories", labelKey: "nav.categories", icon: Tags },
     { to: "/category-groups", labelKey: "nav.categoryGroups", icon: Layers },

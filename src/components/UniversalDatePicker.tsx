@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { de, enUS, es } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 import { CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -10,6 +11,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+
+const DATE_FNS_LOCALES = { es, en: enUS, de } as const;
 
 interface UniversalDatePickerProps {
   value: string; // ISO date string YYYY-MM-DD or ""
@@ -23,12 +26,14 @@ interface UniversalDatePickerProps {
 export function UniversalDatePicker({
   value,
   onChange,
-  placeholder = "Seleccionar fecha",
+  placeholder,
   id,
   disabled,
   className,
 }: UniversalDatePickerProps) {
   const [open, setOpen] = useState(false);
+  const { t, i18n } = useTranslation();
+  const dateFnsLocale = DATE_FNS_LOCALES[i18n.language as keyof typeof DATE_FNS_LOCALES] ?? enUS;
 
   const selected = value ? new Date(value + "T00:00:00") : undefined;
 
@@ -48,8 +53,8 @@ export function UniversalDatePicker({
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {selected
-            ? format(selected, "PPP", { locale: es })
-            : placeholder}
+            ? format(selected, "PPP", { locale: dateFnsLocale })
+            : placeholder ?? t("common.pickDate")}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">

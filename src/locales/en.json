@@ -12,7 +12,8 @@
     "logout": "Log out",
     "darkMode": "Switch to dark mode",
     "lightMode": "Switch to light mode",
-    "language": "Language"
+    "language": "Language",
+    "pickDate": "Pick a date"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -21,6 +22,7 @@
     "budgets": "Budgets",
     "debts": "Debts",
     "rates": "Rates",
+    "statistics": "Statistics",
     "calendar": "Calendar",
     "categories": "Categories",
     "categoryGroups": "Groups",
@@ -93,6 +95,57 @@
     "subtitle": "Track your finances with clarity",
     "emptyTitle": "You don't have any accounts yet",
     "emptyDescription": "Create your first account to start logging transactions — the Dashboard fills up with charts automatically once you have activity.",
-    "emptyCta": "Create my first account"
+    "emptyCta": "Create my first account",
+    "filters": {
+      "categoryGroup": "Category Group",
+      "allGroups": "All groups",
+      "globalViewTitle": "Global view:",
+      "globalViewDesc": "showing aggregated data from all accounts.",
+      "accountViewTitle": "Account view:",
+      "accountViewDesc": "showing data for the selected account only.",
+      "chooseIncomeCategories": "Choose income categories",
+      "allIncomeCategories": "All income categories",
+      "chooseExpenseCategories": "Choose expense categories",
+      "allExpenseCategories": "All expense categories"
+    },
+    "mom": {
+      "titleExpense": "Monthly Comparison",
+      "titleIncome": "Monthly Comparison (Income)",
+      "comparing": "Comparing {{current}} vs {{previous}}",
+      "current": "Current",
+      "previous": "Previous",
+      "category": "Category",
+      "currentExpense": "Current Spend",
+      "previousExpense": "Previous Spend",
+      "currentIncome": "Current Income",
+      "previousIncome": "Previous Income",
+      "changePercent": "Change (%)"
+    },
+    "forecast": {
+      "title": "Monthly Forecast",
+      "projection": "Projection",
+      "vsBudget": "vs budget"
+    },
+    "heatmap": {
+      "spendingTitle": "Spending Heatmap",
+      "incomeTitle": "Income Heatmap",
+      "totalSpent": "Total spent: ${{amount}}",
+      "totalIncome": "Total income: ${{amount}}"
+    }
+  },
+  "statistics": {
+    "subtitle": "Compare any two periods and spot trends in your finances.",
+    "comparePeriod": "Compare",
+    "presetLastMonth": "This month vs last month",
+    "presetLastYear": "This month vs same month last year",
+    "presetCustom": "Custom range",
+    "currentPeriod": "Current period",
+    "comparePeriodWith": "Compare with",
+    "pickBothRanges": "Pick all four dates to compare.",
+    "daysCompared": "Days compared",
+    "avgDailySpend": "Avg daily spend",
+    "avgDailyIncome": "Avg daily income",
+    "netChange": "Net change",
+    "biggestMover": "Biggest mover"
   }
 }

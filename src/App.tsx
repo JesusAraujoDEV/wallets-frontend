@@ -17,6 +17,7 @@ import Accounts from "./pages/Accounts";
 import Budgets from "./pages/Budgets";
 import Debts from "./pages/Debts";
 import Rates from "./pages/Rates";
+import Statistics from "./pages/Statistics";
 import CalendarView from "./pages/CalendarView";
 import Subscriptions from "./pages/Subscriptions";
 import Profile from "./pages/Profile";
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="budgets" element={<Budgets />} />
               <Route path="debts" element={<Debts />} />
               <Route path="rates" element={<Rates />} />
+              <Route path="statistics" element={<Statistics />} />
               <Route path="calendar" element={<CalendarView />} />
               <Route path="profile" element={<Profile />} />
             </Route>

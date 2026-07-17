@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 
 export interface MonthlyForecastGaugeProps {
@@ -8,6 +9,7 @@ export interface MonthlyForecastGaugeProps {
 }
 
 export function MonthlyForecastGauge({ budget_total, current_spending_mtd, projected_total_spending, projected_over_under }: MonthlyForecastGaugeProps) {
+  const { t } = useTranslation();
   const width = 360; const height = 220; const cx = width/2; const cy = height - 10; const r = Math.min(width, height) * 0.45;
   const startAngle = Math.PI; const endAngle = 0; // semi circle
   const safeBudget = Number(budget_total || 0);
@@ -29,7 +31,7 @@ export function MonthlyForecastGauge({ budget_total, current_spending_mtd, proje
 
   return (
     <Card className="p-6 shadow-md border-0">
-      <h3 className="text-xl font-semibold text-foreground mb-4">Monthly Forecast</h3>
+      <h3 className="text-xl font-semibold text-foreground mb-4">{t("dashboard.forecast.title")}</h3>
       <svg width={width} height={height} className="mx-auto block">
         {/* base */}
         {arc(1, 'hsl(var(--muted))', 12)}
@@ -43,10 +45,10 @@ export function MonthlyForecastGauge({ budget_total, current_spending_mtd, proje
         <text x={cx + r} y={cy + 16} textAnchor="end" fontSize={10} fill="hsl(var(--muted-foreground))">${safeBudget.toFixed(0)}</text>
       </svg>
       <div className="text-center mt-2">
-        <div className="text-sm text-muted-foreground">Proyección</div>
+        <div className="text-sm text-muted-foreground">{t("dashboard.forecast.projection")}</div>
         <div className="text-2xl font-bold">${safeProjected.toFixed(2)}</div>
         <div className={`text-sm ${safeOverUnder > 0 ? 'text-red-600' : 'text-green-600'}`}>
-          {safeOverUnder >= 0 ? '+' : ''}${safeOverUnder.toFixed(2)} vs presupuesto
+          {safeOverUnder >= 0 ? '+' : ''}${safeOverUnder.toFixed(2)} {t("dashboard.forecast.vsBudget")}
         </div>
       </div>
     </Card>

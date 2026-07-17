@@ -78,10 +78,13 @@ export async function fetchExpenseVolatility(params?: { includeInStats?: boolean
 export interface ComparativeMoMResponse {
   summary: {
     current_total: number;
+    previous_total: number;
     total_delta_percent: number; // positive means spent more
     total_delta_usd: number;
-    current_period_name?: string;
-    previous_period_name?: string;
+    current_period_start?: string;
+    current_period_end?: string;
+    previous_period_start?: string;
+    previous_period_end?: string;
   };
   categories_comparison: Array<{
     category: string;
@@ -90,13 +93,21 @@ export interface ComparativeMoMResponse {
     delta_percent: number; // positive means spent more
   }>;
 }
-export async function fetchComparativeMoM(params?: { includeInStats?: boolean; accountId?: string; date?: string; groupId?: number; }): Promise<ComparativeMoMResponse> {
-  // API expects a reference date (YYYY-MM-DD)
+export interface ComparativePeriodParams {
+  currentFrom?: string; currentTo?: string;
+  previousFrom?: string; previousTo?: string;
+}
+export async function fetchComparativeMoM(params?: { includeInStats?: boolean; accountId?: string; date?: string; groupId?: number; } & ComparativePeriodParams): Promise<ComparativeMoMResponse> {
+  // API expects a reference date (YYYY-MM-DD) OR an explicit current/previous range
   const sp = new URLSearchParams();
   if (params?.includeInStats === true) sp.set("includeInStats", "1");
   if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
   if (params?.date) sp.set("date", params.date);
+  if (params?.currentFrom) sp.set("current_from", params.currentFrom);
+  if (params?.currentTo) sp.set("current_to", params.currentTo);
+  if (params?.previousFrom) sp.set("previous_from", params.previousFrom);
+  if (params?.previousTo) sp.set("previous_to", params.previousTo);
   if (typeof params?.groupId === "number") sp.set("groupId", String(params.groupId));
   const qs = sp.toString();
   return apiFetch<ComparativeMoMResponse>(`stats/comparative-mom${qs ? `?${qs}` : ""}`);
@@ -170,10 +181,13 @@ export async function fetchIncomeVolatility(params?: { includeInStats?: boolean;
 export interface ComparativeMoMIncomeResponse {
   summary: {
     current_total: number;
+    previous_total: number;
     total_delta_percent: number;
     total_delta_usd: number;
-    current_period_name?: string;
-    previous_period_name?: string;
+    current_period_start?: string;
+    current_period_end?: string;
+    previous_period_start?: string;
+    previous_period_end?: string;
   };
   categories_comparison: Array<{
     category: string;
@@ -182,12 +196,16 @@ export interface ComparativeMoMIncomeResponse {
     delta_percent: number;
   }>;
 }
-export async function fetchComparativeMoMIncome(params?: { includeInStats?: boolean; accountId?: string; date?: string; groupId?: number; }): Promise<ComparativeMoMIncomeResponse> {
+export async function fetchComparativeMoMIncome(params?: { includeInStats?: boolean; accountId?: string; date?: string; groupId?: number; } & ComparativePeriodParams): Promise<ComparativeMoMIncomeResponse> {
   const sp = new URLSearchParams();
   if (params?.includeInStats === true) sp.set("includeInStats", "1");
   if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
   if (params?.date) sp.set("date", params.date);
+  if (params?.currentFrom) sp.set("current_from", params.currentFrom);
+  if (params?.currentTo) sp.set("current_to", params.currentTo);
+  if (params?.previousFrom) sp.set("previous_from", params.previousFrom);
+  if (params?.previousTo) sp.set("previous_to", params.previousTo);
   if (typeof params?.groupId === "number") sp.set("groupId", String(params.groupId));
   const qs = sp.toString();
   return apiFetch<ComparativeMoMIncomeResponse>(`stats/comparative-mom-income${qs ? `?${qs}` : ""}`);

@@ -1,18 +1,25 @@
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatPeriodLabel } from "@/lib/formatPeriodLabel";
 
 export interface ComparativeMoMIncomeProps {
   summary: {
     current_total: number;
     total_delta_percent: number;
     total_delta_usd: number;
-    current_period_name?: string;
-    previous_period_name?: string;
+    current_period_start?: string;
+    current_period_end?: string;
+    previous_period_start?: string;
+    previous_period_end?: string;
   };
   categories: Array<{ category: string; current: number; previous: number; delta_percent: number }>;
 }
 
 export function ComparativeMoMIncome({ summary, categories }: ComparativeMoMIncomeProps) {
+  const { t, i18n } = useTranslation();
+  const currentLabel = formatPeriodLabel(summary.current_period_start, summary.current_period_end, i18n.language) || t("dashboard.mom.current");
+  const previousLabel = formatPeriodLabel(summary.previous_period_start, summary.previous_period_end, i18n.language) || t("dashboard.mom.previous");
   const totalDeltaRaw = Number(summary?.total_delta_percent ?? 0);
   const positive = totalDeltaRaw > 0; // more income is green
   const totalDeltaPct = totalDeltaRaw * 100;
@@ -22,8 +29,10 @@ export function ComparativeMoMIncome({ summary, categories }: ComparativeMoMInco
     <Card className="p-6 shadow-md border-0">
       <div className="flex items-end justify-between mb-4">
         <div>
-          <h3 className="text-xl font-semibold text-foreground">Comparative MoM (Income)</h3>
-          <p className="text-xs text-muted-foreground">Comparando {summary.current_period_name || 'Actual'} vs {summary.previous_period_name || 'Anterior'}</p>
+          <h3 className="text-xl font-semibold text-foreground">{t("dashboard.mom.titleIncome")}</h3>
+          <p className="text-xs text-muted-foreground">
+            {t("dashboard.mom.comparing", { current: currentLabel, previous: previousLabel })}
+          </p>
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold">${currentTotal.toFixed(2)}</div>
@@ -35,10 +44,10 @@ export function ComparativeMoMIncome({ summary, categories }: ComparativeMoMInco
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Categoría</TableHead>
-            <TableHead>Ingreso Actual</TableHead>
-            <TableHead>Ingreso Anterior</TableHead>
-            <TableHead>Cambio (%)</TableHead>
+            <TableHead>{t("dashboard.mom.category")}</TableHead>
+            <TableHead>{t("dashboard.mom.currentIncome")}</TableHead>
+            <TableHead>{t("dashboard.mom.previousIncome")}</TableHead>
+            <TableHead>{t("dashboard.mom.changePercent")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
