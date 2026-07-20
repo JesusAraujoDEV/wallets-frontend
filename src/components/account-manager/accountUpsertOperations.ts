@@ -34,12 +34,13 @@ export const saveMetadataOnly = async (editingAccount: Account, formData: Accoun
   });
 };
 
-export const createAccount = async (formData: AccountEditorValue) => {
+export const createAccount = async (formData: AccountEditorValue, type = "ahorros") => {
   const newAccount: Account = {
     id: newId(),
     name: formData.name,
     currency: formData.currency,
     balance: parseFloat(formData.balance),
+    type,
   };
   await AccountsStore.upsert(newAccount);
   await AccountsStore.refresh().catch(() => {});

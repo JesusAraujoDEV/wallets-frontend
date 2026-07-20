@@ -11,7 +11,7 @@ interface AccountSelectorProps {
   onAccountChange: (accountId: string) => void;
 }
 
-const ALL_ACCOUNT: Account = { id: "all", name: "All Accounts", currency: "USD", balance: 0 };
+const ALL_ACCOUNT: Account = { id: "all", name: "All Accounts", currency: "USD", balance: 0, type: "ahorros" };
 
 export const AccountSelector = ({ selectedAccount, onAccountChange }: AccountSelectorProps) => {
   const [accounts, setAccounts] = useState<Account[]>([]);

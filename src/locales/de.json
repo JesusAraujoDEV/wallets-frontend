@@ -23,6 +23,7 @@
     "debts": "Schulden",
     "rates": "Wechselkurse",
     "statistics": "Statistiken",
+    "savings": "Ersparnisse",
     "calendar": "Kalender",
     "categories": "Kategorien",
     "categoryGroups": "Gruppen",
@@ -156,5 +157,11 @@
       "may": "Mai", "june": "Juni", "july": "Juli", "august": "August",
       "september": "September", "october": "Oktober", "november": "November", "december": "Dezember"
     }
+  },
+  "savings": {
+    "subtitle": "Deine Sparkonten und Ziele, getrennt vom Alltag.",
+    "newGoal": "Neues Sparziel",
+    "totalLabel": "Gesamt gespart (USD)",
+    "empty": "Noch keine Sparkonten. Erstelle eins, um ein Ziel zu verfolgen."
   }
 }

@@ -3,6 +3,7 @@ export interface Account {
   name: string;
   currency: "USD" | "EUR" | "VES";
   balance: number;
+  type: string;
 }
 
 export interface Category {

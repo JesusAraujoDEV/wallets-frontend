@@ -23,6 +23,7 @@
     "debts": "Deudas",
     "rates": "Tasas",
     "statistics": "Estadísticas",
+    "savings": "Ahorros",
     "calendar": "Calendario",
     "categories": "Categorías",
     "categoryGroups": "Grupos",
@@ -156,5 +157,11 @@
       "may": "Mayo", "june": "Junio", "july": "Julio", "august": "Agosto",
       "september": "Septiembre", "october": "Octubre", "november": "Noviembre", "december": "Diciembre"
     }
+  },
+  "savings": {
+    "subtitle": "Tus cuentas de ahorro y metas, separadas del día a día.",
+    "newGoal": "Nueva meta de ahorro",
+    "totalLabel": "Total ahorrado (USD)",
+    "empty": "Todavía no tienes cuentas de ahorro. Crea una para empezar a trackear una meta."
   }
 }

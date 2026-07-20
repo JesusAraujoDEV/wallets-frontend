@@ -9,7 +9,7 @@ const DEFAULT_FORM_DATA: AccountEditorValue = {
   balance: "",
 };
 
-export const useAccountFormDialog = () => {
+export const useAccountFormDialog = (newAccountType = "ahorros") => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [formData, setFormData] = useState<AccountEditorValue>(DEFAULT_FORM_DATA);
@@ -20,7 +20,7 @@ export const useAccountFormDialog = () => {
     setFormData(DEFAULT_FORM_DATA);
   };
 
-  const { isSubmitting, handleSubmit } = useAccountUpsertMutation(editingAccount, handleCloseDialog);
+  const { isSubmitting, handleSubmit } = useAccountUpsertMutation(editingAccount, handleCloseDialog, newAccountType);
 
   const handleOpenDialog = (account?: Account) => {
     if (account) {

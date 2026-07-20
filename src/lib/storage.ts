@@ -158,6 +158,7 @@ export const AccountsStore = {
       name: String(a.name),
       currency: (a.currency || "USD") as Account["currency"],
       balance: Number(a.balance || 0),
+      type: String(a.type || "ahorros"),
     }));
     emit();
   },
@@ -167,7 +168,7 @@ export const AccountsStore = {
       const payload = { name: account.name, currency: account.currency };
       await fetchJSON(`accounts?id=${encodeURIComponent(account.id)}`, { method: "PATCH", body: JSON.stringify(payload) });
     } else {
-      const payload = { name: account.name, type: "ahorros", currency: account.currency, balance: account.balance };
+      const payload = { name: account.name, type: account.type || "ahorros", currency: account.currency, balance: account.balance };
       await fetchJSON(`accounts`, { method: "POST", body: JSON.stringify(payload) });
     }
     await this.refresh();

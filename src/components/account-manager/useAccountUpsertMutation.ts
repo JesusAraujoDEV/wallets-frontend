@@ -4,7 +4,7 @@ import type { Account } from "@/lib/types";
 import type { AccountEditorValue } from "@/components/AccountEditorDialog";
 import { saveWithBalanceAdjustment, saveMetadataOnly, createAccount } from "./accountUpsertOperations";
 
-export const useAccountUpsertMutation = (editingAccount: Account | null, onSuccess: () => void) => {
+export const useAccountUpsertMutation = (editingAccount: Account | null, onSuccess: () => void, newAccountType = "ahorros") => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (formData: AccountEditorValue) => {
@@ -28,7 +28,7 @@ export const useAccountUpsertMutation = (editingAccount: Account | null, onSucce
           await saveMetadataOnly(editingAccount, formData);
         }
       } else {
-        await createAccount(formData);
+        await createAccount(formData, newAccountType);
       }
       onSuccess();
     } finally {

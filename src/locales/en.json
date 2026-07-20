@@ -23,6 +23,7 @@
     "debts": "Debts",
     "rates": "Rates",
     "statistics": "Statistics",
+    "savings": "Savings",
     "calendar": "Calendar",
     "categories": "Categories",
     "categoryGroups": "Groups",
@@ -156,5 +157,11 @@
       "may": "May", "june": "June", "july": "July", "august": "August",
       "september": "September", "october": "October", "november": "November", "december": "December"
     }
+  },
+  "savings": {
+    "subtitle": "Your savings accounts and goals, separate from day-to-day spending.",
+    "newGoal": "New savings goal",
+    "totalLabel": "Total saved (USD)",
+    "empty": "No savings accounts yet. Create one to start tracking a goal."
   }
 }
