@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -29,33 +30,34 @@ export function DebtTypeCategoryDateFields({
   dueDate: string;
   setDueDate: (date: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       <div className="space-y-2">
-        <Label>Tipo</Label>
+        <Label>{t("debts.type")}</Label>
         <Select value={type} disabled={lockType} onValueChange={(v) => setType(v as DebtType)}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="payable">Por Pagar</SelectItem>
-            <SelectItem value="receivable">Por Cobrar</SelectItem>
+            <SelectItem value="payable">{t("debts.payable")}</SelectItem>
+            <SelectItem value="receivable">{t("debts.receivable")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="space-y-2">
-        <Label>Categoría (opcional)</Label>
+        <Label>{t("debts.categoryOptional")}</Label>
         <CategorySelector value={categoryId} onChange={setCategoryId} categories={categories} />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="debt-due-date">Fecha Programada / Limite (opcional)</Label>
+        <Label htmlFor="debt-due-date">{t("debts.dueDateOptional")}</Label>
         <UniversalDatePicker
           id="debt-due-date"
           value={dueDate || ""}
           onChange={setDueDate}
-          placeholder="Seleccionar fecha límite"
+          placeholder={t("debts.selectDueDate")}
         />
       </div>
     </>

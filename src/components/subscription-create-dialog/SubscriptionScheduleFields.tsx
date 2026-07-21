@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -25,19 +26,20 @@ export function SubscriptionScheduleFields({
   executionMode: RecurringExecutionMode;
   onExecutionModeChange: (value: RecurringExecutionMode) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Frecuencia</Label>
+          <Label>{t("subscriptions.frequency")}</Label>
           <Select value={frequency} onValueChange={onFrequencyChange}>
             <SelectTrigger>
-              <SelectValue placeholder="Seleccionar frecuencia" />
+              <SelectValue placeholder={t("subscriptions.selectFrequency")} />
             </SelectTrigger>
             <SelectContent>
               {FREQUENCY_OPTIONS.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
-                  {option.label}
+                  {t(option.labelKey)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -45,20 +47,20 @@ export function SubscriptionScheduleFields({
         </div>
 
         <div className="space-y-2">
-          <Label>Fecha de inicio</Label>
-          <UniversalDatePicker value={nextDate} onChange={onNextDateChange} placeholder="Seleccionar fecha" />
+          <Label>{t("subscriptions.startDate")}</Label>
+          <UniversalDatePicker value={nextDate} onChange={onNextDateChange} placeholder={t("subscriptions.selectDate")} />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label>Modo de ejecución</Label>
+        <Label>{t("subscriptions.executionMode")}</Label>
         <Select value={executionMode} onValueChange={(v) => onExecutionModeChange(v as RecurringExecutionMode)}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="auto">Automático</SelectItem>
-            <SelectItem value="manual">Manual</SelectItem>
+            <SelectItem value="auto">{t("subscriptions.auto")}</SelectItem>
+            <SelectItem value="manual">{t("subscriptions.manual")}</SelectItem>
           </SelectContent>
         </Select>
       </div>

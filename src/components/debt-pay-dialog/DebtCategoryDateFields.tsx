@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import { CategorySelector } from "@/components/CategorySelector";
 import { UniversalDatePicker } from "@/components/UniversalDatePicker";
@@ -12,11 +13,12 @@ export function DebtCategoryDateFields({
   paymentDate: string;
   setPaymentDate: (v: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       {categories.length > 0 && (
         <div className="space-y-2">
-          <Label>Categoría (opcional)</Label>
+          <Label>{t("debts.categoryOptional")}</Label>
           <CategorySelector
             value={selectedCategoryId}
             onChange={setSelectedCategoryId}
@@ -26,12 +28,12 @@ export function DebtCategoryDateFields({
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="debt-pay-date">Fecha</Label>
+        <Label htmlFor="debt-pay-date">{t("debts.date")}</Label>
         <UniversalDatePicker
           id="debt-pay-date"
           value={paymentDate}
           onChange={(date) => setPaymentDate(date)}
-          placeholder="Seleccionar fecha de pago"
+          placeholder={t("debts.selectPaymentDate")}
         />
       </div>
     </>

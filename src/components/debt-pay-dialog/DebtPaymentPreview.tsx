@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { Account, Debt } from "@/lib/types";
 
 export function DebtPaymentPreview({
@@ -14,27 +15,33 @@ export function DebtPaymentPreview({
   finalUsedAmount: number;
   finalUsedRate: number;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-md border border-border bg-muted/30 p-3">
       {!selectedAccount && (
         <p className="text-xs text-muted-foreground">
-          Selecciona una cuenta para previsualizar el pago final.
+          {t("debts.selectAccountToPreview")}
         </p>
       )}
       {selectedAccount && !hasValidAmount && (
         <p className="text-xs text-muted-foreground">
-          Ingresa un monto válido para ver la previsualización.
+          {t("debts.enterValidAmountToPreview")}
         </p>
       )}
       {selectedAccount && hasValidAmount && requiresConversion && !hasValidEquivalentAmount && (
         <p className="text-xs text-muted-foreground">
-          Ingresa un monto a debitar válido para calcular la previsualización.
+          {t("debts.enterValidDebitAmountToPreview")}
         </p>
       )}
       {canRenderPreview && selectedAccount && (
         <p className="text-sm text-foreground">
-          Abonarás {numericAmount.toFixed(2)} {debt.currency} usando {finalUsedAmount.toFixed(2)}{" "}
-          {selectedAccount.currency} (Tasa aplicada: {finalUsedRate.toFixed(6)})
+          {t("debts.paymentPreviewSummary", {
+            amount: numericAmount.toFixed(2),
+            currency: debt.currency,
+            finalAmount: finalUsedAmount.toFixed(2),
+            finalCurrency: selectedAccount.currency,
+            rate: finalUsedRate.toFixed(6),
+          })}
         </p>
       )}
     </div>

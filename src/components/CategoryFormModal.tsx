@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/use-toast";
 import { CategoriesStore, fetchCategoryGroups, newId } from "@/lib/storage";
 import type { Category, CategoryGroup } from "@/lib/types";
@@ -12,6 +13,7 @@ interface CategoryFormModalProps {
 }
 
 export function CategoryFormModal({ isOpen, onClose, onSuccess, defaultType }: CategoryFormModalProps) {
+  const { t } = useTranslation();
   const [groups, setGroups] = useState<CategoryGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -39,13 +41,13 @@ export function CategoryFormModal({ isOpen, onClose, onSuccess, defaultType }: C
         const fetched = await fetchCategoryGroups();
         setGroups(fetched);
       } catch (error) {
-        toast({ title: "Error", description: `Unable to load category groups: ${String(error)}`, variant: "destructive" });
+        toast({ title: t("categories.errorTitle"), description: t("categories.loadGroupsError", { error: String(error) }), variant: "destructive" });
       } finally {
         setGroupsLoading(false);
       }
     };
     loadGroups();
-  }, [isOpen]);
+  }, [isOpen, t]);
 
   const resetForm = () => {
     setFormData({
@@ -67,7 +69,7 @@ export function CategoryFormModal({ isOpen, onClose, onSuccess, defaultType }: C
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
-      toast({ title: "Nombre requerido", description: "Ingresa un nombre para la categoría.", variant: "destructive" });
+      toast({ title: t("categories.nameRequiredTitle"), description: t("categories.nameRequiredDesc"), variant: "destructive" });
       return;
     }
     if (!formData.color) return;
@@ -91,7 +93,7 @@ export function CategoryFormModal({ isOpen, onClose, onSuccess, defaultType }: C
         (c) => c.name.toLowerCase() === formData.name.trim().toLowerCase() && c.type === formData.type,
       );
 
-      toast({ title: "Categoría creada", description: `${formData.name} agregada exitosamente.` });
+      toast({ title: t("categories.categoryCreatedTitle"), description: t("categories.categoryCreatedDesc", { name: formData.name }) });
       resetForm();
       onSuccess(created ?? newCategory);
     } finally {
@@ -107,8 +109,8 @@ export function CategoryFormModal({ isOpen, onClose, onSuccess, defaultType }: C
       onChange={setFormData}
       onSubmit={handleSubmit}
       submitting={submitting}
-      title="Crear Nueva Categoría"
-      description="Agrega una nueva categoría para organizar tus transacciones."
+      title={t("categories.createNewCategory")}
+      description={t("categories.createNewCategoryDesc")}
       groups={groups}
       groupsLoading={groupsLoading}
     />

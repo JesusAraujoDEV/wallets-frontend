@@ -1,4 +1,5 @@
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,19 +19,20 @@ export function DeleteBudgetDialog({ open, onOpenChange, budget, isDeleting, onC
   isDeleting: boolean;
   onConfirm: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Eliminar presupuesto</AlertDialogTitle>
+          <AlertDialogTitle>{t("budgets.delete.title")}</AlertDialogTitle>
           <AlertDialogDescription>
             {budget
-              ? `Se eliminará el presupuesto de ${budget.category.name}. Esta acción no se puede deshacer.`
-              : "Esta acción no se puede deshacer."}
+              ? t("budgets.delete.descriptionWithCategory", { category: budget.category.name })
+              : t("budgets.delete.descriptionGeneric")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-4">
-          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>{t("budgets.form.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             onClick={(event) => {
@@ -42,10 +44,10 @@ export function DeleteBudgetDialog({ open, onOpenChange, budget, isDeleting, onC
             {isDeleting ? (
               <span className="inline-flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Eliminando...
+                {t("budgets.delete.deleting")}
               </span>
             ) : (
-              "Eliminar"
+              t("budgets.delete.confirm")
             )}
           </AlertDialogAction>
         </AlertDialogFooter>

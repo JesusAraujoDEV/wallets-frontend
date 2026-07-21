@@ -6,6 +6,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CreditCard, Link2, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { Debt } from "@/lib/types";
 
 interface DebtCardActionsProps {
@@ -25,6 +26,7 @@ export function DebtCardActions({
   onDelete,
   onLinkPast,
 }: DebtCardActionsProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center justify-between gap-2">
       {/* Pay button — hidden when fully paid */}
@@ -37,7 +39,7 @@ export function DebtCardActions({
           onClick={() => onPay(debt)}
         >
           <CreditCard className="mr-2 h-4 w-4" />
-          Abonar / Pagar
+          {t("debts.payOrPay")}
         </Button>
       ) : (
         <span />
@@ -52,8 +54,8 @@ export function DebtCardActions({
             size="icon"
             className="h-8 w-8"
             onClick={() => onLinkPast(debt)}
-            aria-label="Vincular pagos anteriores"
-            title="Vincular pagos anteriores"
+            aria-label={t("debts.linkPastPayments")}
+            title={t("debts.linkPastPayments")}
           >
             <Link2 className="h-4 w-4" />
           </Button>
@@ -64,7 +66,7 @@ export function DebtCardActions({
           size="icon"
           className="h-8 w-8"
           onClick={() => onEdit(debt)}
-          aria-label="Editar deuda"
+          aria-label={t("debts.editDebt")}
         >
           <Pencil className="h-4 w-4" />
         </Button>
@@ -74,7 +76,7 @@ export function DebtCardActions({
           size="icon"
           className="h-8 w-8 text-destructive hover:text-destructive"
           onClick={() => onDelete(debt)}
-          aria-label="Eliminar deuda"
+          aria-label={t("debts.deleteDebt")}
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -86,32 +88,32 @@ export function DebtCardActions({
           <DropdownMenuTrigger asChild>
             <Button type="button" variant="ghost" size="icon" className="h-8 w-8">
               <MoreVertical className="h-4 w-4" />
-              <span className="sr-only">Más opciones</span>
+              <span className="sr-only">{t("debts.moreOptions")}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {!isPaid && (
               <DropdownMenuItem onClick={() => onPay(debt)}>
                 <CreditCard className="mr-2 h-4 w-4" />
-                Abonar / Pagar
+                {t("debts.payOrPay")}
               </DropdownMenuItem>
             )}
             {debt.categoryId && (
               <DropdownMenuItem onClick={() => onLinkPast(debt)}>
                 <Link2 className="mr-2 h-4 w-4" />
-                Vincular pagos anteriores
+                {t("debts.linkPastPayments")}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={() => onEdit(debt)}>
               <Pencil className="mr-2 h-4 w-4" />
-              Editar
+              {t("debts.edit")}
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
               onClick={() => onDelete(debt)}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Eliminar
+              {t("debts.delete")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

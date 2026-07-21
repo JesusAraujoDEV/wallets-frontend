@@ -15,10 +15,10 @@ export type CreateSubscriptionForm = {
 };
 
 export const FREQUENCY_OPTIONS = [
-  { value: "daily", label: "Diaria" },
-  { value: "weekly", label: "Semanal" },
-  { value: "monthly", label: "Mensual" },
-  { value: "yearly", label: "Anual" },
+  { value: "daily", labelKey: "subscriptions.frequencyDaily" },
+  { value: "weekly", labelKey: "subscriptions.frequencyWeekly" },
+  { value: "monthly", labelKey: "subscriptions.frequencyMonthly" },
+  { value: "yearly", labelKey: "subscriptions.frequencyYearly" },
 ] as const;
 
 export const DEFAULT_SUBSCRIPTION_FORM_VALUES: CreateSubscriptionForm = {
@@ -35,6 +35,6 @@ export const DEFAULT_SUBSCRIPTION_FORM_VALUES: CreateSubscriptionForm = {
   subscriptionType: "gasto",
 };
 
-export function modeLabel(mode: RecurringExecutionMode) {
-  return mode === "auto" ? "Automático" : "Recordatorio";
+export function modeLabelKey(mode: RecurringExecutionMode) {
+  return mode === "auto" ? "subscriptions.auto" : "subscriptions.reminder";
 }

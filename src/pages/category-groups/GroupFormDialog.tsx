@@ -1,4 +1,5 @@
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -17,71 +18,72 @@ export function GroupFormDialog({ open, onOpenChange, editingGroup, form, setFor
   onSubmit: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
         <DialogHeader>
-          <DialogTitle>{editingGroup ? "Editar Grupo" : "Crear Grupo"}</DialogTitle>
+          <DialogTitle>{editingGroup ? t("categoryGroups.form.editTitle") : t("categoryGroups.form.createTitle")}</DialogTitle>
           <DialogDescription>
             {editingGroup
-              ? "Actualiza el nombre, tipo y comportamiento analítico del grupo."
-              : "Crea un grupo para clasificar categorías y usarlo como filtro global."}
+              ? t("categoryGroups.form.editDescription")
+              : t("categoryGroups.form.createDescription")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="group-name">Nombre</Label>
+            <Label htmlFor="group-name">{t("categoryGroups.form.name")}</Label>
             <Input
               id="group-name"
-              placeholder="Ej. Gastos fijos"
+              placeholder={t("categoryGroups.form.namePlaceholder")}
               value={form.name}
               onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="group-type">Tipo</Label>
+            <Label htmlFor="group-type">{t("categoryGroups.form.type")}</Label>
             <Select
               value={form.type}
               onValueChange={(value: "ingreso" | "gasto" | "neutral") => setForm((prev) => ({ ...prev, type: value }))}
             >
               <SelectTrigger id="group-type">
-                <SelectValue placeholder="Selecciona tipo" />
+                <SelectValue placeholder={t("categoryGroups.form.typePlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ingreso">Ingreso</SelectItem>
-                <SelectItem value="gasto">Gasto</SelectItem>
-                <SelectItem value="neutral">Neutral</SelectItem>
+                <SelectItem value="ingreso">{t("categoryGroups.form.typeIncome")}</SelectItem>
+                <SelectItem value="gasto">{t("categoryGroups.form.typeExpense")}</SelectItem>
+                <SelectItem value="neutral">{t("categoryGroups.form.typeNeutral")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="group-analytics">Comportamiento en estadísticas</Label>
+            <Label htmlFor="group-analytics">{t("categoryGroups.form.analyticsLabel")}</Label>
             <Select
               value={form.analyticsBehavior}
               onValueChange={(value: "include" | "exclude") => setForm((prev) => ({ ...prev, analyticsBehavior: value }))}
             >
               <SelectTrigger id="group-analytics">
-                <SelectValue placeholder="Selecciona comportamiento" />
+                <SelectValue placeholder={t("categoryGroups.form.analyticsPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="include">Incluir en estadísticas</SelectItem>
-                <SelectItem value="exclude">Excluir de estadísticas</SelectItem>
+                <SelectItem value="include">{t("categoryGroups.form.analyticsInclude")}</SelectItem>
+                <SelectItem value="exclude">{t("categoryGroups.form.analyticsExclude")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={saving}>Cancelar</Button>
+          <Button variant="outline" onClick={onCancel} disabled={saving}>{t("categoryGroups.form.cancel")}</Button>
           <Button onClick={onSubmit} disabled={saving} aria-busy={saving}>
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Guardando...
+                {t("categoryGroups.form.saving")}
               </>
             ) : (
-              "Guardar"
+              t("categoryGroups.form.save")
             )}
           </Button>
         </DialogFooter>

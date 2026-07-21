@@ -1,4 +1,5 @@
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Account } from "@/lib/types";
@@ -14,10 +15,11 @@ export function PayNowAmountCurrencyFields({
   referenceCurrency: Currency;
   selectedAccount: Account | undefined;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div className="space-y-2">
-        <Label htmlFor="paynow-final-amount">Monto final</Label>
+        <Label htmlFor="paynow-final-amount">{t("transactions.finalAmount")}</Label>
         <div className="relative">
           <Input
             id="paynow-final-amount"
@@ -37,13 +39,13 @@ export function PayNowAmountCurrencyFields({
         </div>
         {selectedAccount && finalCurrency !== referenceCurrency && (
           <p className="text-xs text-muted-foreground">
-            Convertido a {finalCurrency} vía tasa BCV
+            {t("transactions.convertedViaBcv", { currency: finalCurrency })}
           </p>
         )}
       </div>
 
       <div className="space-y-2">
-        <Label>Moneda final</Label>
+        <Label>{t("transactions.finalCurrency")}</Label>
         <Input value={finalCurrency} disabled className="bg-muted" />
       </div>
     </div>

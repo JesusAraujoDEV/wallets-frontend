@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -7,26 +8,27 @@ import { OtpBoxesInput } from "./OtpBoxesInput";
 import type { useEmailChangeDialog } from "./useEmailChangeDialog";
 
 export function EmailChangeDialog({ state }: { state: ReturnType<typeof useEmailChangeDialog> }) {
+  const { t } = useTranslation();
   const { open, onOpenChange, step, loading } = state;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-md overflow-x-hidden max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Cambiar correo</DialogTitle>
-          <DialogDescription>Completa el flujo de seguridad con OTP para actualizar tu correo.</DialogDescription>
+          <DialogTitle>{t("auth.emailChange.title")}</DialogTitle>
+          <DialogDescription>{t("auth.emailChange.description")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {step === 1 ? (
             <div className="space-y-2">
-              <Label htmlFor="otp-current-password">Contraseña actual</Label>
+              <Label htmlFor="otp-current-password">{t("auth.changePassword.currentPasswordLabel")}</Label>
               <Input
                 id="otp-current-password"
                 type="password"
                 value={state.currentPassword}
                 onChange={(event) => state.setCurrentPassword(event.target.value)}
-                placeholder="Ingresa tu contraseña"
+                placeholder={t("auth.emailChange.currentPasswordPlaceholder")}
               />
             </div>
           ) : null}
@@ -34,7 +36,7 @@ export function EmailChangeDialog({ state }: { state: ReturnType<typeof useEmail
           {step === 2 ? (
             <>
               <div className="space-y-2">
-                <Label htmlFor="otp-old-email-code">Codigo OTP (correo actual)</Label>
+                <Label htmlFor="otp-old-email-code">{t("auth.emailChange.oldEmailCodeLabel")}</Label>
                 <OtpBoxesInput
                   idPrefix="otp-old-email-code"
                   value={state.oldEmailCodeDigits}
@@ -43,13 +45,13 @@ export function EmailChangeDialog({ state }: { state: ReturnType<typeof useEmail
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="otp-new-email">Nuevo correo</Label>
+                <Label htmlFor="otp-new-email">{t("auth.emailChange.newEmailLabel")}</Label>
                 <Input
                   id="otp-new-email"
                   type="email"
                   value={state.newEmail}
                   onChange={(event) => state.setNewEmail(event.target.value)}
-                  placeholder="nuevo@email.com"
+                  placeholder={t("auth.emailChange.newEmailPlaceholder")}
                 />
               </div>
             </>
@@ -58,10 +60,10 @@ export function EmailChangeDialog({ state }: { state: ReturnType<typeof useEmail
           {step === 3 ? (
             <>
               <div className="rounded-lg border border-border bg-muted p-3 text-sm text-foreground">
-                Confirmando nuevo correo: <span className="font-medium">{state.newEmail}</span>
+                {t("auth.emailChange.confirmingEmail")} <span className="font-medium">{state.newEmail}</span>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="otp-new-email-code">Codigo OTP (nuevo correo)</Label>
+                <Label htmlFor="otp-new-email-code">{t("auth.emailChange.newEmailCodeLabel")}</Label>
                 <OtpBoxesInput
                   idPrefix="otp-new-email-code"
                   value={state.newEmailCodeDigits}
@@ -75,7 +77,7 @@ export function EmailChangeDialog({ state }: { state: ReturnType<typeof useEmail
 
         <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-4">
           <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancelar
+            {t("common.cancel")}
           </Button>
 
           {step === 1 ? (
@@ -83,10 +85,10 @@ export function EmailChangeDialog({ state }: { state: ReturnType<typeof useEmail
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Enviando...
+                  {t("auth.emailChange.continueLoading")}
                 </>
               ) : (
-                "Continuar"
+                t("auth.emailChange.continue")
               )}
             </Button>
           ) : null}
@@ -96,10 +98,10 @@ export function EmailChangeDialog({ state }: { state: ReturnType<typeof useEmail
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Validando...
+                  {t("auth.emailChange.verifyingLoading")}
                 </>
               ) : (
-                "Verificar codigo"
+                t("auth.emailChange.verify")
               )}
             </Button>
           ) : null}
@@ -109,10 +111,10 @@ export function EmailChangeDialog({ state }: { state: ReturnType<typeof useEmail
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Confirmando...
+                  {t("auth.emailChange.confirmingLoading")}
                 </>
               ) : (
-                "Confirmar correo"
+                t("auth.emailChange.confirm")
               )}
             </Button>
           ) : null}

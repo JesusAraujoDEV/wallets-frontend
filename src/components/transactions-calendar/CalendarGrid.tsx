@@ -1,10 +1,11 @@
 import dayjs from "dayjs";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CalendarDayTooltip } from "./CalendarDayTooltip";
 import type { CalendarDay } from "./types";
 
-const WEEKDAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
 interface CalendarGridProps {
   days: Array<CalendarDay | null>;
@@ -20,14 +21,15 @@ interface CalendarGridProps {
 export function CalendarGrid({
   days, selectedDate, colorFor, dailyIncome, dailyExpense, dailyCountIncome, dailyCountExpense, onSelectDate,
 }: CalendarGridProps) {
+  const { t } = useTranslation();
   const today = dayjs().format('YYYY-MM-DD');
 
   return (
     <div className="grid grid-cols-7 gap-px sm:gap-1 rounded-lg overflow-hidden sm:overflow-visible bg-border sm:bg-transparent">
       {/* Weekday headers */}
-      {WEEKDAY_LABELS.map((w, i) => (
-        <div key={i} className="bg-muted/50 sm:bg-transparent py-2 text-center text-[11px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          {w}
+      {WEEKDAY_KEYS.map((key) => (
+        <div key={key} className="bg-muted/50 sm:bg-transparent py-2 text-center text-[11px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          {t(`transactionsCalendar.weekday.${key}`)}
         </div>
       ))}
 

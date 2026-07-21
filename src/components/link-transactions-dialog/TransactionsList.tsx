@@ -1,4 +1,5 @@
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { Debt, Transaction } from "@/lib/types";
 import { TransactionRow } from "./TransactionRow";
 
@@ -19,11 +20,12 @@ export function TransactionsList({
   selected,
   onToggle,
 }: TransactionsListProps) {
+  const { t } = useTranslation();
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
-        Cargando transacciones...
+        {t("transactions.loadingTransactions")}
       </div>
     );
   }
@@ -31,7 +33,7 @@ export function TransactionsList({
   if (transactions.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
-        No hay transacciones disponibles en esta categoría.
+        {t("transactions.noTransactionsInCategory")}
       </p>
     );
   }

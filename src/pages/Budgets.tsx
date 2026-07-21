@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BudgetFormDialog } from "./budgets/BudgetFormDialog";
@@ -10,6 +11,7 @@ import { useBudgetSubmit } from "./budgets/useBudgetSubmit";
 import { useDeleteBudget } from "./budgets/useDeleteBudget";
 
 export default function Budgets() {
+  const { t } = useTranslation();
   const { budgets, categories, loading, loadBudgetsData } = useBudgetsData();
   const {
     form, open, setOpen, editingBudget, isEditing, openCreateDialog, openEditDialog, handleOpenChange,
@@ -32,13 +34,13 @@ export default function Budgets() {
         <CardHeader className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
-              <CardTitle className="text-2xl text-card-foreground">Presupuestos</CardTitle>
+              <CardTitle className="text-2xl text-card-foreground">{t("budgets.title")}</CardTitle>
               <CardDescription>
-                Controla tus límites por categoría y detecta en segundos cuándo estás por quedarte sin margen.
+                {t("budgets.subtitle")}
               </CardDescription>
             </div>
             <Button type="button" className="w-full sm:w-auto" onClick={openCreateDialog}>
-              Crear Presupuesto
+              {t("budgets.create")}
             </Button>
           </div>
         </CardHeader>

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 
 import {
   Dialog,
@@ -25,6 +26,7 @@ export function SubscriptionCreateDialog({
   lockType = false,
   onCreated,
 }: SubscriptionCreateDialogProps) {
+  const { t } = useTranslation();
   const { accounts, categories, activeDebts } = useSubscriptionReferenceData();
 
   const {
@@ -63,9 +65,9 @@ export function SubscriptionCreateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] sm:w-full max-w-md sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-xl">
         <DialogHeader>
-          <DialogTitle>Crear nueva suscripción</DialogTitle>
+          <DialogTitle>{t("subscriptions.createTitle")}</DialogTitle>
           <DialogDescription>
-            Define la regla de cobro, elige si será auto-pago o confirmación manual y activa la recurrencia.
+            {t("subscriptions.createDescription")}
           </DialogDescription>
         </DialogHeader>
 

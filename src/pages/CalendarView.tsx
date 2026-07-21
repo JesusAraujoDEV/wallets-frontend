@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CalendarDays, Loader2 } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DebtFormValues } from "@/components/DebtFormDialog";
@@ -15,6 +16,7 @@ import { useCalendarReferenceData } from "./calendar/useCalendarReferenceData";
 import type { CalendarEvent } from "./calendar/types";
 
 export default function CalendarView() {
+  const { t } = useTranslation();
   const { accounts, categories } = useCalendarReferenceData();
   const { currentMonth, setCurrentMonth, selectedDate, setSelectedDate, days, startOffset } = useCalendarMonthState();
   const { isLoading, eventsByDate, pendingTransactions } = useCalendarData(categories);
@@ -80,10 +82,10 @@ export default function CalendarView() {
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2 text-2xl text-card-foreground">
                 <CalendarDays className="h-6 w-6" />
-                Calendario Maestro
+                {t("calendar.title")}
               </CardTitle>
               <CardDescription>
-                Proyección mensual de cobros y pagos con aprobaciones pendientes en tiempo real.
+                {t("calendar.subtitle")}
               </CardDescription>
             </div>
           </div>
@@ -93,7 +95,7 @@ export default function CalendarView() {
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
-          Cargando calendario...
+          {t("calendar.loading")}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.7fr_1fr]">

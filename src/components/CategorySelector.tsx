@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as Icons from "lucide-react";
 import { Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { Category } from "@/lib/types";
 import { cn, isBalanceAdjustmentCategory } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ interface CategorySelectorProps {
 }
 
 export function CategorySelector({ value, onChange, filterType, categories, className }: CategorySelectorProps) {
+  const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
   const [pickerType, setPickerType] = useState<"income" | "expense">(filterType ?? "expense");
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -48,7 +50,7 @@ export function CategorySelector({ value, onChange, filterType, categories, clas
             <span className="truncate flex-1 text-left">{selectedCategory.name}</span>
           </span>
         ) : (
-          <span className="text-muted-foreground">Seleccionar categoría...</span>
+          <span className="text-muted-foreground">{t("categories.selectCategoryPlaceholder")}</span>
         )}
       </Button>
 
@@ -61,14 +63,14 @@ export function CategorySelector({ value, onChange, filterType, categories, clas
       >
         <DialogContent className="w-[95vw] max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Seleccionar categoría</DialogTitle>
+            <DialogTitle>{t("categories.selectCategoryTitle")}</DialogTitle>
           </DialogHeader>
 
           {!filterType && (
             <Tabs value={pickerType} onValueChange={(v) => setPickerType(v as "income" | "expense")} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="expense">Gasto</TabsTrigger>
-                <TabsTrigger value="income">Ingreso</TabsTrigger>
+                <TabsTrigger value="expense">{t("categories.expense")}</TabsTrigger>
+                <TabsTrigger value="income">{t("categories.income")}</TabsTrigger>
               </TabsList>
             </Tabs>
           )}
@@ -114,7 +116,7 @@ export function CategorySelector({ value, onChange, filterType, categories, clas
                 )}
               >
                 <Plus className="h-5 w-5" />
-                <span className="font-medium">Crear Nueva Categoría</span>
+                <span className="font-medium">{t("categories.createNewCategory")}</span>
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import type { UseFormReturn } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { BudgetPeriod, RateSource } from "@/lib/types";
@@ -8,6 +9,7 @@ export function BudgetPeriodFields({ form, submitLoading }: {
   form: UseFormReturn<BudgetFormValues>;
   submitLoading: boolean;
 }) {
+  const { t } = useTranslation();
   const { register, setValue, watch, formState: { errors } } = form;
   const selectedPeriod = watch("period");
   const selectedRateSource = watch("rate_source");
@@ -15,7 +17,7 @@ export function BudgetPeriodFields({ form, submitLoading }: {
   return (
     <>
       <div className="space-y-2">
-        <Label htmlFor="budget-period">Período</Label>
+        <Label htmlFor="budget-period">{t("budgets.period.label")}</Label>
         <Select
           value={selectedPeriod}
           onValueChange={(value: BudgetPeriod) => {
@@ -27,33 +29,33 @@ export function BudgetPeriodFields({ form, submitLoading }: {
           disabled={submitLoading}
         >
           <SelectTrigger id="budget-period">
-            <SelectValue placeholder="Selecciona un período" />
+            <SelectValue placeholder={t("budgets.period.placeholder")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="monthly">Mensual</SelectItem>
-            <SelectItem value="yearly">Anual</SelectItem>
-            <SelectItem value="one_time">Única Vez</SelectItem>
+            <SelectItem value="monthly">{t("budgets.period.monthly")}</SelectItem>
+            <SelectItem value="yearly">{t("budgets.period.yearly")}</SelectItem>
+            <SelectItem value="one_time">{t("budgets.period.oneTime")}</SelectItem>
           </SelectContent>
         </Select>
         <input type="hidden" {...register("period")} />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="budget-rate-source">Tasa de referencia (opcional)</Label>
+        <Label htmlFor="budget-rate-source">{t("budgets.period.rateSource")}</Label>
         <Select
           value={selectedRateSource}
           onValueChange={(value: RateSource | "none") => setValue("rate_source", value)}
           disabled={submitLoading}
         >
           <SelectTrigger id="budget-rate-source">
-            <SelectValue placeholder="Sin especificar" />
+            <SelectValue placeholder={t("budgets.period.rateSourcePlaceholder")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="none">Sin especificar</SelectItem>
-            <SelectItem value="bcv">BCV</SelectItem>
-            <SelectItem value="binance">Binance</SelectItem>
-            <SelectItem value="eur">Euro</SelectItem>
-            <SelectItem value="usd">USD</SelectItem>
+            <SelectItem value="none">{t("budgets.period.rateSourceNone")}</SelectItem>
+            <SelectItem value="bcv">{t("budgets.period.rateSourceBcv")}</SelectItem>
+            <SelectItem value="binance">{t("budgets.period.rateSourceBinance")}</SelectItem>
+            <SelectItem value="eur">{t("budgets.period.rateSourceEur")}</SelectItem>
+            <SelectItem value="usd">{t("budgets.period.rateSourceUsd")}</SelectItem>
           </SelectContent>
         </Select>
         <input type="hidden" {...register("rate_source")} />
@@ -61,7 +63,7 @@ export function BudgetPeriodFields({ form, submitLoading }: {
 
       {selectedPeriod === "one_time" ? (
         <div className="space-y-2">
-          <Label htmlFor="budget-specific-month">Mes específico</Label>
+          <Label htmlFor="budget-specific-month">{t("budgets.period.specificMonth")}</Label>
           <input
             id="budget-specific-month"
             type="month"
@@ -74,10 +76,10 @@ export function BudgetPeriodFields({ form, submitLoading }: {
                 }
 
                 if (!value) {
-                  return "El mes específico es obligatorio para presupuestos de única vez.";
+                  return t("budgets.period.specificMonthRequired");
                 }
 
-                return /^\d{4}-\d{2}$/.test(value) || "El mes específico debe tener formato YYYY-MM.";
+                return /^\d{4}-\d{2}$/.test(value) || t("budgets.period.specificMonthFormat");
               },
             })}
           />

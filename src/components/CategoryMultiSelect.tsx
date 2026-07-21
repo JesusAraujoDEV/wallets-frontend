@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Category } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function CategoryMultiSelect({ label, categories, selected, onChange, placeholder, hideLabel }: Props) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -46,17 +48,17 @@ export default function CategoryMultiSelect({ label, categories, selected, onCha
             <Button variant="outline" className="w-full justify-between">
               <span className="truncate">
                 {selected.length > 0
-                  ? `${selected.length} seleccionada${selected.length === 1 ? "" : "s"}`
-                  : placeholder || "Seleccionar categorías"}
+                  ? t("categories.selectedCount", { count: selected.length })
+                  : placeholder || t("categories.selectCategories")}
               </span>
               <ChevronsUpDown className="h-4 w-4 opacity-50" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="p-0 w-64" align="start">
             <Command>
-              <CommandInput placeholder="Buscar categoría..." />
+              <CommandInput placeholder={t("categories.searchCategoryPlaceholder")} />
               <CommandList>
-                <CommandEmpty>No hay resultados.</CommandEmpty>
+                <CommandEmpty>{t("categories.noResults")}</CommandEmpty>
                 <CommandGroup>
                   {categories.map((cat) => {
                     const checked = selectedSet.has(cat.id);
@@ -77,10 +79,10 @@ export default function CategoryMultiSelect({ label, categories, selected, onCha
             </Command>
             <div className="flex items-center justify-between gap-2 p-2 border-t bg-card/50">
               <Button variant="ghost" size="sm" onClick={clear} disabled={selected.length === 0}>
-                Limpiar
+                {t("common.clear")}
               </Button>
               <Button variant="secondary" size="sm" onClick={() => setOpen(false)}>
-                Cerrar
+                {t("common.close")}
               </Button>
             </div>
           </PopoverContent>
@@ -96,7 +98,7 @@ export default function CategoryMultiSelect({ label, categories, selected, onCha
                   type="button"
                   className="ml-1 opacity-70 hover:opacity-100"
                   onClick={() => toggle(c.id)}
-                  title="Quitar"
+                  title={t("categories.remove")}
                 >
                   <X className="h-3 w-3" />
                 </button>

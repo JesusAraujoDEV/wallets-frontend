@@ -1,5 +1,6 @@
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { AuthApi } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ type ForgotPasswordForm = {
 export default function ForgotPassword() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const {
     register,
     handleSubmit,
@@ -28,13 +30,13 @@ export default function ForgotPassword() {
     try {
       await AuthApi.forgotPassword(email.trim());
       toast({
-        title: "Correo enviado",
-        description: "Correo enviado, revisa tu bandeja de entrada",
+        title: t("auth.forgotPassword.successTitle"),
+        description: t("auth.forgotPassword.successDescription"),
       });
     } catch (err: any) {
       toast({
-        title: "No se pudo enviar",
-        description: err?.message || "Ocurrió un error al enviar el correo de recuperación",
+        title: t("auth.forgotPassword.errorTitle"),
+        description: err?.message || t("auth.forgotPassword.errorDescription"),
         variant: "destructive",
       });
     }
@@ -45,25 +47,25 @@ export default function ForgotPassword() {
       <div className="w-full flex items-center justify-center p-8">
         <Card className="w-full max-w-md border-0 bg-card p-2 rounded-2xl shadow-xl lg:shadow-none">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-card-foreground">Recuperar contraseña</CardTitle>
+            <CardTitle className="text-2xl font-bold text-card-foreground">{t("auth.forgotPassword.title")}</CardTitle>
             <CardDescription className="text-muted-foreground">
-              Ingresa tu correo y te enviaremos instrucciones para restablecer el acceso.
+              {t("auth.forgotPassword.description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Correo Electrónico</Label>
+                <Label htmlFor="email">{t("auth.forgotPassword.emailLabel")}</Label>
                 <Input
                   id="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="correo@ejemplo.com"
+                  placeholder={t("auth.forgotPassword.emailPlaceholder")}
                   {...register("email", {
-                    required: "El correo es obligatorio",
+                    required: t("auth.forgotPassword.emailRequired"),
                     pattern: {
                       value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                      message: "Ingresa un correo válido",
+                      message: t("auth.forgotPassword.emailInvalid"),
                     },
                   })}
                 />
@@ -71,11 +73,11 @@ export default function ForgotPassword() {
               </div>
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Enviando..." : "Enviar correo de recuperación"}
+                {isSubmitting ? t("auth.forgotPassword.submitLoading") : t("auth.forgotPassword.submit")}
               </Button>
 
               <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/login")}>
-                Volver al Login
+                {t("auth.forgotPassword.backToLogin")}
               </Button>
             </form>
           </CardContent>

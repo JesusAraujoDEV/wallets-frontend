@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import { AuthApi, type AuthSession } from "@/lib/auth";
 import { persistSession } from "@/lib/authSession";
 import { parseBackendMessage, getReadableError } from "@/lib/authErrorMessages";
@@ -8,39 +9,40 @@ export type LoginFormValues = {
   isLogin: boolean; name: string; email: string; usernameOrEmail: string; password: string;
 };
 
-export function createSubmitHandler({ values, setLoading, setFieldErrors, toast, onSuccess }: {
+export function createSubmitHandler({ values, setLoading, setFieldErrors, toast, onSuccess, t }: {
   values: LoginFormValues;
   setLoading: (v: boolean) => void;
   setFieldErrors: (v: FieldErrors) => void;
   toast: (opts: { title: string; description: string; variant?: "destructive" }) => void;
   onSuccess?: (session: AuthSession) => void | Promise<void>;
+  t: TFunction;
 }) {
   return async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const { isLogin, name, email, usernameOrEmail, password } = values;
     setFieldErrors({});
     if (!usernameOrEmail.trim()) {
-      const msg = "Escribe tu usuario o correo para continuar.";
+      const msg = t("auth.validation.identifierRequired");
       setFieldErrors({ identifier: msg });
-      toast({ title: "Falta el usuario", description: msg, variant: "destructive" });
+      toast({ title: t("auth.validation.identifierRequiredTitle"), description: msg, variant: "destructive" });
       return;
     }
     if (!password) {
-      const msg = "Escribe tu contraseña para continuar.";
+      const msg = t("auth.validation.passwordRequired");
       setFieldErrors({ password: msg });
-      toast({ title: "Falta la contraseña", description: msg, variant: "destructive" });
+      toast({ title: t("auth.validation.passwordRequiredTitle"), description: msg, variant: "destructive" });
       return;
     }
     if (!isLogin && !email.trim()) {
-      const msg = "Escribe tu correo para continuar.";
+      const msg = t("auth.validation.emailRequired");
       setFieldErrors({ email: msg });
-      toast({ title: "Falta el email", description: msg, variant: "destructive" });
+      toast({ title: t("auth.validation.emailRequiredTitle"), description: msg, variant: "destructive" });
       return;
     }
     if (isLogin && usernameOrEmail.includes("@") && !isValidEmail(usernameOrEmail.trim())) {
-      const msg = "Ese correo no parece válido. Revisa el @.";
+      const msg = t("auth.validation.invalidEmail");
       setFieldErrors({ identifier: msg });
-      toast({ title: "Correo inválido", description: msg, variant: "destructive" });
+      toast({ title: t("auth.validation.invalidEmailTitle"), description: msg, variant: "destructive" });
       return;
     }
 
@@ -54,7 +56,7 @@ export function createSubmitHandler({ values, setLoading, setFieldErrors, toast,
           password,
           ...(identifier.includes("@") ? { email: identifier } : { username: normalizedIdentifier }),
         });
-        toast({ title: "Bienvenido", description: `Sesión iniciada como ${session.user.username}` });
+        toast({ title: t("auth.login.welcomeTitle"), description: t("auth.login.sessionStarted", { username: session.user.username }) });
       } else {
         session = await AuthApi.register({
           username: sanitizeUsernameInput(usernameOrEmail.trim()),
@@ -62,7 +64,7 @@ export function createSubmitHandler({ values, setLoading, setFieldErrors, toast,
           name: name.trim() || undefined,
           email: email.trim(),
         });
-        toast({ title: "Cuenta creada", description: "Registro completado" });
+        toast({ title: t("auth.login.accountCreatedTitle"), description: t("auth.login.registrationComplete") });
       }
       persistSession(session);
       if (onSuccess) {
@@ -72,14 +74,14 @@ export function createSubmitHandler({ values, setLoading, setFieldErrors, toast,
       window.location.href = "/";
     } catch (err: any) {
       const backendMessage = parseBackendMessage(err);
-      const friendly = getReadableError(backendMessage || err?.message || "");
+      const friendly = getReadableError(backendMessage || err?.message || "", t);
       const lower = backendMessage.toLowerCase();
       if (lower.includes("password")) setFieldErrors({ password: friendly });
       else if (lower.includes("email")) setFieldErrors({ email: friendly });
       else if (lower.includes("name")) setFieldErrors({ name: friendly });
       else if (lower.includes("username")) setFieldErrors({ identifier: friendly });
       else if (lower.includes("value") || lower.includes("usuario/email")) setFieldErrors({ identifier: friendly });
-      toast({ title: isLogin ? "Login fallido" : "Registro fallido", description: friendly, variant: "destructive" });
+      toast({ title: isLogin ? t("auth.login.failedTitle") : t("auth.login.registerFailedTitle"), description: friendly, variant: "destructive" });
     } finally {
       setLoading(false);
     }

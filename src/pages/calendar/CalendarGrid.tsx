@@ -1,10 +1,13 @@
 import { addMonths, format, isToday, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { WEEKDAYS, type CalendarEvent } from "./types";
+import type { CalendarEvent } from "./types";
+
+const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
 export function CalendarGrid({
   currentMonth,
@@ -23,6 +26,7 @@ export function CalendarGrid({
   selectedDate: string;
   setSelectedDate: (date: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Card className="border-border bg-card shadow-sm">
       <CardContent className="p-4 space-y-4">
@@ -31,7 +35,7 @@ export function CalendarGrid({
             variant="outline"
             size="icon"
             onClick={() => setCurrentMonth((m) => subMonths(m, 1))}
-            aria-label="Mes anterior"
+            aria-label={t("calendar.grid.previousMonth")}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -42,16 +46,16 @@ export function CalendarGrid({
             variant="outline"
             size="icon"
             onClick={() => setCurrentMonth((m) => addMonths(m, 1))}
-            aria-label="Mes siguiente"
+            aria-label={t("calendar.grid.nextMonth")}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
         <div className="grid grid-cols-7 gap-1 mb-1">
-          {WEEKDAYS.map((d) => (
-            <div key={d} className="text-center text-xs font-medium text-muted-foreground py-2">
-              {d}
+          {WEEKDAY_KEYS.map((key) => (
+            <div key={key} className="text-center text-xs font-medium text-muted-foreground py-2">
+              {t(`calendar.grid.weekday.${key}`)}
             </div>
           ))}
         </div>
@@ -101,7 +105,9 @@ export function CalendarGrid({
                     </div>
                   ))}
                   {dayEvents.length > 3 ? (
-                    <span className="text-[10px] text-muted-foreground">+{dayEvents.length - 3} más</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {t("calendar.grid.moreCount", { count: dayEvents.length - 3 })}
+                    </span>
                   ) : null}
                 </div>
               </button>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { RecurringTransaction } from "@/lib/types";
@@ -11,19 +12,20 @@ export function PayNowSubscriptionCard({
   editableReference: string;
   setEditableReference: (v: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">
-          {subscription?.description || "Suscripción"}
+          {subscription?.description || t("subscriptions.subscriptionFallback")}
         </p>
         <p className="text-xs text-muted-foreground">
-          Próximo cobro: {subscription?.next_date}
+          {t("subscriptions.nextPaymentLabel", { date: subscription?.next_date })}
         </p>
       </div>
       <div className="space-y-1">
         <Label htmlFor="paynow-reference-amount" className="text-xs text-muted-foreground">
-          Base de referencia ({referenceCurrency})
+          {t("subscriptions.referenceBase", { currency: referenceCurrency })}
         </Label>
         <Input
           id="paynow-reference-amount"

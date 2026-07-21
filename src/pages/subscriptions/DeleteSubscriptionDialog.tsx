@@ -1,4 +1,5 @@
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { RecurringTransaction } from "@/lib/types";
 
@@ -8,25 +9,26 @@ export function DeleteSubscriptionDialog({ open, onOpenChange, subscription, isP
   isPending: boolean;
   onConfirm: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>¿Eliminar suscripción?</AlertDialogTitle>
+          <AlertDialogTitle>{t("subscriptions.deleteTitle")}</AlertDialogTitle>
           <AlertDialogDescription>
-            Se eliminará permanentemente la suscripción{" "}
-            <span className="font-semibold">{subscription?.description}</span>. Esta acción no se puede deshacer.
+            {t("subscriptions.deleteDescriptionPrefix")}{" "}
+            <span className="font-semibold">{subscription?.description}</span>. {t("subscriptions.deleteDescriptionSuffix")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel>{t("subscriptions.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             disabled={isPending}
             onClick={onConfirm}
           >
             {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Eliminar
+            {t("subscriptions.delete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

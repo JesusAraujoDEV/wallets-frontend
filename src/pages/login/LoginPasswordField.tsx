@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Eye, EyeOff, Lock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function LoginPasswordField({ value, onChange, error, isLogin }: {
   value: string; onChange: (v: string) => void; error?: string; isLogin: boolean;
 }) {
   const [visible, setVisible] = useState(false);
+  const { t } = useTranslation();
 
   return (
     <div className="relative">
@@ -13,7 +15,7 @@ export function LoginPasswordField({ value, onChange, error, isLogin }: {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         type={visible ? "text" : "password"}
-        placeholder="Contraseña"
+        placeholder={t("auth.validation.passwordPlaceholder")}
         className={`w-full pl-10 pr-10 py-3 bg-background border rounded-lg focus:outline-none focus:ring-2 focus:bg-background transition ${
           error ? "border-red-500 focus:ring-red-400 animate-shake" : "border-input focus:ring-ring"
         }`}
@@ -24,7 +26,7 @@ export function LoginPasswordField({ value, onChange, error, isLogin }: {
         type="button"
         onClick={() => setVisible((v) => !v)}
         className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-        aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+        aria-label={visible ? t("auth.validation.hidePassword") : t("auth.validation.showPassword")}
         tabIndex={-1}
       >
         {visible ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}

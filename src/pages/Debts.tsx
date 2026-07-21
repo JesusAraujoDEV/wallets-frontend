@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Handshake, Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,7 @@ import { usePayDebtMutation } from "./debts/usePayDebtMutation";
 export default function Debts() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const { accounts, categories } = useDebtsReferenceData();
   const { debtsQuery, payableDebts, receivableDebts } = useDebtQueries();
@@ -84,15 +86,15 @@ export default function Debts() {
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2 text-2xl text-card-foreground">
                 <Handshake className="h-6 w-6" />
-                Deudas
+                {t("debts.title")}
               </CardTitle>
               <CardDescription>
-                Controla lo que debes y lo que te deben. Registra abonos parciales o pagos completos.
+                {t("debts.subtitle")}
               </CardDescription>
             </div>
             <Button type="button" className="w-full sm:w-auto" onClick={openCreate}>
               <Plus className="mr-2 h-4 w-4" />
-              Nueva Deuda
+              {t("debts.newDebt")}
             </Button>
           </div>
         </CardHeader>
@@ -101,10 +103,10 @@ export default function Debts() {
       <Tabs defaultValue="payable" className="w-full">
         <TabsList className="w-full grid grid-cols-2">
           <TabsTrigger value="payable">
-            Por Pagar ({payableDebts.length})
+            {t("debts.payableCount", { count: payableDebts.length })}
           </TabsTrigger>
           <TabsTrigger value="receivable">
-            Por Cobrar ({receivableDebts.length})
+            {t("debts.receivableCount", { count: receivableDebts.length })}
           </TabsTrigger>
         </TabsList>
 
@@ -168,8 +170,8 @@ export default function Debts() {
         debt={linkingDebt}
         onLinked={async (count) => {
           toast({
-            title: "Vinculación completada",
-            description: `Se han vinculado ${count} transacciones anteriores a esta deuda.`,
+            title: t("debts.linkCompletedTitle"),
+            description: t("debts.linkCompletedDescription", { count }),
           });
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY }),

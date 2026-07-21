@@ -1,4 +1,5 @@
 import type { UseFormReturn } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
@@ -14,13 +15,14 @@ export function CreateSubscriptionDialog({ open, onOpenChange, form, onSubmit, i
   isPending: boolean;
   accounts: Account[]; categories: Category[]; activeDebts: Debt[];
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] sm:w-full max-w-md sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-xl">
         <DialogHeader>
-          <DialogTitle>Crear nueva suscripción</DialogTitle>
+          <DialogTitle>{t("subscriptions.createTitle")}</DialogTitle>
           <DialogDescription>
-            Define la regla de cobro, elige si será auto-pago o confirmación manual y activa la recurrencia.
+            {t("subscriptions.createDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -30,11 +32,11 @@ export function CreateSubscriptionDialog({ open, onOpenChange, form, onSubmit, i
 
           <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-3">
             <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
-              Cancelar
+              {t("subscriptions.cancel")}
             </Button>
             <Button type="submit" className="w-full sm:w-auto" disabled={isPending}>
               {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Guardar Suscripción
+              {t("subscriptions.saveSubscription")}
             </Button>
           </DialogFooter>
         </form>

@@ -1,4 +1,5 @@
 import { Layers, Loader2, Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { CategoryGroup } from "@/lib/types";
@@ -13,6 +14,7 @@ export function GroupsListSection({ groups, loading, deletingId, onCreate, onAss
   onEdit: (group: CategoryGroup) => void;
   onDelete: (id: number) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Card className="border-border bg-card shadow-sm">
       <CardHeader className="space-y-3">
@@ -20,15 +22,15 @@ export function GroupsListSection({ groups, loading, deletingId, onCreate, onAss
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2 text-2xl text-card-foreground">
               <Layers className="h-6 w-6" />
-              Grupos de Categorías
+              {t("categoryGroups.list.title")}
             </CardTitle>
             <CardDescription>
-              Gestiona los grupos para organizar y filtrar categorías en todo el dashboard.
+              {t("categoryGroups.list.description")}
             </CardDescription>
           </div>
           <Button className="w-full gap-2 sm:w-auto" onClick={onCreate}>
             <Plus className="h-4 w-4" />
-            Nuevo Grupo
+            {t("categoryGroups.list.create")}
           </Button>
         </div>
       </CardHeader>
@@ -37,11 +39,11 @@ export function GroupsListSection({ groups, loading, deletingId, onCreate, onAss
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Cargando grupos...
+            {t("categoryGroups.list.loading")}
           </div>
         ) : groups.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            No hay grupos creados. Agrega tu primer grupo para empezar.
+            {t("categoryGroups.list.empty")}
           </div>
         ) : (
           <div className="space-y-3">

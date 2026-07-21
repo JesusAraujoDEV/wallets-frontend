@@ -1,5 +1,6 @@
 import { useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { AuthApi } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ export default function ResetPassword() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const token = (searchParams.get("token") || "").trim();
 
   const {
@@ -33,14 +35,14 @@ export default function ResetPassword() {
     try {
       await AuthApi.resetPassword(token, newPassword);
       toast({
-        title: "Contraseña actualizada",
-        description: "Contraseña actualizada correctamente",
+        title: t("auth.resetPassword.successTitle"),
+        description: t("auth.resetPassword.successDescription"),
       });
       navigate("/login", { replace: true });
     } catch (err: any) {
       toast({
-        title: "No se pudo restablecer",
-        description: err?.message || "Ocurrió un error al restablecer la contraseña",
+        title: t("auth.resetPassword.errorTitle"),
+        description: err?.message || t("auth.resetPassword.errorDescription"),
         variant: "destructive",
       });
     }
@@ -52,12 +54,12 @@ export default function ResetPassword() {
         <div className="w-full flex items-center justify-center p-8">
           <Card className="w-full max-w-md border-0 bg-card p-2 rounded-2xl shadow-xl lg:shadow-none">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-card-foreground">Crear nueva contraseña</CardTitle>
-              <CardDescription className="text-muted-foreground">Enlace inválido o expirado</CardDescription>
+              <CardTitle className="text-2xl font-bold text-card-foreground">{t("auth.resetPassword.title")}</CardTitle>
+              <CardDescription className="text-muted-foreground">{t("auth.resetPassword.invalidLinkDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               <Button type="button" className="w-full" onClick={() => navigate("/login")}>
-                Volver al Login
+                {t("auth.forgotPassword.backToLogin")}
               </Button>
             </CardContent>
           </Card>
@@ -71,23 +73,23 @@ export default function ResetPassword() {
       <div className="w-full flex items-center justify-center p-8">
         <Card className="w-full max-w-md border-0 bg-card p-2 rounded-2xl shadow-xl lg:shadow-none">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-card-foreground">Crear nueva contraseña</CardTitle>
-            <CardDescription className="text-muted-foreground">Ingresa y confirma tu nueva contraseña.</CardDescription>
+            <CardTitle className="text-2xl font-bold text-card-foreground">{t("auth.resetPassword.title")}</CardTitle>
+            <CardDescription className="text-muted-foreground">{t("auth.resetPassword.description")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="newPassword">Nueva contraseña</Label>
+                <Label htmlFor="newPassword">{t("auth.resetPassword.newPasswordLabel")}</Label>
                 <Input
                   id="newPassword"
                   type="password"
                   autoComplete="new-password"
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder={t("auth.resetPassword.newPasswordPlaceholder")}
                   {...register("newPassword", {
-                    required: "La nueva contraseña es obligatoria",
+                    required: t("auth.resetPassword.newPasswordRequired"),
                     minLength: {
                       value: 6,
-                      message: "La contraseña debe tener al menos 6 caracteres",
+                      message: t("auth.resetPassword.newPasswordMinLength"),
                     },
                   })}
                 />
@@ -95,26 +97,26 @@ export default function ResetPassword() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
+                <Label htmlFor="confirmPassword">{t("auth.resetPassword.confirmPasswordLabel")}</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
                   autoComplete="new-password"
-                  placeholder="Repite tu nueva contraseña"
+                  placeholder={t("auth.resetPassword.confirmPasswordPlaceholder")}
                   {...register("confirmPassword", {
-                    required: "Confirma tu nueva contraseña",
-                    validate: (value, values) => value === values.newPassword || "Las contraseñas no coinciden",
+                    required: t("auth.resetPassword.confirmPasswordRequired"),
+                    validate: (value, values) => value === values.newPassword || t("auth.resetPassword.passwordsMismatch"),
                   })}
                 />
                 {errors.confirmPassword && <p className="text-xs text-red-500">{errors.confirmPassword.message}</p>}
               </div>
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Actualizando..." : "Actualizar contraseña"}
+                {isSubmitting ? t("auth.resetPassword.submitLoading") : t("auth.resetPassword.submit")}
               </Button>
 
               <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/login")}>
-                Volver al Login
+                {t("auth.forgotPassword.backToLogin")}
               </Button>
             </form>
           </CardContent>

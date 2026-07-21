@@ -1,4 +1,5 @@
 import { AlertCircle, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { RecurringTransaction } from "@/lib/types";
@@ -11,25 +12,26 @@ export function SubscriptionsListSection({ isLoading, items, togglingId, onToggl
   onEdit: (item: RecurringTransaction) => void;
   onDelete: (item: RecurringTransaction) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Card className="border-border bg-card shadow-sm">
       <CardHeader>
-        <CardTitle className="text-xl">Gestión de suscripciones</CardTitle>
+        <CardTitle className="text-xl">{t("subscriptions.managementTitle")}</CardTitle>
         <CardDescription>
-          Activa, pausa o elimina reglas recurrentes. Las manuales crean pending; las auto-pago se completan sin intervención.
+          {t("subscriptions.managementDescription")}
         </CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Cargando suscripciones...
+            {t("subscriptions.loading")}
           </div>
         ) : items.length === 0 ? (
           <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>No hay suscripciones configuradas</AlertTitle>
-            <AlertDescription>Crea una suscripción para empezar a automatizar cobros periódicos.</AlertDescription>
+            <AlertTitle>{t("subscriptions.noneTitle")}</AlertTitle>
+            <AlertDescription>{t("subscriptions.noneDescription")}</AlertDescription>
           </Alert>
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

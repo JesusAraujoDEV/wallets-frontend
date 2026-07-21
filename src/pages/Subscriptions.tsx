@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { Plus, Repeat } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { useSubscriptionFormHandlers } from "./subscriptions/useSubscriptionForm
 import { DEFAULT_SUBSCRIPTION_FORM_VALUES, type CreateSubscriptionForm } from "./subscriptions/types";
 
 export default function Subscriptions() {
+  const { t } = useTranslation();
   const { accounts, categories, activeDebts } = useSubscriptionsReferenceData();
   const { pendingQuery, recurringQuery, pendingTransactions, recurringTransactions } = useSubscriptionQueries();
   const mutations = useSubscriptionCrudMutations();
@@ -50,15 +52,15 @@ export default function Subscriptions() {
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2 text-2xl text-card-foreground">
                 <Repeat className="h-6 w-6" />
-                Suscripciones
+                {t("subscriptions.title")}
               </CardTitle>
               <CardDescription>
-                Controla cobros recurrentes y confirma manualmente los pagos pendientes para evitar fugas de caja.
+                {t("subscriptions.description")}
               </CardDescription>
             </div>
             <Button type="button" className="w-full sm:w-auto" onClick={() => setCreateDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Nueva Suscripción
+              {t("subscriptions.newSubscription")}
             </Button>
           </div>
         </CardHeader>

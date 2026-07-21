@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,39 +29,40 @@ export function AccountEditorDialog({
   submitting?: boolean;
   title?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
         <DialogHeader>
-          <DialogTitle>{title || "Edit Account"}</DialogTitle>
+          <DialogTitle>{title || t("accounts.editAccount")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-4">
           <div className="space-y-2">
-            <Label htmlFor="accountName">Account Name</Label>
+            <Label htmlFor="accountName">{t("accounts.accountName")}</Label>
             <Input
               id="accountName"
               type="text"
-              placeholder="e.g., Checking, Savings, Cash"
+              placeholder={t("accounts.accountNamePlaceholder")}
               value={value.name}
               onChange={(e) => onChange({ ...value, name: e.target.value })}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="currency">Currency</Label>
+            <Label htmlFor="currency">{t("accounts.currency")}</Label>
             <Select value={value.currency} onValueChange={(v) => onChange({ ...value, currency: v as any })}>
               <SelectTrigger id="currency">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="USD">USD - US Dollar</SelectItem>
-                <SelectItem value="EUR">EUR - Euro</SelectItem>
-                <SelectItem value="VES">VES - Venezuelan Bolívar</SelectItem>
+                <SelectItem value="USD">{t("accounts.usd")}</SelectItem>
+                <SelectItem value="EUR">{t("accounts.eur")}</SelectItem>
+                <SelectItem value="VES">{t("accounts.ves")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="balance">Balance</Label>
+            <Label htmlFor="balance">{t("accounts.balance")}</Label>
             <Input
               id="balance"
               type="number"
@@ -73,16 +75,16 @@ export function AccountEditorDialog({
           </div>
           <div className="flex gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={!!submitting}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="button" onClick={onSubmit} className="flex-1" disabled={!!submitting} aria-busy={!!submitting}>
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
+                  {t("accounts.saving")}
                 </>
               ) : (
-                "Save"
+                t("common.save")
               )}
             </Button>
           </div>

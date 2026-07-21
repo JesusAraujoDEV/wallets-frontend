@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -26,10 +27,11 @@ export function SubscriptionCategoryAccountFields({
   accountId: string;
   onAccountChange: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       <div className="space-y-2">
-        <Label>Categoría</Label>
+        <Label>{t("subscriptions.category")}</Label>
         <CategorySelector
           value={categoryId}
           onChange={onCategoryChange}
@@ -39,16 +41,16 @@ export function SubscriptionCategoryAccountFields({
       </div>
 
       <div className="space-y-2">
-        <Label>Cuenta</Label>
+        <Label>{t("subscriptions.account")}</Label>
         <Select
           value={accountId || "__none__"}
           onValueChange={(v) => onAccountChange(v === "__none__" ? "" : v)}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Sin cuenta asignada (opcional)" />
+            <SelectValue placeholder={t("subscriptions.noAccountPlaceholder")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">Sin cuenta asignada</SelectItem>
+            <SelectItem value="__none__">{t("subscriptions.noAccount")}</SelectItem>
             {accounts.map((account) => (
               <SelectItem key={account.id} value={account.id}>
                 {account.name}

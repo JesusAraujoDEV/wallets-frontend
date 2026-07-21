@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,23 +16,24 @@ export function DeleteGroupDialog({ confirmDeleteId, deletingId, onOpenChange, o
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <AlertDialog open={confirmDeleteId !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Eliminar grupo</AlertDialogTitle>
+          <AlertDialogTitle>{t("categoryGroups.delete.title")}</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta acción no se puede deshacer. El grupo dejará de estar disponible para nuevas categorías.
+            {t("categoryGroups.delete.description")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={deletingId !== null}>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel disabled={deletingId !== null}>{t("categoryGroups.delete.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             disabled={confirmDeleteId === null || deletingId !== null}
             onClick={onConfirm}
           >
-            Eliminar
+            {t("categoryGroups.delete.confirm")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

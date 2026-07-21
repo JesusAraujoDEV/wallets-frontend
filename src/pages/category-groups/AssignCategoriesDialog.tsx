@@ -1,4 +1,5 @@
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -20,15 +21,16 @@ export function AssignCategoriesDialog({
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
         <DialogHeader>
-          <DialogTitle>Manage Categories</DialogTitle>
+          <DialogTitle>{t("categoryGroups.assign.title")}</DialogTitle>
           <DialogDescription>
             {assigningGroup
-              ? `Selecciona las categorías que pertenecerán al grupo "${assigningGroup.name}".`
-              : "Selecciona las categorías para este grupo."}
+              ? t("categoryGroups.assign.descriptionWithGroup", { group: assigningGroup.name })
+              : t("categoryGroups.assign.descriptionGeneric")}
           </DialogDescription>
         </DialogHeader>
 
@@ -36,11 +38,11 @@ export function AssignCategoriesDialog({
           {loadingCategories ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Cargando categorías...
+              {t("categoryGroups.assign.loading")}
             </div>
           ) : categories.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No tienes categorías de tipo {assigningGroup?.type} disponibles para asignar.
+              {t("categoryGroups.assign.emptyForType", { type: assigningGroup?.type })}
             </p>
           ) : (
             <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
@@ -67,7 +69,9 @@ export function AssignCategoriesDialog({
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-card-foreground">{category.name}</p>
-                      <p className="text-xs text-muted-foreground">{category.type === "income" ? "Ingreso" : "Gasto"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {category.type === "income" ? t("categoryGroups.assign.income") : t("categoryGroups.assign.expense")}
+                      </p>
                     </div>
                   </label>
                 );
@@ -77,15 +81,15 @@ export function AssignCategoriesDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={savingAssignment}>Cancelar</Button>
+          <Button variant="outline" onClick={onCancel} disabled={savingAssignment}>{t("categoryGroups.assign.cancel")}</Button>
           <Button onClick={onSave} disabled={savingAssignment || !assigningGroup} aria-busy={savingAssignment}>
             {savingAssignment ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Guardando...
+                {t("categoryGroups.assign.saving")}
               </>
             ) : (
-              "Save Changes"
+              t("categoryGroups.assign.save")
             )}
           </Button>
         </DialogFooter>

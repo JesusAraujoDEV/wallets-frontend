@@ -1,4 +1,5 @@
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Account } from "@/lib/types";
@@ -21,10 +22,11 @@ export function DebtEquivalentAmountField({
   autoRateSourceDate: string | null;
   autoRateError: string | null;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2">
       <Label htmlFor="debt-pay-equivalent-amount">
-        Monto a debitar en {selectedAccount.currency}
+        {t("debts.debitAmountIn", { currency: selectedAccount.currency })}
       </Label>
       <div className="relative">
         <Input
@@ -46,16 +48,16 @@ export function DebtEquivalentAmountField({
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        Se autocompleta según BCV para la fecha elegida y puedes ajustarlo si pagaste un monto distinto.
+        {t("debts.autoFillBcvHint")}
       </p>
       {officialRate && (
-        <p className="text-xs text-muted-foreground">Tasa BCV oficial sugerida: {officialRate.toFixed(6)}</p>
+        <p className="text-xs text-muted-foreground">{t("debts.suggestedOfficialRate", { rate: officialRate.toFixed(6) })}</p>
       )}
       {hasValidAmount && hasValidEquivalentAmount && hasValidImplicitRate && (
-        <p className="text-xs text-muted-foreground">Tasa aplicada: {implicitExchangeRate.toFixed(6)}</p>
+        <p className="text-xs text-muted-foreground">{t("debts.appliedRate", { rate: implicitExchangeRate.toFixed(6) })}</p>
       )}
       {autoRateSourceDate && (
-        <p className="text-xs text-muted-foreground">Fuente BCV: {autoRateSourceDate}</p>
+        <p className="text-xs text-muted-foreground">{t("debts.bcvSource", { date: autoRateSourceDate })}</p>
       )}
       {autoRateError && <p className="text-xs text-destructive">{autoRateError}</p>}
     </div>

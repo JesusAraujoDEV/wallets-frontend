@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 
 export interface ExpenseVolatilityBoxPlotProps {
@@ -5,6 +6,7 @@ export interface ExpenseVolatilityBoxPlotProps {
 }
 
 export function ExpenseVolatilityBoxPlot({ categories }: ExpenseVolatilityBoxPlotProps) {
+  const { t } = useTranslation();
   const padding = { top: 20, right: 20, bottom: 30, left: 50 };
   const width = 720; const height = 320;
   const allValues = categories.flatMap(c => [c.min, c.q1, c.median, c.q3, c.max, ...(c.outliers || [])]);
@@ -18,7 +20,7 @@ export function ExpenseVolatilityBoxPlot({ categories }: ExpenseVolatilityBoxPlo
 
   return (
     <Card className="p-6 shadow-md border-0">
-      <h3 className="text-xl font-semibold text-foreground mb-4">Expense Volatility (Box Plot)</h3>
+      <h3 className="text-xl font-semibold text-foreground mb-4">{t("charts.expense.title")}</h3>
       <div className="w-full overflow-auto">
         <svg width={width} height={height}>
           {/* Y axis */}
@@ -54,13 +56,19 @@ export function ExpenseVolatilityBoxPlot({ categories }: ExpenseVolatilityBoxPlo
                 {/* outliers */}
                 {(c.outliers || []).map((o, j) => (
                   <circle key={j} cx={x + w/2} cy={scaleY(o)} r={3} fill="hsl(var(--accent))">
-                    <title>{`${c.category} outlier: $${o.toFixed(2)}`}</title>
+                    <title>{t("charts.boxPlot.outlier", { category: c.category, value: o.toFixed(2) })}</title>
                   </circle>
                 ))}
                 {/* x label */}
                 <text x={x + w/2} y={height - padding.bottom + 16} textAnchor="middle" fontSize={12} fill="hsl(var(--muted-foreground))">{c.category}</text>
                 {/* tooltip via title on box */}
-                <title>{`Categoría: ${c.category}\nMediana: $${c.median.toFixed(2)}\nIQR: $${c.q1.toFixed(2)} - $${c.q3.toFixed(2)}\nRango: $${c.min.toFixed(2)} - $${c.max.toFixed(2)}\nNº de Transacciones: ${c.count ?? '-'} `}</title>
+                <title>{[
+                  t("charts.boxPlot.category", { category: c.category }),
+                  t("charts.boxPlot.median", { value: c.median.toFixed(2) }),
+                  t("charts.boxPlot.iqr", { q1: c.q1.toFixed(2), q3: c.q3.toFixed(2) }),
+                  t("charts.boxPlot.range", { min: c.min.toFixed(2), max: c.max.toFixed(2) }),
+                  t("charts.boxPlot.transactionCount", { count: c.count ?? '-' }),
+                ].join('\n')}</title>
               </g>
             );
           })}

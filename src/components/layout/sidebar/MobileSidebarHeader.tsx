@@ -27,7 +27,7 @@ export function MobileSidebarHeader({ items, pendingCount, mobileOpen, setMobile
 
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" aria-label="Abrir navegación" className="relative">
+            <Button variant="outline" size="icon" aria-label={t("sidebar.openNav")} className="relative">
               <Menu className="h-5 w-5" />
               {pendingCount > 0 ? (
                 <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">

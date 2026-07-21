@@ -1,4 +1,5 @@
 import type { UseFormReturn } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +14,7 @@ export function SubscriptionBasicFields({ form, idPrefix, accounts, categories, 
   categories: Category[];
   activeDebts: Debt[];
 }) {
+  const { t } = useTranslation();
   const { register, watch, setValue, formState: { errors, dirtyFields } } = form;
   const selectedSubType = watch("subscriptionType");
   const dirty = idPrefix === "edit" ? dirtyFields : undefined;
@@ -20,17 +22,17 @@ export function SubscriptionBasicFields({ form, idPrefix, accounts, categories, 
   return (
     <>
       <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-description`}>Descripción</Label>
+        <Label htmlFor={`${idPrefix}-description`}>{t("subscriptions.descriptionLabel")}</Label>
         <Input
           id={`${idPrefix}-description`}
-          placeholder="Ej. Netflix, Spotify, Renta"
-          {...register("description", { required: "La descripción es obligatoria." })}
+          placeholder={t("subscriptions.descriptionPlaceholder")}
+          {...register("description", { required: t("subscriptions.descriptionRequired") })}
         />
         {errors.description ? <p className="text-xs text-destructive">{errors.description.message}</p> : null}
       </div>
 
       <div className="space-y-2">
-        <Label>Tipo</Label>
+        <Label>{t("subscriptions.type")}</Label>
         <Select
           value={selectedSubType}
           onValueChange={(v) => {
@@ -40,15 +42,15 @@ export function SubscriptionBasicFields({ form, idPrefix, accounts, categories, 
         >
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="gasto">Gasto</SelectItem>
-            <SelectItem value="ingreso">Ingreso</SelectItem>
+            <SelectItem value="gasto">{t("subscriptions.expense")}</SelectItem>
+            <SelectItem value="ingreso">{t("subscriptions.income")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-amount`}>Monto</Label>
+          <Label htmlFor={`${idPrefix}-amount`}>{t("subscriptions.amount")}</Label>
           <Input
             id={`${idPrefix}-amount`}
             type="number"
@@ -56,14 +58,14 @@ export function SubscriptionBasicFields({ form, idPrefix, accounts, categories, 
             min="0"
             {...register("amount", {
               valueAsNumber: true,
-              required: "El monto es obligatorio.",
-              min: { value: 0.01, message: "El monto debe ser mayor a cero." },
+              required: t("subscriptions.amountRequired"),
+              min: { value: 0.01, message: t("subscriptions.amountMin") },
             })}
           />
           {errors.amount ? <p className="text-xs text-destructive">{errors.amount.message}</p> : null}
         </div>
         <div className="space-y-2">
-          <Label>Moneda</Label>
+          <Label>{t("subscriptions.currency")}</Label>
           <Select value={watch("currency")} onValueChange={(v) => setValue("currency", v as "USD" | "EUR" | "VES")}>
             <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -76,7 +78,7 @@ export function SubscriptionBasicFields({ form, idPrefix, accounts, categories, 
       </div>
 
       <div className="space-y-2">
-        <Label>Categoría</Label>
+        <Label>{t("subscriptions.category")}</Label>
         <CategorySelector
           value={watch("categoryId")}
           onChange={(id) => setValue("categoryId", id, { shouldValidate: true })}
@@ -86,14 +88,14 @@ export function SubscriptionBasicFields({ form, idPrefix, accounts, categories, 
       </div>
 
       <div className="space-y-2">
-        <Label>Cuenta</Label>
+        <Label>{t("subscriptions.account")}</Label>
         <Select
           value={watch("accountId") || "__none__"}
           onValueChange={(v) => setValue("accountId", v === "__none__" ? "" : v, { shouldValidate: true })}
         >
-          <SelectTrigger><SelectValue placeholder="Sin cuenta asignada (opcional)" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder={t("subscriptions.noAccountPlaceholder")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">Sin cuenta asignada</SelectItem>
+            <SelectItem value="__none__">{t("subscriptions.noAccount")}</SelectItem>
             {accounts.map((account) => (
               <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
             ))}
@@ -103,19 +105,19 @@ export function SubscriptionBasicFields({ form, idPrefix, accounts, categories, 
 
       {activeDebts.length > 0 && (
         <div className="space-y-2">
-          <Label>Vincular a Deuda (opcional)</Label>
+          <Label>{t("subscriptions.linkDebt")}</Label>
           <Select
             value={watch("debtId") || "__none__"}
             onValueChange={(v) => setValue("debtId", v === "__none__" ? "" : v, { shouldValidate: true, shouldDirty: dirty !== undefined })}
           >
-            <SelectTrigger><SelectValue placeholder="Sin deuda vinculada" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={t("subscriptions.noDebtLinked")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="__none__">Sin deuda vinculada</SelectItem>
+              <SelectItem value="__none__">{t("subscriptions.noDebtLinked")}</SelectItem>
               {activeDebts
                 .filter((d) => selectedSubType === "ingreso" ? d.type === "receivable" : d.type === "payable")
                 .map((d) => (
                   <SelectItem key={d.id} value={d.id}>
-                    {d.contactName} — {d.type === "payable" ? "Por Pagar" : "Por Cobrar"}
+                    {d.contactName} — {d.type === "payable" ? t("subscriptions.payable") : t("subscriptions.receivable")}
                   </SelectItem>
                 ))}
             </SelectContent>
