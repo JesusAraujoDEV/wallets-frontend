@@ -163,5 +163,21 @@
     "newGoal": "Neues Sparziel",
     "totalLabel": "Gesamt gespart (USD)",
     "empty": "Noch keine Sparkonten. Erstelle eins, um ein Ziel zu verfolgen."
+  },
+  "transactionsPage": {
+    "title": "Transaktionen",
+    "subtitle": "Verwalte Bewegungen, filtere deinen Verlauf und erkunde den Finanzkalender auf einer eigenen Route.",
+    "tabList": "Liste",
+    "tabCalendar": "Kalender",
+    "listTitle": "Transaktionsverlauf",
+    "listSubtitle": "Sieh dir deine täglichen Bewegungen an und filtere sie",
+    "newTransaction": "Neue Transaktion",
+    "downloadTransfers": "Überweisungen herunterladen",
+    "addTransactionTitle": "Transaktion hinzufügen",
+    "totalIncome": "Gesamteinnahmen",
+    "totalExpenses": "Gesamtausgaben",
+    "net": "Netto",
+    "deletedToastTitle": "Transaktion gelöscht",
+    "deletedToastDesc": "Die Transaktion wurde entfernt."
   }
 }

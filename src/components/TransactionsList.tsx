@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Download } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
 import type { Category, Account } from "@/lib/types";
@@ -23,6 +24,7 @@ import { TransactionEditDialog } from "./transactions-list/TransactionEditDialog
 import { TransactionExportDialog } from "./transactions-list/TransactionExportDialog";
 
 export const TransactionsList = () => {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -59,7 +61,7 @@ export const TransactionsList = () => {
       setDeletingId(id);
       await TransactionsStore.remove(id);
       await refetch();
-      toast({ title: "Transaction Deleted", description: "The transaction has been removed." });
+      toast({ title: t("transactionsPage.deletedToastTitle"), description: t("transactionsPage.deletedToastDesc") });
     } finally {
       setDeletingId(null);
     }
@@ -73,21 +75,21 @@ export const TransactionsList = () => {
       <CardHeader>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <CardTitle>Registro de transacciones</CardTitle>
-            <CardDescription>Visualiza y filtra tus movimientos diarios</CardDescription>
+            <CardTitle>{t("transactionsPage.listTitle")}</CardTitle>
+            <CardDescription>{t("transactionsPage.listSubtitle")}</CardDescription>
           </div>
           <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:justify-between sm:gap-4">
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
               <Button onClick={() => setIsAddOpen(true)} className="w-full gap-2 sm:w-auto">
-                <Plus className="h-4 w-4" /> Nueva transacción
+                <Plus className="h-4 w-4" /> {t("transactionsPage.newTransaction")}
               </Button>
               <DialogContent className="w-[95vw] max-w-md sm:max-w-lg mx-auto max-h-[85vh] overflow-y-auto rounded-xl">
-                <DialogHeader><DialogTitle>Agregar transacción</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{t("transactionsPage.addTransactionTitle")}</DialogTitle></DialogHeader>
                 <TransactionForm asModalContent onSubmitted={async () => { setIsAddOpen(false); await refetch(); }} />
               </DialogContent>
             </Dialog>
             <Button variant="outline" className="w-full gap-2 sm:w-auto" onClick={() => exportState.setIsExportOpen(true)}>
-              <Download className="h-4 w-4" /> Descargar transferencias
+              <Download className="h-4 w-4" /> {t("transactionsPage.downloadTransfers")}
             </Button>
           </div>
         </div>
@@ -109,9 +111,9 @@ export const TransactionsList = () => {
 
         {dates.length > 0 ? (
           <div className="flex items-center gap-2 text-xs sm:text-sm flex-wrap">
-            <Badge variant="outline" className="border-green-500 text-green-600">Total Income: ${totalIncome.toFixed(2)}</Badge>
-            <Badge variant="outline" className="border-red-500 text-red-600">Total Expenses: -${totalExpenses.toFixed(2)}</Badge>
-            <Badge variant="secondary" className="font-semibold">Net: {(totalIncome - totalExpenses).toFixed(2)}</Badge>
+            <Badge variant="outline" className="border-green-500 text-green-600">{t("transactionsPage.totalIncome")}: ${totalIncome.toFixed(2)}</Badge>
+            <Badge variant="outline" className="border-red-500 text-red-600">{t("transactionsPage.totalExpenses")}: -${totalExpenses.toFixed(2)}</Badge>
+            <Badge variant="secondary" className="font-semibold">{t("transactionsPage.net")}: {(totalIncome - totalExpenses).toFixed(2)}</Badge>
           </div>
         ) : null}
 

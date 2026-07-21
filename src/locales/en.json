@@ -163,5 +163,21 @@
     "newGoal": "New savings goal",
     "totalLabel": "Total saved (USD)",
     "empty": "No savings accounts yet. Create one to start tracking a goal."
+  },
+  "transactionsPage": {
+    "title": "Transactions",
+    "subtitle": "Manage movements, filter your history and explore the financial calendar from a dedicated route.",
+    "tabList": "List",
+    "tabCalendar": "Calendar",
+    "listTitle": "Transaction log",
+    "listSubtitle": "View and filter your daily movements",
+    "newTransaction": "New transaction",
+    "downloadTransfers": "Download transfers",
+    "addTransactionTitle": "Add transaction",
+    "totalIncome": "Total Income",
+    "totalExpenses": "Total Expenses",
+    "net": "Net",
+    "deletedToastTitle": "Transaction deleted",
+    "deletedToastDesc": "The transaction has been removed."
   }
 }

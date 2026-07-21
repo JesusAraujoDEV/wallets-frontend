@@ -21,6 +21,7 @@ type ApiBudgetStatus = {
   id: number | string;
   category: ApiBudgetCategory | string;
   budgeted: number;
+  budgeted_original?: number | null;
   period?: BudgetPeriod | string;
   specific_month?: string | null;
   rate_source?: RateSource | null;
@@ -75,6 +76,7 @@ function mapBudgetStatus(item: ApiBudgetStatus): BudgetStatus {
     id: String(item.id),
     category,
     budgeted: Number(item.budgeted || 0),
+    budgeted_original: item.budgeted_original ?? null,
     period: normalizeBudgetPeriod(item.period),
     specific_month: item.specific_month ?? null,
     rate_source: item.rate_source ?? null,

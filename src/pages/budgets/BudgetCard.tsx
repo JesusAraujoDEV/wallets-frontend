@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Progress } from "@/components/ui/progress";
 import type { BudgetStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { formatMoney, periodBadgeLabel, progressColorClass, rateSourceLabel } from "./formatters";
+import { formatMoney, formatOriginalAmount, periodBadgeLabel, progressColorClass, rateSourceLabel } from "./formatters";
 
 export function BudgetCard({ budget, isDeleting, onEdit, onDelete }: {
   budget: BudgetStatus;
@@ -44,6 +44,9 @@ export function BudgetCard({ budget, isDeleting, onEdit, onDelete }: {
               </div>
               <CardDescription>
                 {formatMoney(Number(budget.spent || 0))} / {formatMoney(Number(budget.budgeted || 0))}
+                {budget.budgeted_original != null
+                  ? ` (meta: ${formatOriginalAmount(budget.budgeted_original, budget.rate_source)})`
+                  : null}
               </CardDescription>
             </div>
           </div>

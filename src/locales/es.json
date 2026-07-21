@@ -163,5 +163,21 @@
     "newGoal": "Nueva meta de ahorro",
     "totalLabel": "Total ahorrado (USD)",
     "empty": "Todavía no tienes cuentas de ahorro. Crea una para empezar a trackear una meta."
+  },
+  "transactionsPage": {
+    "title": "Transacciones",
+    "subtitle": "Administra movimientos, filtra tu historial y explora el calendario financiero desde una ruta dedicada.",
+    "tabList": "Listado",
+    "tabCalendar": "Calendario",
+    "listTitle": "Registro de transacciones",
+    "listSubtitle": "Visualiza y filtra tus movimientos diarios",
+    "newTransaction": "Nueva transacción",
+    "downloadTransfers": "Descargar transferencias",
+    "addTransactionTitle": "Agregar transacción",
+    "totalIncome": "Ingreso Total",
+    "totalExpenses": "Gasto Total",
+    "net": "Neto",
+    "deletedToastTitle": "Transacción eliminada",
+    "deletedToastDesc": "La transacción fue eliminada correctamente."
   }
 }

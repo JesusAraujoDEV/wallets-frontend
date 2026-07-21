@@ -15,6 +15,11 @@ export function formatMoney(value: number) {
   return `$${Math.abs(value).toFixed(2)}`;
 }
 
+export function formatOriginalAmount(value: number, rateSource?: RateSource | null) {
+  const symbol = rateSource === "eur" ? "€" : "$";
+  return `${symbol}${Math.abs(value).toFixed(2)}`;
+}
+
 export function progressColorClass(percentageUsed: number) {
   if (percentageUsed < 80) return "[&>div]:bg-emerald-500";
   if (percentageUsed < 100) return "[&>div]:bg-amber-500";

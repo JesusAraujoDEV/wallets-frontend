@@ -252,6 +252,9 @@ export interface BudgetStatus {
   id: string;
   category: BudgetCategorySummary;
   budgeted: number;
+  // Present when the backend converted `budgeted` from a non-USD rate_source
+  // (e.g. EUR) — the original entered amount, before conversion to USD.
+  budgeted_original?: number | null;
   period: BudgetPeriod;
   specific_month?: string | null;
   rate_source?: RateSource | null;
