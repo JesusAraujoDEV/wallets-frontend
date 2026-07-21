@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Dayjs } from "dayjs";
 import { apiFetch } from "@/lib/http";
 import type { Transaction } from "@/lib/types";
@@ -18,6 +18,14 @@ export function useCalendarTransactions({ currentMonth, selectedAccount, scope, 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Keep fallbackLocalTx in a ref so it doesn't trigger re-fetches.
+  // The fallback is only used when the API returns empty — its identity
+  // changing shouldn't cause a new network request.
+  const fallbackRef = useRef(fallbackLocalTx);
+  fallbackRef.current = fallbackLocalTx;
+
+  const monthKey = currentMonth.format('YYYY-MM');
+
   useEffect(() => {
     let alive = true;
     setLoading(true);
@@ -26,9 +34,8 @@ export function useCalendarTransactions({ currentMonth, selectedAccount, scope, 
       try {
         const sp = new URLSearchParams();
         if (scope === 'stats') sp.set('includeInStats', '1');
-        sp.set('month', currentMonth.format('YYYY-MM'));
+        sp.set('month', monthKey);
         if (selectedAccount && selectedAccount !== 'all') sp.set('accountId', selectedAccount);
-        // Do not filter by type here; we need both income and expense for balance & toggling
         const qs = sp.toString();
         const list = await apiFetch<any[]>(`transactions?${qs}`);
         if (!alive) return;
@@ -53,9 +60,10 @@ export function useCalendarTransactions({ currentMonth, selectedAccount, scope, 
           } as Transaction;
         });
         if (mapped.length === 0 && scope === 'all') {
-          // Fallback to local store data
-          const monthPrefix = currentMonth.format('YYYY-MM');
-          const localSubset = fallbackLocalTx.filter(tx => String(tx.date).startsWith(monthPrefix) && (selectedAccount === 'all' || tx.accountId === selectedAccount));
+          // Fallback to local store data (read from ref, not dep)
+          const localSubset = fallbackRef.current.filter(
+            tx => String(tx.date).startsWith(monthKey) && (selectedAccount === 'all' || tx.accountId === selectedAccount)
+          );
           setTransactions(localSubset);
         } else {
           setTransactions(mapped);
@@ -69,7 +77,7 @@ export function useCalendarTransactions({ currentMonth, selectedAccount, scope, 
       }
     })();
     return () => { alive = false; };
-  }, [currentMonth.format('YYYY-MM'), selectedAccount, scope, fallbackLocalTx]);
+  }, [monthKey, selectedAccount, scope]);
 
   return { transactions, loading, error };
 }

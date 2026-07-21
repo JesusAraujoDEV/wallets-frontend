@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { TransactionRow } from "./TransactionRow";
+import { useDisplayCurrency, currencySymbol } from "@/lib/displayCurrency";
 import type { DailyTotal } from "./useDailyTotals";
 import type { Account, Category, Transaction } from "@/lib/types";
 
@@ -17,6 +18,9 @@ export function TransactionGroupList({
   onEdit: (tx: Transaction) => void; onDeleteRequest: (id: string) => void;
   isEmpty: boolean; pageLoading: boolean; hasMore: boolean; onLoadMore: () => void;
 }) {
+  const [displayCurrency] = useDisplayCurrency();
+  const sym = currencySymbol(displayCurrency);
+
   return (
     <div className="space-y-6">
       {Object.entries(groupedTransactions).map(([date, txs]) => (
@@ -25,14 +29,14 @@ export function TransactionGroupList({
             <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground flex-1">
               <div className="h-px bg-border flex-1" />
               <span className="px-3">
-                {dayjs(String(date).slice(0, 10)).format('dddd, MMM D, YYYY')} • Tasa: {vesRateByDate[date] != null ? Number(vesRateByDate[date]).toFixed(2) : '…'}
+                {dayjs(String(date).slice(0, 10)).format('dddd, MMM D, YYYY')} • Tasa {displayCurrency}: {vesRateByDate[date] != null ? Number(vesRateByDate[date]).toFixed(2) : '…'}
               </span>
               <div className="h-px bg-border flex-1" />
             </div>
             <div className="sm:ml-3 flex items-center gap-2 text-xs whitespace-nowrap">
-              <Badge variant="outline" className="border-green-500 text-green-600">+${(groupTotals[date]?.income ?? 0).toFixed(2)}</Badge>
-              <Badge variant="outline" className="border-red-500 text-red-600">-${(groupTotals[date]?.expenses ?? 0).toFixed(2)}</Badge>
-              <Badge variant="secondary" className="font-semibold">Bal: ${(groupTotals[date]?.balance ?? 0).toFixed(2)}</Badge>
+              <Badge variant="outline" className="border-green-500 text-green-600">+{sym}{(groupTotals[date]?.income ?? 0).toFixed(2)}</Badge>
+              <Badge variant="outline" className="border-red-500 text-red-600">-{sym}{(groupTotals[date]?.expenses ?? 0).toFixed(2)}</Badge>
+              <Badge variant="secondary" className="font-semibold">Bal: {sym}{(groupTotals[date]?.balance ?? 0).toFixed(2)}</Badge>
             </div>
           </div>
           <div className="space-y-2">

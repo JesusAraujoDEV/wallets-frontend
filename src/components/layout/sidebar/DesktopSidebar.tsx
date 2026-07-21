@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { LogOut, HelpCircle } from "lucide-react";
 import { SidebarNav } from "./SidebarNav";
+import { SidebarRateIndicator } from "./SidebarRateIndicator";
 import type { NavigationItem } from "./types";
 
 export function DesktopSidebar({ items, pendingCount, onLogout, onHelp }: {
@@ -35,6 +36,7 @@ export function DesktopSidebar({ items, pendingCount, onLogout, onHelp }: {
       </div>
 
       <div className="mt-auto border-t border-border p-4 space-y-2">
+        <SidebarRateIndicator />
         <LanguageSwitcher className="w-full" />
         <ThemeToggle />
         <Button variant="ghost" className="w-full justify-start gap-2" onClick={onHelp}>

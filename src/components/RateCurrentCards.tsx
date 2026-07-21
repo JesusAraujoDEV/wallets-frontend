@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useDisplayCurrency, type DisplayCurrency } from "@/lib/displayCurrency";
+import { useDisplayCurrency, setDisplayCurrency, type DisplayCurrency } from "@/lib/displayCurrency";
 import type { ExchangeRate } from "@/lib/rates";
 
 function fmt(value: number | null | undefined) {
@@ -23,7 +23,14 @@ export function RateCurrentCards({ rate, loading }: { rate: ExchangeRate | undef
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {CARDS.map((c) => (
-        <Card key={c.labelKey} className={cn("shadow-md", c.currency === preferred ? "border-primary ring-1 ring-primary/40" : "border-0")}>
+        <Card
+          key={c.labelKey}
+          className={cn(
+            "shadow-md cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02]",
+            c.currency === preferred ? "border-primary ring-2 ring-primary/40" : "border-0 hover:border-primary/30",
+          )}
+          onClick={() => setDisplayCurrency(c.currency)}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               {c.currency} ({t(c.labelKey)})

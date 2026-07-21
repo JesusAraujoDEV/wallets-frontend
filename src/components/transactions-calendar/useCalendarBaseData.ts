@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AccountsStore, CategoriesStore, TransactionsStore, onDataChange } from "@/lib/storage";
 import type { Account, Category, Transaction } from "@/lib/types";
 
 // Loads accounts/categories/local fallback transactions and keeps them in sync with the local store.
+// Uses a single refresh pass on mount and subscribes to changes without causing re-render cascades.
 export function useCalendarBaseData() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [fallbackLocalTx, setFallbackLocalTx] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>(() => AccountsStore.all());
+  const [categories, setCategories] = useState<Category[]>(() => CategoriesStore.all());
+  const [fallbackLocalTx, setFallbackLocalTx] = useState<Transaction[]>(() => TransactionsStore.all());
+  const refreshedRef = useRef(false);
 
   useEffect(() => {
     const loadBase = () => {
@@ -14,10 +16,15 @@ export function useCalendarBaseData() {
       setCategories(CategoriesStore.all());
       setFallbackLocalTx(TransactionsStore.all());
     };
-    loadBase();
-    AccountsStore.refresh().catch(() => {});
-    CategoriesStore.refresh().catch(() => {});
-    TransactionsStore.refresh().catch(() => {});
+
+    // Only refresh from API once per component lifetime
+    if (!refreshedRef.current) {
+      refreshedRef.current = true;
+      AccountsStore.refresh().catch(() => {});
+      CategoriesStore.refresh().catch(() => {});
+      TransactionsStore.refresh().catch(() => {});
+    }
+
     const off = onDataChange(loadBase);
     return off;
   }, []);
