@@ -37,6 +37,7 @@ export function useBudgetSubmit({ form, editingBudget, isEditing, onSuccess, rel
         period: values.period,
         specific_month: values.period === "one_time" ? values.specific_month : null,
         categoryId: values.categoryId === "global" ? null : Number(values.categoryId),
+        rate_source: values.rate_source === "none" ? null : values.rate_source,
       };
 
       if (isEditing && editingBudget) {

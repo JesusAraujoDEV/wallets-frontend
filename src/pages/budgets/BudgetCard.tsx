@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Progress } from "@/components/ui/progress";
 import type { BudgetStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { formatMoney, periodBadgeLabel, progressColorClass } from "./formatters";
+import { formatMoney, periodBadgeLabel, progressColorClass, rateSourceLabel } from "./formatters";
 
 export function BudgetCard({ budget, isDeleting, onEdit, onDelete }: {
   budget: BudgetStatus;
@@ -36,6 +36,11 @@ export function BudgetCard({ budget, isDeleting, onEdit, onDelete }: {
                 <Badge variant="outline" className="whitespace-nowrap">
                   {periodBadgeLabel(budget.period, budget.specific_month)}
                 </Badge>
+                {rateSourceLabel(budget.rate_source) ? (
+                  <Badge variant="secondary" className="whitespace-nowrap" title="Tasa de referencia del objetivo">
+                    {rateSourceLabel(budget.rate_source)}
+                  </Badge>
+                ) : null}
               </div>
               <CardDescription>
                 {formatMoney(Number(budget.spent || 0))} / {formatMoney(Number(budget.budgeted || 0))}

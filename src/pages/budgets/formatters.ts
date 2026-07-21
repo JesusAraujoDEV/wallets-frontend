@@ -1,4 +1,15 @@
-import type { BudgetPeriod } from "@/lib/types";
+import type { BudgetPeriod, RateSource } from "@/lib/types";
+
+const RATE_SOURCE_LABELS: Record<RateSource, string> = {
+  bcv: "BCV",
+  binance: "Binance",
+  eur: "Euro",
+  usd: "USD",
+};
+
+export function rateSourceLabel(rateSource?: RateSource | null) {
+  return rateSource ? RATE_SOURCE_LABELS[rateSource] : null;
+}
 
 export function formatMoney(value: number) {
   return `$${Math.abs(value).toFixed(2)}`;

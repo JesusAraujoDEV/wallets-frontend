@@ -5,6 +5,7 @@ import type {
   BudgetPeriod,
   BudgetStatus,
   CreateBudgetPayload,
+  RateSource,
   UpdateBudgetPayload,
 } from "@/lib/types";
 
@@ -22,6 +23,7 @@ type ApiBudgetStatus = {
   budgeted: number;
   period?: BudgetPeriod | string;
   specific_month?: string | null;
+  rate_source?: RateSource | null;
   spent: number;
   remaining: number;
   percentageUsed: number;
@@ -35,6 +37,7 @@ type ApiBudget = {
   budgeted?: number;
   period?: BudgetPeriod | string;
   specific_month?: string | null;
+  rate_source?: RateSource | null;
 };
 
 type ApiBudgetResponse = ApiBudget | { data: ApiBudget };
@@ -74,6 +77,7 @@ function mapBudgetStatus(item: ApiBudgetStatus): BudgetStatus {
     budgeted: Number(item.budgeted || 0),
     period: normalizeBudgetPeriod(item.period),
     specific_month: item.specific_month ?? null,
+    rate_source: item.rate_source ?? null,
     spent: Number(item.spent || 0),
     remaining: Number(item.remaining || 0),
     percentageUsed: Number(item.percentageUsed || 0),
@@ -87,6 +91,7 @@ function mapBudget(item: ApiBudget): Budget {
     budgeted: Number(item.amount ?? item.budgeted ?? 0),
     period: normalizeBudgetPeriod(item.period),
     specific_month: item.specific_month ?? null,
+    rate_source: item.rate_source ?? null,
   };
 }
 

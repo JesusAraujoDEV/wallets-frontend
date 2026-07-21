@@ -254,6 +254,7 @@ export interface BudgetStatus {
   budgeted: number;
   period: BudgetPeriod;
   specific_month?: string | null;
+  rate_source?: RateSource | null;
   spent: number;
   remaining: number;
   percentageUsed: number;
@@ -261,12 +262,17 @@ export interface BudgetStatus {
 
 export type BudgetPeriod = "monthly" | "yearly" | "one_time";
 
+// Which exchange rate a budget's target amount is meant to be measured against —
+// the same VES amount buys a different USD amount depending on which rate applies.
+export type RateSource = "bcv" | "binance" | "eur" | "usd";
+
 export interface Budget {
   id: string;
   categoryId: string;
   budgeted: number;
   period: BudgetPeriod;
   specific_month?: string | null;
+  rate_source?: RateSource | null;
 }
 
 export interface CreateBudgetPayload {
@@ -274,6 +280,7 @@ export interface CreateBudgetPayload {
   period: BudgetPeriod;
   specific_month?: string | null;
   categoryId?: number | null;
+  rate_source?: RateSource | null;
 }
 
 export interface UpdateBudgetPayload {
@@ -281,6 +288,7 @@ export interface UpdateBudgetPayload {
   period: BudgetPeriod;
   specific_month: string | null;
   categoryId: number | null;
+  rate_source?: RateSource | null;
 }
 
 export interface BudgetDeleteResponse {

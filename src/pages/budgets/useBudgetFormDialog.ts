@@ -11,6 +11,7 @@ function budgetToFormValues(budget: BudgetStatus): BudgetFormValues {
     amount: Number(budget.budgeted || 0),
     period: budget.period,
     specific_month: budget.specific_month ?? "",
+    rate_source: budget.rate_source ?? "none",
   };
 }
 
