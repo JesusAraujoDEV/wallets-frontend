@@ -4,6 +4,7 @@ import type { Account, Transaction } from "@/lib/types";
 import type { GlobalBalance } from "@/lib/summary";
 import type { ExchangeSnapshot } from "@/lib/rates";
 import { convertToUSD } from "@/lib/rates";
+import { useDisplayCurrency, currencySymbol, convertUsdToDisplay } from "@/lib/displayCurrency";
 
 interface DashboardStatsProps {
   transactions: Transaction[];
@@ -64,17 +65,24 @@ export function DashboardStats({ transactions, accounts, rate, balanceSummary }:
     };
   }, [transactions, accounts, rate]);
 
-  const displayTotalBalance = balanceSummary?.accounts_total_usd ?? totalBalance;
-  const displayMonthlyIncome = balanceSummary?.income_total_usd ?? monthlyIncome;
-  const displayMonthlyExpenses = balanceSummary?.expense_total_usd ?? monthlyExpenses;
+  const [displayCurrency] = useDisplayCurrency();
+  const symbol = currencySymbol(displayCurrency);
+
+  const totalBalanceUsd = balanceSummary?.accounts_total_usd ?? totalBalance;
+  const monthlyIncomeUsd = balanceSummary?.income_total_usd ?? monthlyIncome;
+  const monthlyExpensesUsd = balanceSummary?.expense_total_usd ?? monthlyExpenses;
+
+  const displayTotalBalance = convertUsdToDisplay(totalBalanceUsd, displayCurrency, rate);
+  const displayMonthlyIncome = convertUsdToDisplay(monthlyIncomeUsd, displayCurrency, rate);
+  const displayMonthlyExpenses = convertUsdToDisplay(monthlyExpensesUsd, displayCurrency, rate);
 
   return (
     <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 md:gap-6">
       <div className="rounded-lg bg-card text-card-foreground p-6 shadow-md hover:shadow-lg transition-all duration-300 border-0">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-sm text-muted-foreground mb-2">Total Balance (USD)</p>
-            <h3 className="text-3xl font-bold text-foreground mb-2">${displayTotalBalance.toFixed(2)}</h3>
+            <p className="text-sm text-muted-foreground mb-2">Total Balance ({displayCurrency})</p>
+            <h3 className="text-3xl font-bold text-foreground mb-2">{symbol}{displayTotalBalance.toFixed(2)}</h3>
             <p className="text-sm font-medium text-primary">+</p>
           </div>
           <div className="p-3 rounded-xl bg-primary-light text-slate-900">
@@ -86,8 +94,8 @@ export function DashboardStats({ transactions, accounts, rate, balanceSummary }:
       <div className="rounded-lg bg-card text-card-foreground p-6 shadow-md hover:shadow-lg transition-all duration-300 border-0">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-sm text-muted-foreground mb-2">Monthly Income (USD)</p>
-            <h3 className="text-3xl font-bold text-foreground mb-2">${displayMonthlyIncome.toFixed(2)}</h3>
+            <p className="text-sm text-muted-foreground mb-2">Monthly Income ({displayCurrency})</p>
+            <h3 className="text-3xl font-bold text-foreground mb-2">{symbol}{displayMonthlyIncome.toFixed(2)}</h3>
             <p className="text-sm font-medium text-primary">+</p>
           </div>
           <div className="p-3 rounded-xl bg-secondary-light text-slate-900">
@@ -99,8 +107,8 @@ export function DashboardStats({ transactions, accounts, rate, balanceSummary }:
       <div className="rounded-lg bg-card text-card-foreground p-6 shadow-md hover:shadow-lg transition-all duration-300 border-0">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-sm text-muted-foreground mb-2">Monthly Expenses (USD)</p>
-            <h3 className="text-3xl font-bold text-foreground mb-2">${displayMonthlyExpenses.toFixed(2)}</h3>
+            <p className="text-sm text-muted-foreground mb-2">Monthly Expenses ({displayCurrency})</p>
+            <h3 className="text-3xl font-bold text-foreground mb-2">{symbol}{displayMonthlyExpenses.toFixed(2)}</h3>
             <p className="text-sm font-medium text-destructive"></p>
           </div>
           <div className="p-3 rounded-xl bg-accent-light text-slate-900">

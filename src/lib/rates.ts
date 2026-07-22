@@ -63,12 +63,19 @@ export function useExchangeRateHistory(params?: { from?: string; to?: string }) 
 export interface ExchangeSnapshot {
   vesPerUsd: number;
   vesPerEur: number;
+  vesPerUsdt: number | null;
   fetchedAt: string;
   sourceDate: string;
 }
 
 function toSnapshot(rate: ExchangeRate): ExchangeSnapshot {
-  return { vesPerUsd: rate.usdRate, vesPerEur: rate.eurRate ?? 0, fetchedAt: new Date().toISOString(), sourceDate: rate.date };
+  return {
+    vesPerUsd: rate.usdRate,
+    vesPerEur: rate.eurRate ?? 0,
+    vesPerUsdt: rate.usdtRate ?? null,
+    fetchedAt: new Date().toISOString(),
+    sourceDate: rate.date,
+  };
 }
 
 export async function getRateByDate(dateISO: string): Promise<ExchangeSnapshot | null> {

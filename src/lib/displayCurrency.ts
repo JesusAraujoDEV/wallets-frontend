@@ -2,7 +2,7 @@
 // conversion (account balances, rate cards). Purely a display choice — the
 // app's accounting stays in USD internally (amountUsd, totals) regardless.
 import { useEffect, useState } from "react";
-import type { ExchangeRate } from "@/lib/rates";
+import type { ExchangeRate, ExchangeSnapshot } from "@/lib/rates";
 
 export type DisplayCurrency = "USD" | "EUR" | "USDT";
 
@@ -55,4 +55,14 @@ export function vesPerUnit(rate: ExchangeRate | null | undefined, currency: Disp
 
 export function currencySymbol(currency: DisplayCurrency): string {
   return DISPLAY_CURRENCIES.find((c) => c.value === currency)?.symbol ?? "$";
+}
+
+// Converts a USD-denominated amount (the app's internal accounting unit) into the
+// selected display currency via the VES cross-rate. Falls back to the USD amount
+// when the target currency's rate isn't available (e.g. no USDT rate for the date).
+export function convertUsdToDisplay(amountUsd: number, currency: DisplayCurrency, snap: ExchangeSnapshot | null): number {
+  if (currency === "USD" || !snap) return amountUsd;
+  const targetVesPerUnit = currency === "EUR" ? snap.vesPerEur : snap.vesPerUsdt;
+  if (!snap.vesPerUsd || !targetVesPerUnit) return amountUsd;
+  return amountUsd * (snap.vesPerUsd / targetVesPerUnit);
 }
