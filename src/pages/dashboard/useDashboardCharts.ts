@@ -3,7 +3,9 @@ import {
   fetchNetCashFlow, fetchSpendingHeatmap, fetchExpenseVolatility, fetchComparativeMoM,
   fetchMonthlyForecast, fetchIncomeHeatmap, fetchIncomeVolatility, fetchComparativeMoMIncome,
 } from "@/lib/stats";
-import { filterHeatmap, filterByCategoryName, buildAllowedNameFn } from "./dashboardChartFilters";
+import { fetchBudgetsStatus } from "@/lib/budgets";
+import { filterHeatmap, filterByCategoryName, buildAllowedNameFn, sumMonthlyBudgets, toBudgetChartData } from "./dashboardChartFilters";
+import type { BudgetData } from "@/components/BudgetComparisonChart";
 
 const EMPTY_MOM = { summary: { current_total: 0, total_delta_percent: 0, total_delta_usd: 0 }, categories: [] as any[] };
 const EMPTY_HEATMAP = { categories: [] as string[], weekdays: [] as string[], data_points: [] as any[] };
@@ -26,6 +28,7 @@ export function useDashboardCharts({
   const [incomeVolatilityData, setIncomeVolatilityData] = useState<any[]>([]);
   const [incomeMomData, setIncomeMomData] = useState(EMPTY_MOM);
   const [forecastData, setForecastData] = useState(EMPTY_FORECAST);
+  const [budgetData, setBudgetData] = useState<BudgetData[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -37,12 +40,15 @@ export function useDashboardCharts({
 
     (async () => {
       try {
+        // Fetched first: its monthly total feeds fetchMonthlyForecast's budget_total below.
+        const budgets = await fetchBudgetsStatus();
+
         const [net, heat, vol, mom, fc, incHeat, incVol, incMom] = await Promise.all([
           fetchNetCashFlow({ accountId, fromDate, toDate, timeUnit: 'month', groupId }),
           fetchSpendingHeatmap({ accountId, fromDate, toDate, groupId }),
           fetchExpenseVolatility({ accountId, fromDate, toDate, topN: 8, groupId }),
           fetchComparativeMoM({ accountId, date: toDate, groupId }),
-          fetchMonthlyForecast({ accountId, date: now.toISOString().slice(0, 10), groupId }),
+          fetchMonthlyForecast({ accountId, date: now.toISOString().slice(0, 10), groupId, budget_total: sumMonthlyBudgets(budgets) }),
           fetchIncomeHeatmap({ accountId, fromDate, toDate, groupId }),
           fetchIncomeVolatility({ accountId, fromDate, toDate, topN: 8, groupId }),
           fetchComparativeMoMIncome({ accountId, date: toDate, groupId }),
@@ -60,6 +66,7 @@ export function useDashboardCharts({
         setIncomeHeatmapData(filterHeatmap(incHeat, allowedIncome));
         setIncomeVolatilityData(filterByCategoryName(incVol?.categories_data, allowedIncome));
         setIncomeMomData({ summary: incMom?.summary || EMPTY_MOM.summary, categories: filterByCategoryName(incMom?.categories_comparison, allowedIncome) });
+        setBudgetData(toBudgetChartData(budgets));
       } catch (err) {
         if (!alive) return;
         console.warn('stats fetch failed', err);
@@ -68,5 +75,5 @@ export function useDashboardCharts({
     return () => { alive = false; };
   }, [selectedAccount, monthKey, visibleExpenseCategoryNames, selectedExpenseCats.join(','), visibleIncomeCategoryNames, selectedIncomeCats.join(','), categoriesLength, selectedGroupNumber]);
 
-  return { netFlowData, heatmapData, volatilityData, momData, incomeHeatmapData, incomeVolatilityData, incomeMomData, forecastData };
+  return { netFlowData, heatmapData, volatilityData, momData, incomeHeatmapData, incomeVolatilityData, incomeMomData, forecastData, budgetData };
 }

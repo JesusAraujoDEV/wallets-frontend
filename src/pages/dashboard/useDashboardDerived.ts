@@ -56,13 +56,5 @@ export function useDashboardDerived({ transactions, selectedAccount, categories,
     });
   }, [txByAccount, categories, accounts, rate, expenseFilterSet, selectedGroupNumber]);
 
-  const budgetData = useMemo(() => {
-    const totals = monthlyExpenseTotalsByCategory(txByAccount, categories, accounts, rate, expenseFilterSet, selectedGroupNumber);
-    return Array.from(totals.entries()).map(([categoryId, actual]) => {
-      const cat = categories.find(c => c.id === categoryId);
-      return { category: cat?.name || "Uncategorized", budget: 0, actual };
-    });
-  }, [txByAccount, categories, accounts, rate, expenseFilterSet, selectedGroupNumber]);
-
-  return { txByAccount, monthKey, expensePieData, budgetData };
+  return { txByAccount, monthKey, expensePieData };
 }

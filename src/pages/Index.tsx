@@ -25,7 +25,7 @@ const Index = () => {
     selectedIncomeCategoryNames, selectedExpenseCategoryNames,
   } = useCategoryFilters(categories, selectedGroupNumber);
 
-  const { txByAccount, monthKey, expensePieData, budgetData } = useDashboardDerived({
+  const { txByAccount, monthKey, expensePieData } = useDashboardDerived({
     transactions, selectedAccount, categories, accounts, rate, expenseFilterSet, selectedGroupNumber,
   });
 
@@ -67,7 +67,7 @@ const Index = () => {
               visibleExpenseCategories={visibleExpenseCategories} selectedExpenseCats={selectedExpenseCats} onExpenseCatsChange={setSelectedExpenseCats}
             />
             <DashboardChartsGrid
-              expensePieData={expensePieData} onExpenseSliceClick={toggleExpenseCategory} trendData={trendData} budgetData={budgetData}
+              expensePieData={expensePieData} onExpenseSliceClick={toggleExpenseCategory} trendData={trendData} budgetData={charts.budgetData}
               netFlowData={charts.netFlowData} forecastData={charts.forecastData}
               heatmapData={charts.heatmapData} incomeHeatmapData={charts.incomeHeatmapData}
               volatilityData={charts.volatilityData} incomeVolatilityData={charts.incomeVolatilityData}

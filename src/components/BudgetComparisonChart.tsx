@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
-interface BudgetData {
+export interface BudgetData {
   category: string;
   budget: number;
   actual: number;
