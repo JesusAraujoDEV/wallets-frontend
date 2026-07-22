@@ -2,7 +2,7 @@ import type { UseFormRegister } from "react-hook-form";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, PencilLine } from "lucide-react";
+import { AtSign, Loader2, Mail, PencilLine, User } from "lucide-react";
 import type { AuthProfileResponse } from "@/lib/types";
 import { ProfileEditForm } from "./ProfileEditForm";
 import { ProfileField } from "./ProfileField";
@@ -26,12 +26,12 @@ export function ProfileInfoCard({
   onOpenUnlinkDialog: () => void;
 }) {
   return (
-    <Card className="border-border bg-card shadow-sm">
-      <CardHeader className="space-y-3">
+    <Card className="overflow-hidden border-border bg-card shadow-sm">
+      <CardHeader className="space-y-3 bg-gradient-to-br from-primary-light/40 via-transparent to-transparent">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <Avatar className="h-14 w-14 border border-emerald-100 bg-emerald-50 text-emerald-700">
-              <AvatarFallback className="bg-emerald-50 text-base font-semibold text-emerald-700">{userInitials || "U"}</AvatarFallback>
+            <Avatar className="h-14 w-14 ring-2 ring-primary/30 ring-offset-2 ring-offset-card">
+              <AvatarFallback className="bg-primary-light text-base font-semibold text-primary">{userInitials || "U"}</AvatarFallback>
             </Avatar>
             <div>
               <CardTitle className="text-2xl text-card-foreground">Perfil</CardTitle>
@@ -56,9 +56,9 @@ export function ProfileInfoCard({
           </div>
         ) : !isEditing ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <ProfileField label="Nombre" value={user?.name || "No disponible"} />
-            <ProfileField label="Email" value={user?.email || "No disponible"} />
-            <ProfileField label="Username" value={user?.username || "No disponible"} />
+            <ProfileField label="Nombre" value={user?.name || "No disponible"} icon={User} />
+            <ProfileField label="Email" value={user?.email || "No disponible"} icon={Mail} />
+            <ProfileField label="Username" value={user?.username || "No disponible"} icon={AtSign} />
           </div>
         ) : (
           <ProfileEditForm

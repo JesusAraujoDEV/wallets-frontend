@@ -17,8 +17,8 @@ export function DesktopSidebar({ items, pendingCount, onLogout, onHelp }: {
   const { t } = useTranslation();
 
   return (
-    <aside className="hidden w-64 shrink-0 border-r border-border bg-card md:fixed md:top-0 md:left-0 md:z-20 md:flex md:h-screen md:flex-col md:overflow-y-auto">
-      <div className="border-b border-border px-6 py-6">
+    <aside className="hidden w-64 shrink-0 border-r border-border bg-card md:fixed md:top-0 md:left-0 md:z-20 md:flex md:h-screen md:flex-col">
+      <div className="shrink-0 border-b border-border px-6 py-6">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">Platica</p>
         <div className="mt-2 flex items-center gap-2">
           <h1 className="text-xl font-semibold text-foreground">{t("nav.dashboard")}</h1>
@@ -31,11 +31,11 @@ export function DesktopSidebar({ items, pendingCount, onLogout, onHelp }: {
         <p className="mt-1 text-sm text-muted-foreground">{t("sidebar.tagline")}</p>
       </div>
 
-      <div className="flex-1 px-4 py-6">
+      <div className="flex-1 overflow-y-auto px-4 py-6">
         <SidebarNav items={items} />
       </div>
 
-      <div className="mt-auto border-t border-border p-4 space-y-2">
+      <div className="shrink-0 border-t border-border p-4 space-y-2">
         <SidebarRateIndicator />
         <LanguageSwitcher className="w-full" />
         <ThemeToggle />

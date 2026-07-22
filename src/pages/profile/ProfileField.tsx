@@ -1,8 +1,15 @@
-export function ProfileField({ label, value }: { label: string; value: string }) {
+import type { LucideIcon } from "lucide-react";
+
+export function ProfileField({ label, value, icon: Icon }: { label: string; value: string; icon: LucideIcon }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-2 break-words text-base font-medium text-slate-950">{value}</p>
+    <div className="group flex items-start gap-3 rounded-xl border border-border bg-muted/40 p-4 transition-colors hover:bg-muted/70">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-light text-primary">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+        <p className="mt-1 break-words text-base font-medium text-card-foreground">{value}</p>
+      </div>
     </div>
   );
 }
