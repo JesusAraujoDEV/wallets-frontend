@@ -23,7 +23,9 @@ export function useDebtFormHandlers({
     };
 
     if (editingDebt) {
-      mutations.updateMutation.mutate({ id: editingDebt.id, payload });
+      // Backend updateDebtSchema is unknown(false) and rejects type/currency (immutable post-creation).
+      const { type: _type, currency: _currency, ...updatePayload } = payload;
+      mutations.updateMutation.mutate({ id: editingDebt.id, payload: updatePayload });
       return;
     }
     mutations.createMutation.mutate(payload);

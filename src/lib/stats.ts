@@ -28,7 +28,25 @@ export async function fetchNetCashFlow(params?: { includeInStats?: boolean; acco
   if (params?.timeUnit) sp.set("time_unit", params.timeUnit);
   if (typeof params?.groupId === "number") sp.set("groupId", String(params.groupId));
   const qs = sp.toString();
-  return apiFetch<NetCashFlowResponse>(`stats/net-cash-flow${qs ? `?${qs}` : ""}`);
+  const res = await apiFetch<any>(`stats/net-cash-flow${qs ? `?${qs}` : ""}`);
+  // Deployed API sends total_income/total_expenses/avg_savings_rate and time_series[].expenses (plural);
+  // this interface uses income_total/expense_total/savings_rate_avg and .expense. Normalize once here.
+  const s = res?.summary ?? {};
+  return {
+    summary: {
+      net_cash_flow: s.net_cash_flow,
+      income_total: s.income_total ?? s.total_income,
+      expense_total: s.expense_total ?? s.total_expenses,
+      savings_rate_avg: s.savings_rate_avg ?? s.avg_savings_rate,
+    },
+    time_series: (res?.time_series ?? []).map((p: any) => ({
+      period: p.period,
+      income: Number(p.income || 0),
+      expense: Number(p.expense ?? p.expenses ?? 0),
+      net_flow: Number(p.net_flow || 0),
+      savings_rate: Number(p.savings_rate || 0),
+    })),
+  };
 }
 
 // 2) Spending heatmap
