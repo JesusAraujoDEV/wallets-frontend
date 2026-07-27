@@ -22,9 +22,9 @@ export function NetCashFlowChart({ summary, data }: NetCashFlowChartProps) {
       <ResponsiveContainer width="100%" height={320}>
         <ComposedChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="period" stroke="hsl(var(--muted-foreground))" style={{ fontSize: '12px' }} />
-          <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" style={{ fontSize: '12px' }} tickFormatter={(v) => `$${Number(v).toFixed(0)}`} />
-          <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--muted-foreground))" style={{ fontSize: '12px' }} tickFormatter={(v) => `${Math.round(Number(v) * 100)}%`} />
+          <XAxis dataKey="period" stroke="hsl(var(--muted-foreground))" tick={{ fill: "hsl(var(--muted-foreground))" }} style={{ fontSize: '12px' }} />
+          <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" tick={{ fill: "hsl(var(--muted-foreground))" }} style={{ fontSize: '12px' }} tickFormatter={(v) => `$${Number(v).toFixed(0)}`} />
+          <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--muted-foreground))" tick={{ fill: "hsl(var(--muted-foreground))" }} style={{ fontSize: '12px' }} tickFormatter={(v) => `${Math.round(Number(v) * 100)}%`} />
           <Tooltip
             contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "var(--radius)" }}
             formatter={(value: number, name: string, props: any) => {
@@ -40,7 +40,7 @@ export function NetCashFlowChart({ summary, data }: NetCashFlowChartProps) {
               return t("charts.netCashFlow.period", { period: p.period });
             }}
           />
-          <Legend />
+          <Legend formatter={(value) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>} />
           <Bar yAxisId="left" dataKey="net_flow" name={t("charts.netCashFlow.netFlow")} radius={[4,4,0,0]}
             fill="#10b981"
             shape={(props) => {

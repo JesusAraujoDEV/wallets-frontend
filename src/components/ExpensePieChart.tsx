@@ -41,7 +41,7 @@ export const ExpensePieChart = ({ data, onSliceClick }: ExpensePieChartProps) =>
             ))}
           </Pie>
           <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
-          <Legend />
+          <Legend formatter={(value) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>} />
         </PieChart>
       </ResponsiveContainer>
     </Card>

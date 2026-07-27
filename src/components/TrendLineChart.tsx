@@ -18,16 +18,18 @@ export const TrendLineChart = ({ data }: TrendLineChartProps) => {
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis 
-            dataKey="month" 
+          <XAxis
+            dataKey="month"
             stroke="hsl(var(--muted-foreground))"
+            tick={{ fill: "hsl(var(--muted-foreground))" }}
             style={{ fontSize: '12px' }}
           />
-          <YAxis 
+          <YAxis
             stroke="hsl(var(--muted-foreground))"
+            tick={{ fill: "hsl(var(--muted-foreground))" }}
             style={{ fontSize: '12px' }}
           />
-          <Tooltip 
+          <Tooltip
             contentStyle={{
               backgroundColor: "hsl(var(--card))",
               border: "1px solid hsl(var(--border))",
@@ -35,7 +37,7 @@ export const TrendLineChart = ({ data }: TrendLineChartProps) => {
             }}
             formatter={(value: number) => `$${value.toFixed(2)}`}
           />
-          <Legend />
+          <Legend formatter={(value) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>} />
           <Line 
             type="monotone" 
             dataKey="income" 

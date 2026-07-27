@@ -18,16 +18,18 @@ export const BudgetComparisonChart = ({ data }: BudgetComparisonChartProps) => {
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis 
-            dataKey="category" 
+          <XAxis
+            dataKey="category"
             stroke="hsl(var(--muted-foreground))"
+            tick={{ fill: "hsl(var(--muted-foreground))" }}
             style={{ fontSize: '12px' }}
           />
-          <YAxis 
+          <YAxis
             stroke="hsl(var(--muted-foreground))"
+            tick={{ fill: "hsl(var(--muted-foreground))" }}
             style={{ fontSize: '12px' }}
           />
-          <Tooltip 
+          <Tooltip
             contentStyle={{
               backgroundColor: "hsl(var(--card))",
               border: "1px solid hsl(var(--border))",
@@ -35,7 +37,7 @@ export const BudgetComparisonChart = ({ data }: BudgetComparisonChartProps) => {
             }}
             formatter={(value: number) => `$${value.toFixed(2)}`}
           />
-          <Legend />
+          <Legend formatter={(value) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>} />
           <Bar dataKey="budget" fill="hsl(var(--secondary))" radius={[8, 8, 0, 0]} />
           <Bar dataKey="actual" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
         </BarChart>

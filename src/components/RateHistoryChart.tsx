@@ -11,14 +11,14 @@ export function RateHistoryChart({ data, loading }: { data: ExchangeRate[]; load
       <ResponsiveContainer width="100%" height={320}>
         <LineChart data={loading ? [] : data}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" style={{ fontSize: "11px" }} minTickGap={30} />
-          <YAxis stroke="hsl(var(--muted-foreground))" style={{ fontSize: "12px" }} tickFormatter={(v) => `${Number(v).toFixed(0)}`} />
+          <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" tick={{ fill: "hsl(var(--muted-foreground))" }} style={{ fontSize: "11px" }} minTickGap={30} />
+          <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fill: "hsl(var(--muted-foreground))" }} style={{ fontSize: "12px" }} tickFormatter={(v) => `${Number(v).toFixed(0)}`} />
           <Tooltip
             contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "var(--radius)" }}
             formatter={(value: number, name: string) => [`Bs. ${Number(value).toFixed(2)}`, name === "usdRate" ? "USD" : name === "eurRate" ? "EUR" : "USDT"]}
             labelFormatter={(label) => `${t("rates.date")}: ${label}`}
           />
-          <Legend formatter={(name) => (name === "usdRate" ? "USD" : name === "eurRate" ? "EUR" : "USDT")} />
+          <Legend formatter={(name) => <span style={{ color: "hsl(var(--foreground))" }}>{name === "usdRate" ? "USD" : name === "eurRate" ? "EUR" : "USDT"}</span>} />
           <Line type="monotone" dataKey="usdRate" stroke="#10b981" strokeWidth={2} dot={false} />
           <Line type="monotone" dataKey="eurRate" stroke="#3b82f6" strokeWidth={2} dot={false} />
           <Line type="monotone" dataKey="usdtRate" stroke="#f59e0b" strokeWidth={1.5} dot={false} opacity={0.7} />
