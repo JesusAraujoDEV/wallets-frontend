@@ -22,7 +22,7 @@ export function usePayDebtMutation() {
       toast({ title: "Abono registrado", description: "El pago se registró correctamente." });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: DEBTS_QUERY_KEY }),
-        AccountsStore.refresh(),
+        AccountsStore.refresh.force(),
       ]);
     },
     onError: (error) => {

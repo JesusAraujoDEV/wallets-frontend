@@ -21,7 +21,7 @@ export async function ensureAdjustmentCategory(kind: "income" | "expense"): Prom
     cat = CategoriesStore.all().find(c => c.name === name) || newCat;
     return cat;
   } catch (e) {
-    await CategoriesStore.refresh().catch(() => {});
+    await CategoriesStore.refresh.force().catch(() => {});
     cat = CategoriesStore.all().find(c => c.name === name);
     if (cat) return cat as Category;
     throw e;
@@ -44,5 +44,5 @@ export async function createBalanceAdjustmentTransaction(account: Account, nextB
     amount: Math.abs(delta),
     type: adjType,
   });
-  await AccountsStore.refresh().catch(() => {});
+  await AccountsStore.refresh.force().catch(() => {});
 }

@@ -27,7 +27,7 @@ export const saveMetadataOnly = async (editingAccount: Account, formData: Accoun
     balance: editingAccount.balance,
   };
   await AccountsStore.upsert(updated);
-  await AccountsStore.refresh().catch(() => {});
+  await AccountsStore.refresh.force().catch(() => {});
   toast({
     title: "Account Updated",
     description: `${formData.name} has been updated successfully.`,
@@ -43,7 +43,7 @@ export const createAccount = async (formData: AccountEditorValue, type = "ahorro
     type,
   };
   await AccountsStore.upsert(newAccount);
-  await AccountsStore.refresh().catch(() => {});
+  await AccountsStore.refresh.force().catch(() => {});
   toast({
     title: "Account Created",
     description: `${formData.name} has been created successfully.`,

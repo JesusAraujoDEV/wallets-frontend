@@ -10,7 +10,7 @@ export const useAccountDelete = () => {
     try {
       setDeletingId(accountId);
       await AccountsStore.remove(accountId);
-      await AccountsStore.refresh().catch(() => {});
+      await AccountsStore.refresh.force().catch(() => {});
       toast({
         title: "Account Deleted",
         description: "The account has been removed.",

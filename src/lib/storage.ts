@@ -65,6 +65,22 @@ async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
   return trackedApiFetch<T>(path, init);
 }
 
+// Many independent components each call `<Store>.refresh()` on mount with no
+// coordination between them — without this, every one fires its own request (e.g.
+// every dashboard widget hitting GET /accounts at once). `dedupe` shares one in-flight
+// call across concurrent callers; `.force()` always starts a fresh fetch, used after a
+// mutation so the caller doesn't get a promise that started before its own write.
+function dedupe(run: () => Promise<void>): (() => Promise<void>) & { force: () => Promise<void> } {
+  let pending: Promise<void> | null = null;
+  const force = () => {
+    pending = run().finally(() => { pending = null; });
+    return pending;
+  };
+  const wrapped = () => pending ?? force();
+  wrapped.force = force;
+  return wrapped;
+}
+
 // In-memory caches to keep sync API surface for components
 let accountsCache: Account[] = [];
 let categoriesCache: Category[] = [];
@@ -151,7 +167,7 @@ export const AccountsStore = {
   all(): Account[] {
     return accountsCache;
   },
-  async refresh(): Promise<void> {
+  refresh: dedupe(async () => {
     const list = await fetchJSON<any[]>(`accounts`);
     accountsCache = (list || []).map((a) => ({
       id: String(a.id),
@@ -161,7 +177,7 @@ export const AccountsStore = {
       type: String(a.type || "ahorros"),
     }));
     emit();
-  },
+  }),
   async upsert(account: Account): Promise<void> {
     const exists = accountsCache.some(a => a.id === account.id);
     if (exists) {
@@ -171,11 +187,11 @@ export const AccountsStore = {
       const payload = { name: account.name, type: account.type || "ahorros", currency: account.currency, balance: account.balance };
       await fetchJSON(`accounts`, { method: "POST", body: JSON.stringify(payload) });
     }
-    await this.refresh();
+    await this.refresh.force();
   },
   async remove(id: string): Promise<void> {
     await fetchJSON(`accounts?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-    await this.refresh();
+    await this.refresh.force();
   },
 };
 
@@ -184,7 +200,7 @@ export const CategoriesStore = {
   all(): Category[] {
     return categoriesCache;
   },
-  async refresh(): Promise<void> {
+  refresh: dedupe(async () => {
     const list = await fetchJSON<ApiCategory[]>(`categories`);
     categoriesCache = (list || []).map((c) => ({
       id: String(c.id),
@@ -209,7 +225,7 @@ export const CategoriesStore = {
         : undefined,
     }));
     emit();
-  },
+  }),
   async upsert(category: Category): Promise<void> {
     const exists = categoriesCache.some(c => c.id === category.id);
     const payload: Record<string, unknown> = {
@@ -227,11 +243,11 @@ export const CategoriesStore = {
     } else {
       await fetchJSON(`categories`, { method: "POST", body: JSON.stringify(payload) });
     }
-    await this.refresh();
+    await this.refresh.force();
   },
   async remove(id: string): Promise<void> {
     await fetchJSON(`categories?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-    await this.refresh();
+    await this.refresh.force();
   },
 };
 
@@ -243,7 +259,7 @@ export const TransactionsStore = {
   getById(id: string): Transaction | undefined {
     return transactionsCache.find(t => t.id === id);
   },
-  async refresh(): Promise<void> {
+  refresh: dedupe(async () => {
     const list = await fetchJSON<any[]>(`transactions`);
     transactionsCache = (list || []).map((t) => {
       const categoryId = String(t.categoryId ?? t.category_id);
@@ -276,7 +292,7 @@ export const TransactionsStore = {
       } as Transaction;
     });
     emit();
-  },
+  }),
   async add(tx: Transaction, options?: { commission?: number }): Promise<void> {
     const acc = accountsCache.find(a => a.id === tx.accountId);
     const currency = acc?.currency;
@@ -291,13 +307,13 @@ export const TransactionsStore = {
       ...(options?.commission != null && options.commission !== 0 ? { commission: Number(options.commission) } : {}),
     } as any;
     await fetchJSON(`transactions`, { method: "POST", body: JSON.stringify(payload) });
-    await AccountsStore.refresh().catch(() => {});
-    await this.refresh();
+    await AccountsStore.refresh.force().catch(() => {});
+    await this.refresh.force();
   },
   async remove(id: string): Promise<void> {
     await fetchJSON(`transactions?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-    await AccountsStore.refresh().catch(() => {});
-    await this.refresh();
+    await AccountsStore.refresh.force().catch(() => {});
+    await this.refresh.force();
   },
   async update(next: Transaction): Promise<void> {
     const acc = accountsCache.find(a => a.id === next.accountId);
@@ -312,8 +328,8 @@ export const TransactionsStore = {
       accountId: Number(next.accountId),
     };
     await fetchJSON(`transactions?id=${encodeURIComponent(next.id)}`, { method: "PATCH", body: JSON.stringify(payload) });
-    await AccountsStore.refresh().catch(() => {});
-    await this.refresh();
+    await AccountsStore.refresh.force().catch(() => {});
+    await this.refresh.force();
   },
 };
 
