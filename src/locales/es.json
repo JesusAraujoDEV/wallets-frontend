@@ -72,7 +72,15 @@
     "date": "Fecha",
     "noData": "Sin datos para el rango seleccionado.",
     "pageOf": "Página {{page}} de {{total}}",
-    "usdt": "Binance"
+    "usdt": "Binance",
+    "ves": "VES",
+    "calculatorTitle": "Calculadora de tasas",
+    "calculatorSubtitle": "Convierte un monto usando la tasa de hoy.",
+    "amount": "Monto",
+    "amountPlaceholder": "Ingresa un monto",
+    "fromCurrency": "Desde",
+    "calculatorLoading": "Cargando tasa…",
+    "calculatorUnavailable": "Tasa no disponible"
   },
   "filters": {
     "search": "Buscar",

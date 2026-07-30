@@ -72,7 +72,15 @@
     "date": "Datum",
     "noData": "Keine Daten für den gewählten Zeitraum.",
     "pageOf": "Seite {{page}} von {{total}}",
-    "usdt": "Binance"
+    "usdt": "Binance",
+    "ves": "VES",
+    "calculatorTitle": "Kursrechner",
+    "calculatorSubtitle": "Rechnen Sie einen Betrag mit dem heutigen Kurs um.",
+    "amount": "Betrag",
+    "amountPlaceholder": "Betrag eingeben",
+    "fromCurrency": "Von",
+    "calculatorLoading": "Kurs wird geladen…",
+    "calculatorUnavailable": "Kurs nicht verfügbar"
   },
   "filters": {
     "search": "Suchen",

@@ -72,7 +72,15 @@
     "date": "Date",
     "noData": "No data for the selected range.",
     "pageOf": "Page {{page}} of {{total}}",
-    "usdt": "Binance"
+    "usdt": "Binance",
+    "ves": "VES",
+    "calculatorTitle": "Rate calculator",
+    "calculatorSubtitle": "Convert an amount using today's rate.",
+    "amount": "Amount",
+    "amountPlaceholder": "Enter an amount",
+    "fromCurrency": "From",
+    "calculatorLoading": "Loading rate…",
+    "calculatorUnavailable": "Rate unavailable"
   },
   "filters": {
     "search": "Search",

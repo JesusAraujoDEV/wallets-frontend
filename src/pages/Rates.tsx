@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { RateCurrentCards } from "@/components/RateCurrentCards";
+import { RateCalculator } from "@/components/RateCalculator";
 import { RateHistoryChart } from "@/components/RateHistoryChart";
 import { RateHistoryTable } from "@/components/RateHistoryTable";
 import { CurrencyToggle } from "@/components/CurrencyToggle";
@@ -43,6 +44,8 @@ export default function Rates() {
       </div>
 
       <RateCurrentCards rate={current.data} loading={current.isLoading} />
+
+      <RateCalculator rate={current.data} loading={current.isLoading} />
 
       <div className="flex items-center gap-2">
         {rangeOptions.map((opt) => (
