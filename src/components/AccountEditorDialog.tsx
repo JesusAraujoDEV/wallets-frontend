@@ -6,9 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 
+// Accounts only ever hold VES or USD — the backend's account schema
+// (Joi.string().valid('VES', 'USD')) rejects EUR for both create and update.
 export type AccountEditorValue = {
   name: string;
-  currency: "USD" | "EUR" | "VES";
+  currency: "USD" | "VES";
   balance: string; // keep as string for input control
 };
 
@@ -56,7 +58,6 @@ export function AccountEditorDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="USD">{t("accounts.usd")}</SelectItem>
-                <SelectItem value="EUR">{t("accounts.eur")}</SelectItem>
                 <SelectItem value="VES">{t("accounts.ves")}</SelectItem>
               </SelectContent>
             </Select>

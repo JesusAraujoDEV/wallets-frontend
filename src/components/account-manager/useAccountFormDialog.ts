@@ -27,7 +27,9 @@ export const useAccountFormDialog = (newAccountType = "ahorros") => {
       setEditingAccount(account);
       setFormData({
         name: account.name,
-        currency: account.currency,
+        // Accounts only ever hold VES/USD (backend rejects EUR for this domain);
+        // narrow defensively in case a stale record ever carried EUR.
+        currency: account.currency === "EUR" ? "USD" : account.currency,
         balance: account.balance.toString(),
       });
     } else {
