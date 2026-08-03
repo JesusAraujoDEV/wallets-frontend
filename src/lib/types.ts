@@ -152,7 +152,7 @@ export interface TriggerRecurringResponse {
 
 export interface PayNowRecurringPayload {
   date?: string;
-  accountId?: number;
+  accountId: number;
   amount?: number;
   currency?: "USD" | "EUR" | "VES";
 }

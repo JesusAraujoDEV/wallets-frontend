@@ -17,11 +17,9 @@ export interface NetCashFlowResponse {
   };
   time_series: NetCashFlowPoint[];
 }
-export async function fetchNetCashFlow(params?: { includeInStats?: boolean; accountId?: string; fromDate?: string; toDate?: string; timeUnit?: string; groupId?: number; }): Promise<NetCashFlowResponse> {
+export async function fetchNetCashFlow(params?: { accountId?: string; fromDate?: string; toDate?: string; timeUnit?: string; groupId?: number; }): Promise<NetCashFlowResponse> {
   // API expects from_date and to_date (YYYY-MM-DD) and optional time_unit (e.g. 'month')
   const sp = new URLSearchParams();
-  if (params?.includeInStats === true) sp.set("includeInStats", "1");
-  if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
   if (params?.fromDate) sp.set("from_date", params.fromDate);
   if (params?.toDate) sp.set("to_date", params.toDate);
@@ -55,11 +53,9 @@ export interface SpendingHeatmapResponse {
   weekdays: string[];   // x axis labels
   data_points: Array<{ category_idx: number; day_idx: number; amount: number }>;
 }
-export async function fetchSpendingHeatmap(params?: { includeInStats?: boolean; accountId?: string; fromDate?: string; toDate?: string; groupId?: number; }): Promise<SpendingHeatmapResponse> {
+export async function fetchSpendingHeatmap(params?: { accountId?: string; fromDate?: string; toDate?: string; groupId?: number; }): Promise<SpendingHeatmapResponse> {
   // API expects from_date and to_date (YYYY-MM-DD)
   const sp = new URLSearchParams();
-  if (params?.includeInStats === true) sp.set("includeInStats", "1");
-  if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
   if (params?.fromDate) sp.set("from_date", params.fromDate);
   if (params?.toDate) sp.set("to_date", params.toDate);
@@ -78,11 +74,9 @@ export interface ExpenseVolatilityCategory {
 export interface ExpenseVolatilityResponse {
   categories_data: ExpenseVolatilityCategory[];
 }
-export async function fetchExpenseVolatility(params?: { includeInStats?: boolean; accountId?: string; fromDate?: string; toDate?: string; topN?: number; groupId?: number; }): Promise<ExpenseVolatilityResponse> {
+export async function fetchExpenseVolatility(params?: { accountId?: string; fromDate?: string; toDate?: string; topN?: number; groupId?: number; }): Promise<ExpenseVolatilityResponse> {
   // API expects from_date and to_date (YYYY-MM-DD) and optional top_n_categories
   const sp = new URLSearchParams();
-  if (params?.includeInStats === true) sp.set("includeInStats", "1");
-  if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
   if (params?.fromDate) sp.set("from_date", params.fromDate);
   if (params?.toDate) sp.set("to_date", params.toDate);
@@ -115,11 +109,9 @@ export interface ComparativePeriodParams {
   currentFrom?: string; currentTo?: string;
   previousFrom?: string; previousTo?: string;
 }
-export async function fetchComparativeMoM(params?: { includeInStats?: boolean; accountId?: string; date?: string; groupId?: number; } & ComparativePeriodParams): Promise<ComparativeMoMResponse> {
+export async function fetchComparativeMoM(params?: { accountId?: string; date?: string; groupId?: number; } & ComparativePeriodParams): Promise<ComparativeMoMResponse> {
   // API expects a reference date (YYYY-MM-DD) OR an explicit current/previous range
   const sp = new URLSearchParams();
-  if (params?.includeInStats === true) sp.set("includeInStats", "1");
-  if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
   if (params?.date) sp.set("date", params.date);
   if (params?.currentFrom) sp.set("current_from", params.currentFrom);
@@ -138,11 +130,9 @@ export interface MonthlyForecastResponse {
   projected_total_spending: number;
   projected_over_under: number; // positive if over
 }
-export async function fetchMonthlyForecast(params?: { includeInStats?: boolean; accountId?: string; date?: string; budget_total?: number; groupId?: number; }): Promise<MonthlyForecastResponse> {
+export async function fetchMonthlyForecast(params?: { accountId?: string; date?: string; budget_total?: number; groupId?: number; }): Promise<MonthlyForecastResponse> {
   // API expects a date (YYYY-MM-DD) and optional budget_total
   const sp = new URLSearchParams();
-  if (params?.includeInStats === true) sp.set("includeInStats", "1");
-  if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
   if (params?.date) sp.set("date", params.date);
   if (typeof params?.budget_total === 'number') sp.set("budget_total", String(params.budget_total));
@@ -160,10 +150,8 @@ export interface IncomeHeatmapResponse {
   data_points: Array<{ category_idx: number; day_idx: number; amount: number }>;
   summary?: { peak_category?: string; peak_day?: string };
 }
-export async function fetchIncomeHeatmap(params?: { includeInStats?: boolean; accountId?: string; fromDate?: string; toDate?: string; groupId?: number; }): Promise<IncomeHeatmapResponse> {
+export async function fetchIncomeHeatmap(params?: { accountId?: string; fromDate?: string; toDate?: string; groupId?: number; }): Promise<IncomeHeatmapResponse> {
   const sp = new URLSearchParams();
-  if (params?.includeInStats === true) sp.set("includeInStats", "1");
-  if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
   if (params?.fromDate) sp.set("from_date", params.fromDate);
   if (params?.toDate) sp.set("to_date", params.toDate);
@@ -182,10 +170,8 @@ export interface IncomeVolatilityCategory {
 export interface IncomeVolatilityResponse {
   categories_data: IncomeVolatilityCategory[];
 }
-export async function fetchIncomeVolatility(params?: { includeInStats?: boolean; accountId?: string; fromDate?: string; toDate?: string; topN?: number; groupId?: number; }): Promise<IncomeVolatilityResponse> {
+export async function fetchIncomeVolatility(params?: { accountId?: string; fromDate?: string; toDate?: string; topN?: number; groupId?: number; }): Promise<IncomeVolatilityResponse> {
   const sp = new URLSearchParams();
-  if (params?.includeInStats === true) sp.set("includeInStats", "1");
-  if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
   if (params?.fromDate) sp.set("from_date", params.fromDate);
   if (params?.toDate) sp.set("to_date", params.toDate);
@@ -214,10 +200,8 @@ export interface ComparativeMoMIncomeResponse {
     delta_percent: number;
   }>;
 }
-export async function fetchComparativeMoMIncome(params?: { includeInStats?: boolean; accountId?: string; date?: string; groupId?: number; } & ComparativePeriodParams): Promise<ComparativeMoMIncomeResponse> {
+export async function fetchComparativeMoMIncome(params?: { accountId?: string; date?: string; groupId?: number; } & ComparativePeriodParams): Promise<ComparativeMoMIncomeResponse> {
   const sp = new URLSearchParams();
-  if (params?.includeInStats === true) sp.set("includeInStats", "1");
-  if (params?.includeInStats === false) sp.set("includeInStats", "0");
   if (params?.accountId) sp.set("accountId", params.accountId);
   if (params?.date) sp.set("date", params.date);
   if (params?.currentFrom) sp.set("current_from", params.currentFrom);
