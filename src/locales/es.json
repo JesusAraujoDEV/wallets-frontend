@@ -204,6 +204,7 @@
     "newDebt": "Nueva Deuda",
     "payableCount": "Por Pagar ({{count}})",
     "receivableCount": "Por Cobrar ({{count}})",
+    "resolvedCount": "Resueltas ({{count}})",
     "linkCompletedTitle": "Vinculación completada",
     "linkCompletedDescription": "Se han vinculado {{count}} transacciones anteriores a esta deuda.",
     "confirmDeleteTitle": "¿Eliminar deuda?",

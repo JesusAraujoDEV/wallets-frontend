@@ -29,7 +29,7 @@ export default function Debts() {
   const { t } = useTranslation();
 
   const { accounts, categories } = useDebtsReferenceData();
-  const { debtsQuery, payableDebts, receivableDebts } = useDebtQueries();
+  const { debtsQuery, payableDebts, receivableDebts, resolvedDebts } = useDebtQueries();
   const payMutation = usePayDebtMutation();
 
   const [formOpen, setFormOpen] = useState(false);
@@ -101,12 +101,15 @@ export default function Debts() {
       </Card>
 
       <Tabs defaultValue="payable" className="w-full">
-        <TabsList className="w-full grid grid-cols-2">
+        <TabsList className="w-full grid grid-cols-3">
           <TabsTrigger value="payable">
             {t("debts.payableCount", { count: payableDebts.length })}
           </TabsTrigger>
           <TabsTrigger value="receivable">
             {t("debts.receivableCount", { count: receivableDebts.length })}
+          </TabsTrigger>
+          <TabsTrigger value="resolved">
+            {t("debts.resolvedCount", { count: resolvedDebts.length })}
           </TabsTrigger>
         </TabsList>
 
@@ -124,6 +127,17 @@ export default function Debts() {
         <TabsContent value="receivable" className="mt-4">
           <DebtGridSection
             debts={receivableDebts}
+            isLoading={debtsQuery.isLoading}
+            onPay={openPay}
+            onEdit={openEdit}
+            onDelete={openDeleteConfirm}
+            onLinkPast={handleLinkPast}
+          />
+        </TabsContent>
+
+        <TabsContent value="resolved" className="mt-4">
+          <DebtGridSection
+            debts={resolvedDebts}
             isLoading={debtsQuery.isLoading}
             onPay={openPay}
             onEdit={openEdit}

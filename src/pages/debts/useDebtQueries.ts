@@ -8,8 +8,9 @@ export function useDebtQueries() {
   });
 
   const debts = debtsQuery.data ?? [];
-  const payableDebts = debts.filter((d) => d.type === "payable");
-  const receivableDebts = debts.filter((d) => d.type === "receivable");
+  const payableDebts = debts.filter((d) => d.type === "payable" && d.status !== "paid");
+  const receivableDebts = debts.filter((d) => d.type === "receivable" && d.status !== "paid");
+  const resolvedDebts = debts.filter((d) => d.status === "paid");
 
-  return { debtsQuery, payableDebts, receivableDebts };
+  return { debtsQuery, payableDebts, receivableDebts, resolvedDebts };
 }

@@ -204,6 +204,7 @@
     "newDebt": "New Debt",
     "payableCount": "Payable ({{count}})",
     "receivableCount": "Receivable ({{count}})",
+    "resolvedCount": "Resolved ({{count}})",
     "linkCompletedTitle": "Linking completed",
     "linkCompletedDescription": "{{count}} past transactions have been linked to this debt.",
     "confirmDeleteTitle": "Delete debt?",

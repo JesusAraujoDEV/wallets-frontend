@@ -204,6 +204,7 @@
     "newDebt": "Neue Schuld",
     "payableCount": "Zu zahlen ({{count}})",
     "receivableCount": "Zu erhalten ({{count}})",
+    "resolvedCount": "Erledigt ({{count}})",
     "linkCompletedTitle": "Verknüpfung abgeschlossen",
     "linkCompletedDescription": "{{count}} frühere Transaktionen wurden mit dieser Schuld verknüpft.",
     "confirmDeleteTitle": "Schuld löschen?",
