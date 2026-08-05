@@ -15,6 +15,7 @@ export type UseTransactionsQueryArgs = {
     filterDateFrom: string;
     filterDateTo: string;
     filterMonth: string;
+    filterTagId?: string;
   };
   pageSize?: number;
 };

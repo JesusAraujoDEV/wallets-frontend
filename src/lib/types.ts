@@ -48,6 +48,13 @@ export interface CategoryGroupDeleteResponse {
   rowCount: number;
 }
 
+export interface Tag {
+  id: number;
+  name: string;
+  color?: string | null;
+  icon?: string | null;
+}
+
 export interface Transaction {
   id: string;
   date: string; // ISO date (YYYY-MM-DD)
@@ -63,6 +70,8 @@ export interface Transaction {
   exchangeRateUsed?: number | null;
   /** Optional debt link for cherry-picking */
   debtId?: string;
+  /** Tags assigned to this transaction */
+  tags?: Tag[];
 }
 
 export interface TransferCreatePayload {

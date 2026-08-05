@@ -106,6 +106,7 @@ export const TransactionsList = () => {
           filterDateFrom={filters.filterDateFrom} setFilterDateFrom={filters.setFilterDateFrom}
           filterDateTo={filters.filterDateTo} setFilterDateTo={filters.setFilterDateTo}
           filterMonth={filters.filterMonth} setFilterMonth={filters.setFilterMonth}
+          filterTagId={filters.filterTagId} setFilterTagId={filters.setFilterTagId}
           categories={categories} accounts={accounts} onClear={filters.handleClearFilters}
         />
 

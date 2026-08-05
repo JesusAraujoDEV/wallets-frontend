@@ -6,6 +6,7 @@ import { DatePickerField } from "@/components/DatePickerField";
 import { PlusCircle, Loader2 } from "lucide-react";
 import { CategorySelector } from "@/components/CategorySelector";
 import { AccountOption } from "./AccountOption";
+import { TagSelector } from "@/components/tags/TagSelector";
 import { useSingleTransactionForm } from "./useSingleTransactionForm";
 import type { Account, Category } from "@/lib/types";
 import type { ExchangeRate } from "@/lib/rates";
@@ -60,6 +61,10 @@ export function SingleTransactionForm({ accounts, categories, rate, onSubmitted 
       <div className="space-y-2">
         <Label htmlFor="description">Description (Optional)</Label>
         <Input id="description" type="text" placeholder="Add a note..." value={f.description} onChange={(e) => f.setDescription(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label className="text-sm font-medium leading-none">Tags</Label>
+        <TagSelector selectedTagIds={f.tagIds} onChange={f.setTagIds} />
       </div>
       <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={f.submitting} aria-busy={f.submitting}>
         {f.submitting ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Adding...</>) : (<><PlusCircle className="w-4 h-4 mr-2" />Add Transaction</>)}

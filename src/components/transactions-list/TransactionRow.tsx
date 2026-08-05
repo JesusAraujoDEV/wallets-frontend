@@ -28,6 +28,11 @@ export function TransactionRow({ transaction, categories, accounts, rateForDate,
           <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: cat?.color || "hsl(var(--muted))" }} />
           <p className="text-sm text-muted-foreground">{cat?.name || t("transactions.uncategorized")}</p>
           {acc ? <Badge variant="secondary" className="ml-1 text-xs md:text-sm font-semibold">{acc.name} ({acc.currency})</Badge> : null}
+          {transaction.tags && transaction.tags.length > 0 && transaction.tags.map(tag => (
+            <Badge key={tag.id} variant="outline" className="text-xs font-medium" style={{ borderColor: tag.color || undefined, color: tag.color || undefined }}>
+              {tag.name}
+            </Badge>
+          ))}
         </div>
       </div>
       <div className="justify-self-end">

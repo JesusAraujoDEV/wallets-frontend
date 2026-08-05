@@ -16,6 +16,7 @@ export function useSingleTransactionForm({ accounts, categories, onSubmitted }: 
   const [description, setDescription] = useState("");
   const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [submitting, setSubmitting] = useState(false);
+  const [tagIds, setTagIds] = useState<number[]>([]);
   const filteredCategories = categories.filter((c) => c.type === type);
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export function useSingleTransactionForm({ accounts, categories, onSubmitted }: 
         accountId: selectedAccount?.id || "",
         amount: parseFloat(amount),
         type,
-      }, { commission: singleCommission ? parseFloat(singleCommission) : undefined });
+      }, { commission: singleCommission ? parseFloat(singleCommission) : undefined, tagIds: tagIds.length > 0 ? tagIds : undefined });
       toast({
         title: "Transaction Added",
         description: `${type === "income" ? "Income" : "Expense"} of $${amount}${singleCommission ? ` (+$${Number(singleCommission).toFixed(2)} commission)` : ""} recorded to ${selectedAccount?.name}.`,
@@ -57,6 +58,7 @@ export function useSingleTransactionForm({ accounts, categories, onSubmitted }: 
       setCategory("");
       setDescription("");
       setDate(new Date().toISOString().slice(0, 10));
+      setTagIds([]);
       onSubmitted?.();
     } finally {
       setSubmitting(false);
@@ -67,6 +69,7 @@ export function useSingleTransactionForm({ accounts, categories, onSubmitted }: 
     account, setAccount, type, setType, amount, setAmount,
     singleCommission, setSingleCommission, category, setCategory,
     description, setDescription, date, setDate, submitting,
+    tagIds, setTagIds,
     filteredCategories, handleSubmit,
   };
 }

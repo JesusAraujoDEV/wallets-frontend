@@ -11,6 +11,7 @@ export function useTransactionFiltersState() {
   const [filterDateTo, setFilterDateTo] = useState("");
   const [filterMonth, setFilterMonth] = useState("");
   const [dateMode, setDateMode] = useState<"none" | "day" | "range" | "month">("none");
+  const [filterTagId, setFilterTagId] = useState("");
 
   useEffect(() => {
     if (filterType === 'income' && filterExpenseCategories.length) setFilterExpenseCategories([]);
@@ -21,17 +22,19 @@ export function useTransactionFiltersState() {
   const handleClearFilters = () => {
     setSearchQuery(""); setFilterType("all"); setFilterIncomeCategories([]); setFilterExpenseCategories([]);
     setFilterAccounts([]); setFilterDate(""); setFilterDateFrom(""); setFilterDateTo(""); setFilterMonth(""); setDateMode("none");
+    setFilterTagId("");
   };
 
   const filtersPack = {
     searchQuery, filterType, filterIncomeCategories, filterExpenseCategories, filterAccounts,
-    dateMode, filterDate, filterDateFrom, filterDateTo, filterMonth,
+    dateMode, filterDate, filterDateFrom, filterDateTo, filterMonth, filterTagId,
   };
 
   const isAnyFilterActive = Boolean(
     (searchQuery && searchQuery.trim()) || filterType !== 'all' || filterIncomeCategories.length ||
     filterExpenseCategories.length || filterAccounts.length ||
-    (dateMode === 'day' && filterDate) || (dateMode === 'range' && (filterDateFrom || filterDateTo)) || (dateMode === 'month' && filterMonth)
+    (dateMode === 'day' && filterDate) || (dateMode === 'range' && (filterDateFrom || filterDateTo)) || (dateMode === 'month' && filterMonth) ||
+    filterTagId
   );
 
   return {
@@ -39,6 +42,7 @@ export function useTransactionFiltersState() {
     filterIncomeCategories, setFilterIncomeCategories, filterExpenseCategories, setFilterExpenseCategories,
     filterAccounts, setFilterAccounts, dateMode, setDateMode,
     filterDate, setFilterDate, filterDateFrom, setFilterDateFrom, filterDateTo, setFilterDateTo, filterMonth, setFilterMonth,
+    filterTagId, setFilterTagId,
     filtersPack, isAnyFilterActive, handleClearFilters,
   };
 }

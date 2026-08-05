@@ -12,6 +12,7 @@ export type TransactionFilters = {
   filterDateFrom: string; // YYYY-MM-DD
   filterDateTo: string; // YYYY-MM-DD
   filterMonth: string; // YYYY-MM
+  filterTagId?: string; // tag id to filter by
 };
 
 export const PAGE_SIZE_DEFAULT = 20;
@@ -28,6 +29,7 @@ export function buildTransactionsQuery(filters: TransactionFilters, pageSize = P
     filterDateFrom,
     filterDateTo,
     filterMonth,
+    filterTagId,
   } = filters;
 
   const params = new URLSearchParams();
@@ -51,6 +53,7 @@ export function buildTransactionsQuery(filters: TransactionFilters, pageSize = P
     params.set('month', filterMonth);
   }
   if (cursor) params.set('cursorDate', cursor);
+  if (filterTagId) params.set('tagId', filterTagId);
   const path = `transactions?${params.toString()}`;
   return { path, url: buildApiUrl(path) };
 }
@@ -77,5 +80,6 @@ export function mapServerTransaction(t: any): Transaction {
     accountId,
     type,
     status,
+    tags: Array.isArray(t.tags) ? t.tags : [],
   } as Transaction;
 }

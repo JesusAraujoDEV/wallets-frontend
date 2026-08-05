@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,7 +8,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Search, X } from "lucide-react";
 import CategoryMultiSelect from "@/components/CategoryMultiSelect";
 import AccountMultiSelect from "@/components/AccountMultiSelect";
-import type { Category, Account } from "@/lib/types";
+import { fetchTags } from "@/lib/tags";
+import type { Category, Account, Tag } from "@/lib/types";
 
 export type TransactionFiltersProps = {
   searchQuery: string; setSearchQuery: (v: string) => void;
@@ -21,6 +22,7 @@ export type TransactionFiltersProps = {
   filterDateFrom: string; setFilterDateFrom: (v: string) => void;
   filterDateTo: string; setFilterDateTo: (v: string) => void;
   filterMonth: string; setFilterMonth: (v: string) => void;
+  filterTagId?: string; setFilterTagId?: (v: string) => void;
   categories: Category[];
   accounts: Account[];
   onClear: () => void;
@@ -39,9 +41,13 @@ export const TransactionFilters = (props: TransactionFiltersProps) => {
     filterDateFrom, setFilterDateFrom,
     filterDateTo, setFilterDateTo,
     filterMonth, setFilterMonth,
+    filterTagId, setFilterTagId,
     categories, accounts,
     onClear,
   } = props;
+
+  const [tags, setTags] = useState<Tag[]>([]);
+  useEffect(() => { fetchTags().then(setTags).catch(() => {}); }, []);
 
   const incomeCategoryOptions = useMemo(() => categories.filter(c => c.type === 'income'), [categories]);
   const expenseCategoryOptions = useMemo(() => categories.filter(c => c.type === 'expense'), [categories]);
@@ -105,6 +111,20 @@ export const TransactionFilters = (props: TransactionFiltersProps) => {
             placeholder={t("filters.allAccounts")}
           />
         </div>
+        {setFilterTagId && tags.length > 0 && (
+          <div className="space-y-1.5">
+            <Label>Tag</Label>
+            <Select value={filterTagId || "_all"} onValueChange={(v) => setFilterTagId(v === "_all" ? "" : v)}>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Todos" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">Todos</SelectItem>
+                {tags.map(tag => (
+                  <SelectItem key={tag.id} value={String(tag.id)}>{tag.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
