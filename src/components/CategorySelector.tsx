@@ -1,5 +1,4 @@
 import { useState } from "react";
-import * as Icons from "lucide-react";
 import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Category } from "@/lib/types";
