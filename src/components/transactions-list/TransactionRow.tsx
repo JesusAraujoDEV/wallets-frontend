@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TxAmount } from "@/components/TxAmount";
+import { getCategoryIcon } from "@/components/CategoryIcon";
 import type { Account, Category, Transaction } from "@/lib/types";
 
 export function TransactionRow({ transaction, categories, accounts, rateForDate, deletingId, onEdit, onDeleteRequest }: {
@@ -12,7 +13,7 @@ export function TransactionRow({ transaction, categories, accounts, rateForDate,
   const { t } = useTranslation();
   const cat = categories.find(c => c.id === transaction.categoryId);
   const acc = accounts.find(a => a.id === transaction.accountId);
-  const CatIcon = cat?.icon ? (Icons as any)[cat.icon] : null;
+  const CatIcon = getCategoryIcon(cat?.icon);
   const isDeleting = deletingId === transaction.id;
 
   return (
