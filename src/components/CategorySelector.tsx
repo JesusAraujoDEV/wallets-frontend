@@ -6,7 +6,7 @@ import { cn, isBalanceAdjustmentCategory } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CategoryIcon } from "@/components/CategoryIcon";
+import { CategoryIcon, getCategoryIcon } from "@/components/CategoryIcon";
 import { CategoryFormModal } from "@/components/CategoryFormModal";
 
 interface CategorySelectorProps {
@@ -92,9 +92,9 @@ export function CategorySelector({ value, onChange, filterType, categories, clas
                     )}
                     title={cat.name}
                   >
-                    {cat.icon && (Icons as any)[cat.icon] ? (
+                    {getCategoryIcon(cat.icon) ? (
                       (() => {
-                        const C = (Icons as any)[cat.icon!];
+                        const C = getCategoryIcon(cat.icon)!;
                         return <C className="h-5 w-5 shrink-0" style={{ color: cat.color || undefined }} />;
                       })()
                     ) : null}
