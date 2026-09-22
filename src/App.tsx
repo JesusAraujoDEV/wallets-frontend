@@ -36,14 +36,14 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const queryClient = new QueryClient();
 
 const App = () => (
-  <AppErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="platica-theme">
-        <TooltipProvider>
-          <GlobalLoadingBar />
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="platica-theme">
+      <TooltipProvider>
+        <GlobalLoadingBar />
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AppErrorBoundary>
             <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/login" element={<Login />} />
@@ -76,11 +76,11 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-          </BrowserRouter>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  </AppErrorBoundary>
+          </AppErrorBoundary>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
+  </QueryClientProvider>
 );
 
 export default App;
