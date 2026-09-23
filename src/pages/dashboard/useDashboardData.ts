@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { AuthApi } from "@/lib/auth";
 import { AccountsStore, CategoriesStore, TransactionsStore, fetchCategoryGroups, onDataChange } from "@/lib/storage";
 import type { Account, Category, CategoryGroup, Transaction, AuthUser } from "@/lib/types";
@@ -11,16 +11,21 @@ export function useDashboardData() {
   const [groups, setGroups] = useState<CategoryGroup[]>([]);
 
   useEffect(() => {
-    const load = () => {
+    const apply = () => {
       setAccounts(AccountsStore.all());
       setCategories(CategoriesStore.all());
       setTransactions(TransactionsStore.all());
     };
-    load();
+    // Initial paint is eager. Bus-driven refreshes (which resolve after the
+    // user may have already navigated away) are deferred with startTransition
+    // so their setStates don't outrank React Router v7's navigation transition
+    // and starve it — that starvation left the dashboard mounted while the URL
+    // had already changed to the target route (navigation dead until reload).
+    apply();
     AccountsStore.refresh().catch(() => {});
     CategoriesStore.refresh().catch(() => {});
     TransactionsStore.refresh().catch(() => {});
-    const off = onDataChange(load);
+    const off = onDataChange(() => startTransition(apply));
     return off;
   }, []);
 

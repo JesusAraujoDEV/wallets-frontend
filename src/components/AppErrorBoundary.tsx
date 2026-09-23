@@ -1,12 +1,10 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { useLocation } from "react-router-dom";
 
 interface Props {
   children: ReactNode;
   // Changes whenever the route changes; a new value clears a caught error so
   // navigating away from a broken page recovers without a full reload.
   resetKey: string;
-  onReset: () => void;
 }
 
 interface State {
@@ -15,11 +13,10 @@ interface State {
 }
 
 // Without this, an uncaught render error anywhere in the tree leaves the SPA
-// frozen on its last-committed screen with no feedback — the "nothing loads,
-// only F5 works" symptom. This boundary catches the error AND resets itself on
-// navigation (resetKey change), so clicking another sidebar link recovers the
-// app instead of staying stuck until a manual reload.
-class ErrorBoundaryInner extends Component<Props, State> {
+// frozen on its last-committed screen with no feedback. This boundary catches
+// the error AND resets itself on navigation (resetKey change), so clicking
+// another sidebar link recovers the app instead of staying stuck until reload.
+export class AppErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, resetKey: this.props.resetKey };
 
   static getDerivedStateFromError(): Partial<State> {
@@ -36,7 +33,6 @@ class ErrorBoundaryInner extends Component<Props, State> {
   }
 
   private handleRetry = () => {
-    this.props.onReset();
     this.setState({ hasError: false });
   };
 
@@ -67,15 +63,4 @@ class ErrorBoundaryInner extends Component<Props, State> {
       </div>
     );
   }
-}
-
-// Bridges router location into the class boundary: each navigation produces a
-// new resetKey, which clears a previously caught error.
-export function AppErrorBoundary({ children }: { children: ReactNode }) {
-  const location = useLocation();
-  return (
-    <ErrorBoundaryInner resetKey={location.pathname} onReset={() => {}}>
-      {children}
-    </ErrorBoundaryInner>
-  );
 }

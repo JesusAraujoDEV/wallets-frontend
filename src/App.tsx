@@ -9,8 +9,7 @@ import SidebarLayout from "@/components/layout/SidebarLayout";
 import { ThemeProvider } from "@/components/theme-provider";
 import RequireAuth from "@/components/RequireAuth";
 import GlobalLoadingBar from "@/components/GlobalLoadingBar";
-import RouteFallback from "@/components/RouteFallback";
-import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { RoutedContent } from "@/components/RoutedContent";
 
 // Route-level code splitting: each page ships as its own chunk, fetched on
 // navigation instead of bloating the single main bundle (was ~2.5MB).
@@ -42,10 +41,16 @@ const App = () => (
         <GlobalLoadingBar />
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <AppErrorBoundary>
-            <Suspense fallback={<RouteFallback />}>
-              <Routes>
+        {/* useTransitions={false}: react-router v7 wraps the history-listener
+            location update in React.startTransition by default. On a page with
+            high-frequency state updates in flight (the dashboard's data fetches
+            resolving, polling, loading bar), that low-priority transition gets
+            starved and never commits — the URL changes but the Router's location
+            stays put, so the Outlet keeps rendering the old page until a full
+            reload. Making the location update synchronous removes the hazard. */}
+        <BrowserRouter useTransitions={false}>
+          <RoutedContent>
+            <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
@@ -75,8 +80,7 @@ const App = () => (
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </Suspense>
-          </AppErrorBoundary>
+          </RoutedContent>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
